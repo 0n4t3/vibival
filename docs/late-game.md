@@ -4,8 +4,6 @@
 
 > **Late game.** Everything on this page is late-game content, built on the
 > `late-game` branch. It is not in the main game until that branch is merged.
-> The design notes behind it are in [boats.md](../boats.md) and
-> [metals.md](../metals.md).
 
 Once you have a house, a workbench and a steady supply of boards, the swamp
 opens up: build a dock and a raft, pole out to the rocky islands far

@@ -1,27 +1,23 @@
 title: Vibival
 email: ''
 description: A slow, grounded survival game in a Carboniferous coal swamp.
-url: 'https://0n4t3.github.io'
-baseurl: '/vibival-game'
+# Served from the custom domain in CNAME, so there is no project subpath.
+url: 'https://vibival.dns7.top'
+baseurl: ''
 markdown: kramdown
 plugins: []
+# The site source is docs/, so paths here are relative to docs/.
 exclude:
-  - game
-  - flatpak
-  - .godot
-  - Gemfile
-  - Gemfile.lock
-  - README.md
-  - LICENSE
-  - docs/game-doc.md
-  - docs/game-doc-late-game.md
+  - client/README.md
+  - game-doc.md
+  - game-doc-late-game.md
 sass:
   style: compressed
 
 # Keep the original guide files, while applying the site’s documentation layout.
 defaults:
   - scope:
-      path: 'docs'
+      path: ''
       type: pages
     values:
       layout: guide

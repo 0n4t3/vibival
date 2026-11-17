@@ -23,7 +23,7 @@ does.
   supplies on the ground, and marking a spot to find your way back.
 
 For developers (and AI agents) working on the game, the
-[game doc](game-doc.md) describes every mechanic, its numbers and where it
+[game doc](https://github.com/0n4t3/vibival-game/blob/main/docs/game-doc.md) describes every mechanic, its numbers and where it
 lives in the code.
 
 ## Late game
@@ -33,7 +33,7 @@ game until that branch is merged:
 
 - [Late game: boats and metals](late-game.md): docks, rafts, the rocky
   islands, copper, tool wear and meteoric iron.
-- For developers: [game doc: late game](game-doc-late-game.md).
+- For developers: [game doc: late game](https://github.com/0n4t3/vibival-game/blob/main/docs/game-doc-late-game.md).
 
 ## Quick tips
 

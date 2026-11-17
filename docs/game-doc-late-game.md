@@ -4,8 +4,7 @@
 > the main game. Everything in [game-doc.md](game-doc.md) still applies;
 > where the late game changes a main-game rule, the change is listed under
 > [Changes to main-game rules](#changes-to-main-game-rules). The player's
-> side is in [late-game.md](late-game.md), and the design notes are
-> [boats.md](../boats.md) and [metals.md](../metals.md).
+> side is in [late-game.md](late-game.md).
 
 ## Layout
 
