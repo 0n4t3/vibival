@@ -1,50 +1,26 @@
-# Vibival game guide
+*Warning: this game is truly vibe coded. Not "some functions are unreviewed" vibe coded, or even "AI wrote everything line by line but I micromanaged it" vibe coded. The mechanics were planned out by me, but but there was a prompt in between me and every line of source code (outside of the game engine and dependencies, which - to be fair - is probably the reason it runs as well as it does).*
 
-A field guide to surviving the Late Carboniferous coal swamps, 307 million
-years ago. Vibival is a prototype, so details here can change as the game
-does.
+## About
+Vibival is a survival game, set in a vaguely carboniferous coal swamp. It’s a slow and grounded game, if that makes any sense. There’ll be no epic boss battles or megastructures to construct, you’ll probably be too busy cleaning a bite to keep it from getting infected because that stupid bug just bit you again, or digging up fern tree roots because you’re still low on greens.
 
-## Pages
+If you'd like to try it, [playing the web version](https://vibival.dns7.top/client) is probably your best bet. Linux and Android are working now, expect their builds in the releases at some point (Windows likely to follow). See the guide above for more information on how to play the game.
 
-- [Getting started](getting-started.md): the story, your first hour, and the
-  controls.
-- [Survival](survival.md): health, energy, water, stamina, nutrients,
-  sickness, wounds (and the Health tab), how much you can carry, and the
-  weather.
-- [Gathering and crafting](crafting.md): what to collect, crafting on the
-  ground, piles, woodcutting and logs, the recipe book, knapping stone tools,
-  fire, cooking, torches, the mattock, pottery, the workbench, fishing,
-  traps and the bait box, the house, and soup.
-- [Creatures](creatures.md): every animal in the swamp, what it does, and how
-  to deal with it, including how to get water without being eaten.
-- [Sleeping and saving](sleeping-and-saving.md): sleep risk, the bedroll,
-  camp saves, save and quit, named worlds, and debug worlds.
-- [Stashes and waypoints](stashes-and-waypoints.md): leaving a sack of
-  supplies on the ground, and marking a spot to find your way back.
+#### Progression
+Progression isn’t entirely linear, and from the first time you play it to when you delete the world because *that stupid bug just bit you three times in a row*, you’ll still be spending time gathering food and trying to fetch water without being eaten by a swamp predator. Crafting is done in a 3D environment, and most items are stored in physical piles in the world instead of in containers.
 
-For developers (and AI agents) working on the game, the
-[game doc](https://github.com/0n4t3/vibival-game/blob/main/docs/game-doc.md) describes every mechanic, its numbers and where it
-lives in the code.
+Though there’s something of progression:
 
-## Late game
+**1: game start.** Run around, try to find some food, and risk drinking the swamp water if you don’t find some clay in time to make a pot to boil water in. Probably get jump scared by a giant amphibious predator. Knap a few basic tools, snatch an ember from an existing fire to make your own, and survive the first night. Chase down a small animal yelling *get in my belly.* Make yourself a frond sack to increase your carry capacity.
 
-Late-game content is built on the `late-game` branch and is not in the main
-game until that branch is merged:
+As time goes on you’ll be able to do a bit more. Make a mattok to start replanting vegetation, and an mattok to cut softwood. Find out what happens when you try to distract a large predator by throwing a stone, only to hit the directly instead of throwing one next to it. Learn that sleeping is the only way to have a permanent save by dying and losing a bunch of progress.
 
-- [Late game: boats and metals](late-game.md): docks, rafts, the rocky
-  islands, copper, tool wear and meteoric iron.
-- For developers: [game doc: late game](https://github.com/0n4t3/vibival-game/blob/main/docs/game-doc-late-game.md).
+**2: Workbench crafting.** Cut some softwood into planks and make yourself a workbench, then a few specialized tools to hang on it. This unlocks:
+* Soup pots (soup will never go bad when boiling)
+* Food preservation (pickled foods and alcohol or salt preserved foods never go bad in a vessel). Alcohol is also very useful for wound sterilization.
+* Fishing and traps
+* A pre-fab softwood structure
+* Composting, which greatly speeds up farming
 
-## Quick tips
-
-- Water is the most dangerous place in the swamp. Drink from a clay pot
-  filled at a spot you have checked, or move along the bank and never linger
-  at the edge.
-- Throw a stone into the water before you go near it. Anything buried there
-  lunges at the splash instead of at you.
-- Sleep at least 30 m from swamp water, beside a lit campfire, on rocky or
-  wooded ground.
-- Cook meat, roast seeds, and boil water. Raw food and swamp water make you
-  sick.
-- A woven frond sack triples what you can carry, and can be set down as a
-  50 kg stash. A woven cloth sack (later) carries 40 kg more and holds 100 kg.
+**3: End game** Build yourself a raft, and go sailing to find island copper deposits. Copper unlocks axes (can cut hardwood), and allows cold working of meteoric iron. Metal also unlocks tools like shovels (better at digging then the mattock) and saws (better at cutting wood than axes or mattocks). There's also some additional end game content, such as:
+* more and larger structures
+* more building materials
