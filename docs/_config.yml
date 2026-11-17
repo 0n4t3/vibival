@@ -1,0 +1,27 @@
+title: Vibival
+email: ''
+description: A slow, grounded survival game in a Carboniferous coal swamp.
+url: 'https://0n4t3.github.io'
+baseurl: '/vibival-game'
+markdown: kramdown
+plugins: []
+exclude:
+  - game
+  - flatpak
+  - .godot
+  - Gemfile
+  - Gemfile.lock
+  - README.md
+  - LICENSE
+  - docs/game-doc.md
+  - docs/game-doc-late-game.md
+sass:
+  style: compressed
+
+# Keep the original guide files, while applying the site’s documentation layout.
+defaults:
+  - scope:
+      path: 'docs'
+      type: pages
+    values:
+      layout: guide
