@@ -1,8 +1,8 @@
 extends StaticBody3D
 ## The stump a felled tree leaves (see chunk.gd). A new tree grows up out of
 ## it over about 18 days and takes the old one's place once it is full grown
-## and can be felled again. Swinging a mattock at it DIG_HITS times digs it
-## out, roots and all, for some firewood; then nothing grows there again.
+## and can be felled again. Swinging an axe (or the stone mattock, slowly) at
+## it DIG_HITS times hacks it out, roots and all, for some firewood; then nothing grows there again.
 ##
 ## A stump struck by lightning (`state.burnt`: the Game.time it was struck,
 ## see swamp.strike_tree) never grows back. It burns for BURN_FOR, glows with
@@ -235,8 +235,8 @@ func prompt(player: Node) -> String:
 		what += ", growing back (%d%%)" % roundi(g * 100.0)
 	if held == "compost" and not burnt() and g < 1.0:
 		return what + Harvestable.feed_hint(float(state.regrow) - Game.time)
-	if "dig" in Items.def(held).get("tags", []):
-		return "%s: swing the mattock to dig it %s" % [what, "up" if planted() else "out"]
+	if Items.works_on(held, dug_by()):
+		return "%s: swing the %s to hack it %s" % [what, Items.tool_word(held), "up" if planted() else "out"]
 	if can_pick():
 		return "Pick the shoot [E]   (%s)" % what
 	if shoot_young():
@@ -280,7 +280,7 @@ func interact(_player: Node) -> void:
 		return
 	if planted():
 		return
-	Game.notify("Swing a mattock at the stump to dig it out." if growth() < 1.0 else "")
+	Game.notify("Swing an axe at the stump to hack it out." if growth() < 1.0 else "")
 
 
 func feed(_player: Node) -> bool:
@@ -294,14 +294,21 @@ func feed(_player: Node) -> bool:
 	return true
 
 
-func dig() -> void:
-	## A mattock swing into the roots.
+func dug_by() -> Array:
+	## The tools that hack a stump out (Items.works_on): an axe.
+	return ["chop"]
+
+
+func dig(slow := false) -> void:
+	## An axe blow into the roots (`slow`: the stone mattock's).
 	if hot():
 		Game.notify("The stump is still too hot to dig out.")
 		return
 	hits += 1
 	Sfx.play_at("chop", global_position, -2.0, 0.2)
 	var need := DIG_HITS if not planted() else 2
+	if slow:
+		need = ceili(need * Items.SLOW_DIG)
 	if hits < need:
 		Game.notify("You hack at the roots (%d / %d)." % [hits, need])
 		return

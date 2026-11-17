@@ -11,9 +11,9 @@ Look at something and press E.
 | Fern (strip it): a big, bright green fern with curled fiddleheads in the middle and pale, stringy old fronds round its foot. The darker ferns all around are only scenery | 2–3 plant fiber, up to 2 fiddleheads. More fiber with a blade. Stripped, it is cut-back stalks until it grows back | 30–50 days |
 | Tree fern (cut fronds) | 1–2 fronds, 1–2 plant fiber | 3 days |
 | Seed fern (gather seeds) | 2–4 seeds, sometimes a frond | 5 days |
-| Seed fern (dig it up: two mattock swings) | 4 Seed Fern Roots, plus its seeds if they hadn't been picked | Never: the plant is gone for good |
+| Seed fern (dig it up: two swings of a shovel or an axe, three of the stone mattock) | 4 Seed Fern Roots, plus its seeds if they hadn't been picked | Never: the plant is gone for good |
 | Rotting log (search it) | 1–3 grubs, 1–2 bark tinder, up to 2 sticks | about 2 days |
-| Clay bank (dig) | 2–4 wet clay, on low muddy banks | about 2 days |
+| Clay bank (dig) | 2–4 wet clay, on low muddy banks (four times as much with a sharp metal shovel in hand; it wears the edge) | about 2 days |
 | On the ground | Sticks everywhere; river stones and chert nodules, mostly on rocky ground | Picked-up items do not come back |
 | Along the shore | River stones, chert nodules and sticks washed up at the water's edge, and salt crusts on the bank just above it (for salting food in a sealed fermentation vessel) | Each lies there 1–3 days; new ones keep washing up |
 
@@ -52,13 +52,16 @@ skinned (the arthropods give chitin plates) and cut into raw meat. See
 
 ## Woodcutting
 
-You need a **Stone Axe**, in your bag or laid out.
+You need an axe or a **Stone Mattock**, in your hand, in your bag or laid out.
+The job uses one laid out, else the one in your hand, else the best you
+carry. The mattock is a poor axe: every woodworking job with it takes twice
+the strokes (hold your axe instead, if you carry one).
 
 1. **Fell a tree.** Walk up to a Calamites or a tree fern, face the trunk and
    press **C** to kneel at its foot. Choose *Fell*, then click the glowing
    notch again and again (5 to 10 strokes, more for a thicker trunk). The tree
    falls away from you in one piece and leaves a stump. Lepidodendron and
-   Sigillaria are too hard for stone: they will need a metal axe.
+   Sigillaria are too hard for stone: they need a metal axe.
 2. **Cut it into logs.** Kneel (C) at the cut end of the trunk. Each *Cut off
    a log* takes three strokes and leaves a 2 m log lying beside the trunk; you
    shuffle along to the next cut. The last piece, with the crown, becomes a
@@ -93,14 +96,14 @@ through and rots in about 3 days, then falls apart.
 
 **Stumps.** A new tree grows up out of the stump. You can watch it grow, and
 after about 18 days (16 to 20) it is full grown and can be felled again. To
-clear the spot for good, swing a **Mattock** at the stump: five blows dig it
-out, roots and all, for a root of that tree (plant it to grow a new one) and
+clear the spot for good, swing an axe at the stump: five blows hack it
+out (eight with the stone mattock), roots and all, for a root of that tree (plant it to grow a new one) and
 2 or 3 firewood.
 
 ## Farming
 
-1. **Dig a hole.** Hold a **Mattock**, look at open ground close by and
-   right-click (Use). Not in water or wet mud, on rocky ground, beside a tree
+1. **Dig a hole.** Hold a shovel or the **Stone Mattock**, look at open ground
+   close by and right-click (Use): one swing of a shovel, two of the mattock. Not in water or wet mud, on rocky ground, beside a tree
    or right next to another hole.
 2. **Plant something in it.** Look at the hole and press C to kneel at it.
    Lay out a seed or a root (and Compost, if you like) and choose *Plant the
@@ -114,8 +117,8 @@ out, roots and all, for a root of that tree (plant it to grow a new one) and
 
 | Plant this | Grows into | In | Then |
 |---|---|---|---|
-| Seed Fern Seed, Seed Fern Root | A seed fern | 14 days | 1–2 seeds each harvest, growing back every 5 days (2.5 if you work compost in round it within a day of picking). Two mattock swings dig it up for 2 roots. |
-| Fern Spores (dig up a fern with the mattock: 3, or 1 if you picked it clean) | A fern | 14 days | Fiber and fiddleheads, growing back every 5 days (2.5 with compost). Dug up again it gives 1 spore. |
+| Seed Fern Seed, Seed Fern Root | A seed fern | 14 days | 1–2 seeds each harvest, growing back every 5 days (2.5 if you work compost in round it within a day of picking). Two shovel swings (three with the mattock) dig it up for 2 roots; an axe cuts it down for the same. |
+| Fern Spores (dig up a fern with a shovel or the mattock, or cut it down with an axe: 3, or 1 if you picked it clean) | A fern | 14 days | Fiber and fiddleheads, growing back every 5 days (2.5 with compost). Dug up again it gives 1 spore. |
 | Calamites, Tree Fern, Lepidodendron or Sigillaria Root (from a dug-out stump) | That tree | 14 days | Fell it like any other. Its stump grows back, unless you dig it out. |
 
 **Shoots.** A young tree fern, Calamites or seed fern (one you planted, or a
@@ -124,8 +127,10 @@ Press E to pick it: greens to eat raw. The plant starts growing again from
 its roots, and has no new shoot to pick for a game day. Lepidodendron and
 Sigillaria have no shoots.
 
-**Digging up.** Swing the mattock at a young plant to dig it up for its root
-(two swings for a young tree); it is gone, and the spot is free.
+**Digging up.** Swing a shovel or an axe at a young plant to dig it up for its
+root (two swings with the stone mattock). A young tree is hacked out with an
+axe (two blows, three with the mattock); a shovel won't do. Either way it is
+gone, and the spot is free.
 
 ## Compost
 
@@ -218,8 +223,8 @@ A workbench is a plain wooden table with a tool rack along its back.
 3. **Hang tools on the rack.** Hold a workbench tool (select it in the hotbar)
    and press E at the bench to hang it on the next free peg. There are four.
    Look at a hanging tool and press E to take it back down.
-4. **Move it.** Hit the bench 3 times within 4 seconds with an axe or a
-   mattock to knock it loose. Its rack tools go to your bag (or drop at your
+4. **Move it.** Hit the bench 3 times within 4 seconds with an axe, a
+   shovel or the mattock to knock it loose. Its rack tools go to your bag (or drop at your
    feet if it's full) and you pick the bench up in your arms like a log.
    Right-click (or Q) sets it up in front of you, if there's room and the
    ground is dry. You can carry it up a house's rope ladder (it rides on your
@@ -271,7 +276,7 @@ The **spindle** is the first step to a bow drill:
 | Unfired Pencil Core | Papermaking Tools | 1 ash, 1 wet clay | 3 steps | Fire it in a campfire to make a **Pencil Core** |
 | String | Spindle (or in your bag) | 3 plant fiber | Twist | Finer, stronger cord: a bow drill needs it |
 | Fishing Rod Blank | Woodworking Tools | 1 branch | 4 steps | The rod of a fishing rod (see [Fishing gear](#fishing-gear)) |
-| Ash Pencil | Papermaking Tools | 1 pencil core, 1 stick, 1 cordage, and any blade (chert blade or stone axe) to work with | 4 steps | Split the stick, lay the core in it, close and bind it. 50 uses |
+| Ash Pencil | Papermaking Tools | 1 pencil core, 1 stick, 1 cordage, and any blade (a chert blade or a metal axe) to work with | 4 steps | Split the stick, lay the core in it, close and bind it. 50 uses |
 | Softwood House Blueprint | Papermaking Tools | 1 big blank sheet, an ash pencil with 2 uses left, and any blade to sharpen it | 10 steps | Hold it to see where the house would go, right-click to mark out the site (see [The softwood house](#the-softwood-house)) |
 
 More advanced clay and woodworking recipes are still to come.
@@ -285,7 +290,7 @@ workbench (no tools on its rack needed). See [Fishing](#fishing) for using it.
 |---|---|---|---|
 | **Fishing Rod Blank** | 1 branch (4 steps: saw off the side shoots, scrape a taper) | A workbench with the **Woodworking Tools** on its rack | You have made or held the woodworking tools, or used a bench with them on its rack |
 | **Fishing Line** | 3 string (Twist: braid them) | By hand, anywhere | You have a spindle (made, held, or on the rack of a bench you used) |
-| **Chitin Hook** | 1 chitin plate, and any blade (chert blade or stone axe) to work with | Any workbench | You have a workbench |
+| **Chitin Hook** | 1 chitin plate, and any blade (a chert blade or a metal axe) to work with | Any workbench | You have a workbench |
 | **Fishing Rod** | 1 rod blank, 1 fishing line, 1 chitin hook (3 steps) | Any workbench | You have a workbench |
 
 The hook is **knapped** like a chert head, but from a chitin plate, flaked
@@ -405,11 +410,11 @@ with. Both are made at a workbench with the papermaking tools on its rack:
    back empty (a canteen or flask one serving lighter). Set the wet
    sheet in a lit campfire, like pottery, and take it off as a Big Blank
    Sheet. It never burns.
-2. **The core.** Lay out 1 ash (scooped from a campfire with a mattock) and
+2. **The core.** Lay out 1 ash (scooped from a campfire with a mattock or shovel) and
    1 wet clay and roll them into a rod (3 steps). Fire the Unfired Pencil
    Core in a campfire to get a Pencil Core.
 3. **The pencil.** Lay out the pencil core, a stick and a cordage, with a
-   chert blade or a stone axe laid out or in your bag. Split the stick, lay
+   chert blade or a metal axe laid out or in your bag. Split the stick, lay
    the core in the groove, close the halves and bind them (4 steps). The
    blade is kept. A pencil has 50 uses, shown on it as it wears.
 
@@ -426,7 +431,7 @@ wears one use off), then rule a border and a compass rose (4 steps).
   higher ground darker, and the islands' bare rock.
 - **The pencil goes blunt** after charting a good stretch of new ground
   (400 squares of 8 m). Sharpen it by Using the pencil with a blade (a chert
-  blade or a stone axe) in your bag; that wears one use off it. Walking onto
+  blade or a metal axe) in your bag; that wears one use off it. Walking onto
   new ground with no pencil, or only blunt ones, you are told so in the top
   left every 20 seconds or so.
 - **Looking at it.** Use the map (right-click) to open it. An arrow shows
@@ -444,7 +449,7 @@ fireplace and a rope ladder up to the porch.
 
 **Drawing it.** At a workbench with the papermaking tools on the rack, lay
 out a Big Blank Sheet with an Ash Pencil laid out or in your bag, and a blade
-(chert blade or stone axe) to sharpen it. Drawing takes 10 steps. At the
+(a chert blade or a metal axe) to sharpen it. Drawing takes 10 steps. At the
 start and halfway the pencil is sharpened, and each sharpening wears one use
 off it. The most worn pencil that has 2 uses left is used.
 
@@ -456,8 +461,8 @@ outline in front of you. It turns red, and says why, where it can't go:
 - another house stands within 9 m
 
 Right-click to mark out the site. That uses up the blueprint, and the outline
-stays there until the house is finished. Three blows with an axe or a
-mattock within a few seconds tear down an unfinished site. Everything
+stays there until the house is finished. Three blows with an axe, a
+shovel or the mattock within a few seconds tear down an unfinished site. Everything
 already built is dropped back on the ground as the logs, boards, cordage,
 sticks, stones and clay it took. The blueprint is lost. A finished house
 can't be torn down.
@@ -651,11 +656,10 @@ once you have built one, what is made at it.
 | Item | Needs | Action | Use |
 |---|---|---|---|
 | Cordage | 3 plant fiber | Twist | Bindings for everything else |
-| Chert Blade, Axe Head, Spear Point, Mattock Head | 1 chert nodule, and a river stone to strike with | Knap | Tool heads |
+| Chert Blade, Spear Point, Mattock Head | 1 chert nodule, and a river stone to strike with | Knap | Tool heads |
 | Campfire | 5 sticks, 1 bark tinder, 2 river stones | 8 steps | Place it with Use (right-click) |
 | Chert Spear | 1 spear point, 2 sticks, 1 cordage | 6 steps | Damage 16, long reach (3.4 m) |
-| Stone Axe | 1 axe head, 1 stick, 1 cordage | 5 steps | Damage 12, cuts and chops |
-| Stone Mattock | 1 mattock head, 1 stick, 1 cordage | 5 steps | Breaks up campfires and scoops out their ash |
+| Stone Mattock | 1 mattock head, 1 stick, 1 cordage | 5 steps | Damage 9. A primitive axe and shovel in one: chops soft trees and digs, both slowly |
 | Waxy Residue | 1 frond, and a river stone to crush it with | 4 steps | Torches |
 | Torch | 1 stick (or a charred stick), 2 waxy residue | Twist | Light it at a fire; burns 14 minutes |
 | Unfired Pot | 5 wet clay | 5 steps | Fire it in a campfire to make a Clay Pot |
@@ -681,12 +685,12 @@ up on the way to the one you chose, you keep going: the work only ends early on
 a different head once the one you chose can no longer be made.
 
 ```
-Chert Blade      Axe Head        Spear Point     Mattock Head
-. . . # .        . # # # .       . . # . .       # # # # .
-. . # # .        # # # # #       . # # # .       . # # # .
-. # # # .        # # # # #       . # # # .       . . # # .
-. # # . .        . # # # .       . # # # .       . . # # .
-. # . . .        . . # . .       . . # . .       . . . # .
+Chert Blade      Spear Point     Mattock Head
+. . . # .        . . # . .       # # # # .
+. . # # .        . # # # .       . # # # .
+. # # # .        . # # # .       . . # # .
+. # # . .        . # # # .       . . # # .
+. # . . .        . . # . .       . . . # .
 ```
 
 The **Chert Blade** is a weapon (damage 7) and a tool: you need a blade to
@@ -772,7 +776,7 @@ burns well as fuel or can be rolled in wax again for a new torch.
 
 ### The mattock
 
-A **Stone Mattock** works campfires:
+A **Stone Mattock** (or a shovel) works campfires:
 
 - **Swing it** (left mouse) at a campfire to knock it apart. You get its two
   river stones back, plus any ash in it. Whatever was cooking falls to the
@@ -783,7 +787,7 @@ A **Stone Mattock** works campfires:
 ## Weapons and striking
 
 Left mouse attacks with what you hold. Bare hands do 2 damage, a river stone
-4, a chert blade 7, a stone axe 12 and a chert spear 16. Longer weapons reach
+4, a chert blade 7, a stone mattock 9 and a chert spear 16. Longer weapons reach
 further.
 
 Hold a River Stone or Chert Nodule and right-click to **throw** it. See

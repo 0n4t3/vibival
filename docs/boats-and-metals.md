@@ -1,9 +1,6 @@
-# Late game: boats and metals
+# Boats and metals
 
 [Guide home](README.md)
-
-> **Late game.** Everything on this page is late-game content, built on the
-> `late-game` branch. It is not in the main game until that branch is merged.
 
 Once you have a house, a workbench and a steady supply of boards, the swamp
 opens up: build a dock and a raft, pole out to the rocky islands far
@@ -34,8 +31,8 @@ kneel (C) with what it needs laid out:
 water within 7 m of its sides and end, or on the bank up to 30 m behind it,
 so stepping off it onto land is safe too: they won't lie among the spiked
 piles. Until it is
-finished it protects nothing. Before it is finished, three blows of an axe or
-mattock tear it down and leave what it took on the ground.
+finished it protects nothing. Before it is finished, three blows of an axe, a
+shovel or the mattock tear it down and leave what it took on the ground.
 
 ## Rafts
 
@@ -97,24 +94,26 @@ island and the water round it are safe. On them you find:
 ### Charcoal
 
 A **Charcoal Clamp** is 10 firewood and 4 clay, built by hand where you
-kneel (you need a mattock). Light it with an ember or a lit torch (E). It
-smoulders for a day, then a mattock breaks it open for 8 to 12 **Charcoal**.
+kneel (you need a shovel or mattock). Light it with an ember or a lit torch (E). It
+smoulders for a day, then a shovel or mattock breaks it open for 8 to 12 **Charcoal**.
 Opened early, some of the wood is still only charred sticks. Charcoal burns
 hot and long: the furnace needs it, and in a campfire it outlasts wood.
 
 ### The clay furnace
 
-Lay a ring of 8 river stones by hand (you need a mattock). The rest goes up
+Lay a ring of 8 river stones by hand (you need a shovel or mattock). The rest goes up
 part by part: a coiled clay shaft (12 clay and 2 ash), the tuyere (2 clay
 at a bench with the clay platter, fired in a campfire), a first firing to
-harden it (4 firewood), and two blowpipes (a Calamites shoot and a clay tip at a bench with the woodworking
+harden it (4 firewood), and a blowpipe (a Calamites shoot and a clay tip at a bench with the woodworking
 tools, fired). Your first finished furnace opens the metal recipes in the
 book.
 
 All hot work is done kneeling at the furnace (C). Every click while casting
-or smelting is a breath down the blowpipes: it raises the heat, shown by the
+or smelting is a breath down the blowpipe: it raises the heat, shown by the
 glow (dull red, cherry, orange). Copper only melts at full heat (orange).
-Left alone the furnace cools, faster in rain.
+Left alone the furnace cools, faster in rain. You stand to cast or smelt:
+the mould goes into the charcoal in the furnace's mouth, and ore melts down
+there, so you look in to watch it.
 
 ### Getting copper
 
@@ -124,7 +123,7 @@ Left alone the furnace cools, faster in rain.
   mould.
 - **Copper ore**: crush it on an anvil with a copper hammer (a river stone
   won't do), wash two crushed ores into one **Sifted Copper Ore**, then smelt
-  two sifted ores with 2 charcoal at the furnace: **Unrefined Copper**.
+  two sifted ores with 2 charcoal at the furnace: **Smelted Copper** (item id `unrefined_copper`).
 
 Your first copper has to come from native copper, since crushing ore needs a
 copper hammer.
@@ -138,6 +137,7 @@ copper and a charcoal and blow until it is cast:
 | Mould | Copper | Casts |
 |---|---|---|
 | Axe | 3 | Rough copper axe head |
+| Shovel | 3 | Rough copper shovel blade |
 | Knife | 2 | Rough copper knife blade |
 | Spear | 2 | Rough copper spear head |
 | Hammer | 2 | Copper hammer head |
@@ -169,18 +169,17 @@ A **Whetstone** is two river stones ground together with a pot of water (you
 keep one stone). Hold it and press E at a finished anvil to seat it in the
 anvil's corner (E again takes it back). Then kneel at the anvil (C) to grind
 rough castings sharp, grind a copper bar into a chisel or a pole shoe, and
-sharpen blunt metal tools. Haft a sharp head by hand with a stick and
-cordage (a spear takes 2 sticks). A copper axe head hafted crosswise makes a
-copper mattock.
+sharpen blunt metal tools, all on the anvil itself. Haft a sharp head by hand with a stick and
+string (a spear takes 2 sticks).
 
 ### Copper tools
 
 | Tool | What it does better |
 |---|---|
-| Copper Axe | Fells every tree, the hard Lepidodendron and Sigillaria too (slowly) |
+| Copper Axe | Fells every tree, the hard Lepidodendron and Sigillaria too (slowly); hacks out stumps; cuts plants down |
 | Copper Knife | Butchers faster than chert |
 | Copper Spear | Long reach and a heavy point |
-| Copper Mattock | Digs faster than stone |
+| Copper Shovel | Digs a planting hole in one swing, four times the clay from a clay bank, plants and meteorites |
 | Copper Saw | Saws any log straight into boards, hardwoods too |
 | Copper Chisel | Bites into meteoric iron |
 | Copper Hammer | Breaks out and crushes ore, works iron cold |
@@ -225,10 +224,10 @@ left, in whatever container it goes into.
 
 ## Tool wear
 
-- **Stone tools** (the stone axe, chert spear and stone mattock) are safe for
+- **Stone tools** (the chert spear and stone mattock) are safe for
   their first 50 uses. After that, each use has a small chance (2%) to snap
   the head off, leaving the haft in your hand.
-- **Metal tools** go blunt: a copper edge lasts 30 uses, an iron edge 45.
+- **Metal tools** go blunt: a copper edge lasts 60 uses, an iron edge 90.
   Blunt, a tool does half damage and jobs take twice as many steps until you
   sharpen it at the anvil's whetstone.
 - **The copper hammer** wears out working iron: its face mushrooms a little
@@ -237,7 +236,9 @@ left, in whatever container it goes into.
 
 A use is a hit that lands, a finished job that needed the tool, or a dig. A
 job uses the tool in your hand if it will do, otherwise the best one you
-carry (iron over copper over stone, sharp over blunt). Part-worn tools keep
+carry (iron over copper over stone, sharp over blunt). Woodwork goes at
+the pace of that axe: holding the stone mattock with a copper axe in the
+bag, it is the mattock's slow pace (the job says to hold the axe). Part-worn tools keep
 their own slots.
 
 ## Meteoric iron
@@ -254,15 +255,15 @@ under you and leaves a column of smoke.
 
 A tall column of dark smoke rises from where it landed, high over the trees,
 thinning away over the next day: walk towards it. The meteorite lies half
-buried in a scorched, smoking crater. Three mattock
-swings dig it out. Carry it home (on the raft if need be), or kneel at it
+buried in a scorched, smoking crater. Three shovel
+swings dig it out (five with the stone mattock; an axe won't do). Carry it home (on the raft if need be), or kneel at it
 with a copper chisel and a copper hammer to chip lumps of **Meteoric Iron**
 off it (an iron chisel is twice as fast). Chipping wears it down until it is
 gone.
 
 On an anvil, beat the iron clean with a copper hammer: a small lump makes
 **Refined Iron** (for a knife blade, a chisel or a pole shoe), a large one a
-**Refined Iron Bar** (for an axe, spear, mattock or hammer head). Hammer it
+**Refined Iron Bar** (for an axe, spear, shovel or hammer head). Hammer it
 to shape, grind it sharp at the whetstone, and haft it.
 
 | Tool | What it does better |
@@ -270,12 +271,12 @@ to shape, grind it sharp at the whetstone, and haft it.
 | Iron Axe | Fells every tree as fast as a soft one; holds its edge longer |
 | Iron Knife | The best blade there is |
 | Iron Spear | The best weapon there is |
-| Iron Mattock | Digs fastest of all |
+| Iron Shovel | Digs like copper, and holds its edge longer |
 | Iron Chisel | Chips meteoric iron twice as fast as copper |
 | Iron Hammer | Works faster than copper, and never wears out |
 
-## Weather in the late game
+## Meteor weather
 
-Rare weather is more common: about one day in three instead of one in five.
-From day 10 a daytime meteor shower joins the list, and any meteor shower
-may bring a meteorite down (see above).
+From day 10 a daytime meteor shower joins the rare weather (see
+[Survival](survival.md#weather)), and any meteor shower may bring a
+meteorite down (see above).

@@ -616,6 +616,8 @@ func _refresh_info() -> void:
 		stats.append("Damage %d" % def.damage)
 	if def.has("uses"):
 		stats.append("%d / %d uses left" % [int(def.get("uses_left", def.uses)), def.uses])
+	if int(def.get("edge", 0)) > 0:
+		stats.append(Items.edge_line(def))
 	if def.has("fuel"):
 		stats.append("Fuel %ds" % def.fuel)
 	if def.has("cook"):

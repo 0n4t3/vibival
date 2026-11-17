@@ -125,6 +125,9 @@ func _ready() -> void:
 	if only.is_empty() or "fern_dig" in only:
 		print("== digging ferns")
 		await test_fern_dig()
+	if only.is_empty() or "tools" in only:
+		print("== the stone mattock, axes and shovels")
+		await test_tool_rework()
 	if only.is_empty() or "canteen" in only:
 		print("== canteen and rack recipes")
 		await test_canteen()
@@ -459,12 +462,22 @@ func test_data() -> void:
 		for ref in ["cook", "hold", "empty"]:
 			if d.has(ref):
 				check(Items.ITEMS.has(d[ref]), "%s.%s -> %s exists" % [id, ref, d[ref]])
+	# Descriptions stay short and name no keys (keys can be rebound): the
+	# how-to belongs in the recipes and the prompts.
+	var wordy := []
+	var keyed := RegEx.create_from_string("\\((E|C|Z|Q|R|F|Tab|Use)\\)|\\bpress\\b|with C\\b")
+	for id in Items.ITEMS:
+		var desc: String = Items.ITEMS[id].get("desc", "")
+		if desc.length() > 140 or keyed.search(desc) != null:
+			wordy.append(id)
+	check(wordy.is_empty(), "item descriptions are short and name no keys (%s)" % str(wordy))
 	for r in Items.RECIPES:
 		check(Items.ITEMS.has(r.out), "recipe output %s exists" % r.out)
 		for id in r.in:
 			check(Items.ITEMS.has(id), "recipe input %s exists" % id)
 	for id in Items.KNAPPING:
-		check(Items.ITEMS.has(id), "knapping output %s exists" % id)
+		# (Or an outline kept only to draw metal heads by: the axe head's.)
+		check(Items.ITEMS.has(id) or id in Assets.HEAD_SHAPES.values(), "knapping output %s exists" % id)
 	for sp in Creature.SPECIES:
 		for id in Creature.SPECIES[sp].drops:
 			check(Items.ITEMS.has(id), "%s drop %s exists" % [sp, id])
@@ -606,8 +619,11 @@ func test_music() -> void:
 	var first: float = Music._started_at
 	var first_len: float = Music._started_len
 	Music.stop(false)  # cut off, with no `finished`
-	for i in 20:
-		Music._process(5.0)
+	# Through its quiet (a short track's is short: after it another may
+	# start), up to 100 s.
+	var hush := minf(100.0, first_len / Music.MAX_SHARE[Settings.MusicFrequency.COMMON] - 5.0)
+	while Music._clock - first < hush:
+		Music._process(minf(5.0, hush - (Music._clock - first)))
 	check(Music._started_at == first, "a track cut short isn't followed straight away by another")
 	for i in 200:
 		Music._process(5.0)
@@ -1545,7 +1561,7 @@ func _ground_crafting(w: Node) -> void:
 
 	# Knapping ends on the head you chose, even when another head's shape
 	# turns up on the way there.
-	for head in ["mattock_head", "spear_head", "axe_head"]:
+	for head in ["mattock_head", "spear_head"]:
 		Game.inventory.add("flint", 1)
 		ws.lay(Game.inventory.find("flint"), 1)
 		ws.begin(Items.recipe_for(head, "swamp"))
@@ -2493,9 +2509,9 @@ func test_wood() -> void:
 	_kneel_at_tree(w, t)
 	check(w.work != null and not w.work.tree.is_empty(), "kneeling at a tree to fell it")
 	var fo := _wood_option(w, "fell")
-	check(not fo.is_empty() and fo.missing.has("a stone axe"), "felling needs an axe")
+	check(not fo.is_empty() and fo.missing.has("an axe or a stone mattock"), "felling needs an axe or the stone mattock")
 	w.close_work()
-	Game.inventory.add("stone_axe")
+	Game.inventory.add("mattock")
 	_kneel_at_tree(w, t)
 	t = w.work.tree
 	var uid: String = t.uid
@@ -2578,9 +2594,9 @@ func test_wood() -> void:
 		await _frames(2)
 		check(not is_instance_valid(lg), "then the soaked log falls apart")
 
-	# Working logs with the axe.
+	# Working logs with the stone mattock.
 	Game.inventory.clear()
-	Game.inventory.add("stone_axe")
+	Game.inventory.add("mattock")
 	var spot := _ahead(p, 2.0)
 	var a: Node = w.add_log("log", spot, 0.0)
 	await _frames(1)
@@ -2619,7 +2635,7 @@ func test_wood() -> void:
 	check(Game.inventory.can_craft(Items.recipe_for("workbench")), "boards of any wood will do for a recipe")
 	check(Game.inventory.craft(Items.recipe_for("workbench")) and Game.inventory.count_as("board") == 0, "and are all used up")
 	Game.inventory.clear()
-	Game.inventory.add("stone_axe")
+	Game.inventory.add("mattock")
 	Game.inventory.add("branch", 3)
 	var b2: Node = w.add_log("log", spot, 0.0)
 	await _frames(1)
@@ -2925,6 +2941,92 @@ func test_bench() -> void:
 	check(not wo.is_empty() and wo.missing.is_empty() and _make(ws, wo.recipe), "flint, sticks and cord make a chisel and saw")
 	_lay_all(ws, {"clay": 3})
 	check(_make(ws, _option_for(ws, "clay_bowl_unfired").recipe), "you pinch a bowl")
+	# Shaping a washing pan shows the clay pressed out into it, step by step.
+	var pan_faces: Array = []
+	ws.recipe = Items.recipe_for("washing_pan_unfired")
+	for k in [0, 2, 4]:
+		ws.steps = k
+		ws._rebuild_work()
+		pan_faces.append(ws._work.mesh.get_faces().size() if ws._work.mesh else 0)
+	ws.recipe = {}
+	ws.steps = 0
+	ws._rebuild_work()
+	check(pan_faces[0] > 0 and pan_faces[1] > pan_faces[0] and pan_faces[2] != pan_faces[1], "a washing pan takes shape as it is pressed out (%s)" % str(pan_faces))
+	# Grinding a whetstone: the stone ground flatter, slurry round it.
+	var whet: Array = []
+	ws.recipe = Items.recipe_for("whetstone")
+	for k in [0, 3, 6]:
+		ws.steps = k
+		ws._rebuild_work()
+		whet.append(ws._work.mesh.get_faces().size() if ws._work.mesh else 0)
+	check(whet[0] > 0 and whet[1] > whet[0] and whet[2] > whet[1], "a whetstone is ground flat step by step (%s)" % str(whet))
+	# Every recipe worked in steps shows its work, and these look different
+	# at every step (smelting's first two look alike: nothing has melted).
+	var blank := []
+	for r in Items.RECIPES:
+		if r.get("act", "") != "steps" or r.has("house") or r.has("dress") or r.has("wood") or r.has("shape_anvil"):
+			continue
+		var shown := false
+		ws.recipe = r
+		for k in Items.recipe_steps(r):
+			ws.steps = k
+			ws._rebuild_work()
+			shown = shown or (ws._work.mesh != null and not ws._work.mesh.get_faces().is_empty())
+		if not shown:
+			blank.append(r.out)
+	check(blank.is_empty(), "every recipe worked in steps shows its work (%s)" % str(blank))
+	for r in Items.RECIPES.filter(func(r): return r.out in ["wooden_cap", "blueprint_dock", "copper_shod_pole", "iron_shod_pole", "charcoal_clamp", "fishing_rod_copper", "unrefined_copper"]):
+		var looks := {}
+		var n := Items.recipe_steps(r)
+		ws.recipe = r
+		for k in n:
+			ws.steps = k
+			ws._rebuild_work()
+			looks[hash(ws._work.mesh.get_faces()) if ws._work.mesh else 0] = true
+		check(looks.size() >= (n - 1 if r.has("melt") else n), "%s (%s) looks different at every step (%d of %d)" % [r.out, r.tier, looks.size(), n])
+	ws.recipe = {}
+	ws.steps = 0
+	ws._rebuild_work()
+	# Rolling a tuyere: the clay tube grows along the stick.
+	var tu_faces: Array = []
+	ws.recipe = Items.recipe_for("tuyere_unfired")
+	for k in [0, 1, 2]:
+		ws.steps = k
+		ws._rebuild_work()
+		tu_faces.append(ws._work.mesh.get_faces().size() if ws._work.mesh else 0)
+	ws.recipe = {}
+	ws.steps = 0
+	ws._rebuild_work()
+	check(tu_faces[0] > 0 and tu_faces[1] > tu_faces[0], "a tuyere's clay is rolled round a stick (%s)" % str(tu_faces))
+	# Making a blowpipe: the shoot sawn square, its pith pushed out.
+	var bp_faces: Array = []
+	ws.recipe = Items.recipe_for("blowpipe_unfired")
+	for k in [0, 1, 2]:
+		ws.steps = k
+		ws._rebuild_work()
+		bp_faces.append(ws._work.mesh.get_faces().size() if ws._work.mesh else 0)
+	check(bp_faces[0] > 0 and bp_faces[1] != bp_faces[0] and bp_faces[2] > bp_faces[1], "a blowpipe is sawn and bored step by step (%s)" % str(bp_faces))
+	# The blowpipe is the pole's wood with a clay tip: its own shape, not a
+	# pole you could jab or punt with.
+	check(Items.def("blowpipe").shape == "blowpipe" and Items.def("blowpipe_unfired").shape == "blowpipe", "a blowpipe has its own look")
+	# Pressing a mould: lumps, a slab, then its hollow cut in, larger each step,
+	# and every kind of mould with a hollow of its own.
+	var hollows := {}
+	for m in ["axe", "knife", "spear", "hammer", "saw", "bar", "hook", "beads"]:
+		var mf: Array = []
+		ws.recipe = Items.recipe_for("mould_%s_unfired" % m)
+		for k in 4:
+			ws.steps = k
+			ws._rebuild_work()
+			mf.append(ws._work.mesh.get_faces().size() if ws._work.mesh else 0)
+		check(not ws.recipe.is_empty() and mf[0] > 0 and mf[1] != mf[0] and mf[2] != mf[1] and mf[3] > mf[2], "a %s mould is pressed and cut step by step (%s)" % [m, str(mf)])
+		check(Items.def("mould_" + m).shape == "mould" and Items.def("mould_%s_unfired" % m).shape == "mould", "a %s mould looks like a mould" % m)
+		hollows[str(Assets.mould_hollow(m))] = m
+	check(hollows.size() == 8, "each kind of mould has its own hollow (%d of 8)" % hollows.size())
+	check(ws._mould_cut(2, 4) > 0.0 and ws._mould_cut(3, 4) > ws._mould_cut(2, 4) and ws._mould_cut(1, 4) == 0.0 and ws._mould_cut(4, 4) == 1.0, "a mould's hollow is cut deeper each step")
+	ws.recipe = {}
+	ws.steps = 0
+	ws._rebuild_work()
 	_lay_all(ws, {"clay_bowl": 1, "stick": 2, "plant_fiber": 3})
 	var pa := _option_for(ws, "papermaking_tools")
 	check(not pa.is_empty() and pa.missing.is_empty() and _make(ws, pa.recipe), "the bowl and a screen make papermaking tools")
@@ -3532,9 +3634,9 @@ func test_paper() -> void:
 	_lay_from_bag(ws, {"pencil_core": 1, "stick": 1, "cordage": 1})
 	o = _option_for(ws, "ash_pencil")
 	check(not o.is_empty() and o.missing.has("a blade to work with"), "the pencil needs a blade to split the stick")
-	Game.inventory.add("stone_axe")
-	check(ws.missing_for(o.recipe).is_empty(), "a stone axe will do")
-	Game.inventory.remove("stone_axe", 1)
+	Game.inventory.add("copper_axe")
+	check(ws.missing_for(o.recipe).is_empty(), "a copper axe will do")
+	Game.inventory.remove("copper_axe", 1)
 	Game.inventory.add("flint_blade")
 	check(ws.missing_for(o.recipe).is_empty() and _make(ws, o.recipe), "so will a chert blade")
 	check(Game.inventory.count("ash_pencil") == 1 and Game.inventory.count("flint_blade") == 1 and Game.inventory.count("pencil_core") == 0,
@@ -4657,6 +4759,220 @@ func test_house_floor() -> void:
 	await _frames(2)
 
 
+func test_tool_rework() -> void:
+	## One stone mattock, a poor axe and shovel in one; then metal axes (trees,
+	## stumps, plants) and shovels (holes, plants, clay, meteorites).
+	for id in ["stone_axe", "axe_head", "copper_mattock", "iron_mattock", "iron_mattock_head", "rough_iron_mattock_head"]:
+		check(not Items.ITEMS.has(id) and Items.RECIPES.all(func(r): return r.out != id and not r.get("in", {}).has(id)), "%s is gone" % id)
+	var md: Dictionary = Items.def("mattock")
+	check("chop" in md.tags and "dig" in md.tags and md.tier == "stone" and Items.slow_tool("mattock"), "the stone mattock chops and digs, slowly")
+	check("axe" in md.desc and "shovel" in md.desc, "and says it is a primitive axe and shovel (%s)" % md.desc)
+	for sh in ["copper_shovel", "iron_shovel"]:
+		var sd: Dictionary = Items.def(sh)
+		check(sd.tags == ["dig"] and int(sd.edge) > 0 and sd.shape == "shovel" and not Items.slow_tool(sh), "a %s digs, and goes blunt" % sd.name.to_lower())
+	check(not Items.works_on("copper_axe", ["dig"]) and Items.works_on("copper_axe", ["chop"]) and not Items.works_on("copper_shovel", ["chop"]), "axes chop, shovels dig")
+	# Made: a shovel mould cast at the furnace, ground and hafted; iron
+	# hammered from a bar, ground and hafted.
+	check(Items.recipe_for("mould_shovel_unfired").get("rack", "") == "clay_platter" and Items.def("mould_shovel_unfired").cook == "mould_shovel", "a shovel mould is pressed at the bench and fired")
+	var sc: Dictionary = Items.recipe_for("rough_copper_shovel_blade")
+	check(sc.get("cast", false) and sc.tools.has("mould_shovel") and sc.at == "furnace" and not Assets.mould_hollow("shovel").is_empty(), "a shovel blade is cast in it")
+	check(Items.recipe_for("copper_shovel_blade").in.has("rough_copper_shovel_blade") and Items.recipe_for("copper_shovel").in.has("copper_shovel_blade"), "ground, then hafted into a copper shovel")
+	check(Items.recipe_for("rough_iron_shovel_blade").in.has("refined_iron_bar") and Items.recipe_for("iron_shovel_blade").in.has("rough_iron_shovel_blade") \
+			and Items.recipe_for("iron_shovel").in.has("iron_shovel_blade"), "an iron one is hammered from a bar, ground and hafted")
+	# Old saves: removed tools become their replacements.
+	var old := {"inventory": [{"id": "stone_axe", "n": 1, "data": {"used": 7}}, {"id": "copper_mattock", "n": 1, "data": {"edge_left": 0, "name": "Blunt Copper Mattock"}},
+			{"id": "axe_head", "n": 2}, null], "racks": {"iron_mattock": 1}, "seed": 3}
+	var mig: Dictionary = Items.migrate_save(old)
+	check(mig.inventory[0].id == "mattock" and int(mig.inventory[0].data.used) == 7, "a saved stone axe is a stone mattock, its wear kept")
+	check(mig.inventory[1].id == "copper_shovel" and mig.inventory[1].data.name == "Blunt Copper Shovel", "a saved copper mattock a copper shovel, still blunt (%s)" % mig.inventory[1].data.name)
+	check(mig.inventory[2].id == "mattock_head" and mig.inventory[3] == null and mig.racks.has("iron_shovel") and int(mig.seed) == 3, "and the rest swapped, keys too")
+	var both: Dictionary = Items.migrate_save({"counts": {"stone_axe": 1, "mattock": 2}, "names": {"stone_axe": "a", "mattock": "b"}})
+	check(int(both.counts.mattock) == 3 and both.counts.size() == 1 and both.names.size() == 1, "an old id and its replacement both counted add up, not overwrite (%s)" % str(both.counts))
+	check(Items.tool_word("mattock") == "mattock" and Items.tool_word("copper_axe") == "axe" and Items.tool_word("iron_shovel") == "shovel" and Items.tool_word("flint_blade") == "tool",
+			"a held tool is named in prompts by what it is")
+
+	var w: Node = await _new_swamp()
+	var p: Node = w.player
+	var inv = Game.inventory
+	# Felling: the mattock takes twice the clicks an axe does.
+	var t := _tree_near(w, true)
+	inv.clear()
+	inv.add("mattock", 1)
+	_kneel_at_tree(w, t)
+	var slow_fell: Dictionary = _wood_option(w, "fell")
+	w.close_work()
+	inv.clear()
+	inv.add("copper_axe", 1)
+	_kneel_at_tree(w, t)
+	var fast_fell: Dictionary = _wood_option(w, "fell")
+	check(not slow_fell.is_empty() and slow_fell.missing.is_empty() and Items.recipe_steps(slow_fell.recipe) == 2 * Items.recipe_steps(fast_fell.recipe),
+			"a stone mattock fells a soft tree in twice the clicks (%d, %d)" % [Items.recipe_steps(slow_fell.recipe) if slow_fell else 0, Items.recipe_steps(fast_fell.recipe) if fast_fell else 0])
+	# The mattock in hand, a copper axe in the bag: the mattock is the one
+	# used (and worn), so the job goes at its pace, saying to hold the axe.
+	w.close_work()
+	inv.clear()
+	_hold("copper_axe")
+	_hold("mattock")
+	_kneel_at_tree(w, t)
+	var held_fell: Dictionary = _wood_option(w, "fell")
+	w.close_work()
+	check(not held_fell.is_empty() and not fast_fell.is_empty() and Items.recipe_steps(held_fell.recipe) == 2 * Items.recipe_steps(fast_fell.recipe)
+			and "hold your copper axe" in String(held_fell.recipe.get("label", "")), "holding the mattock it's the mattock's pace, with a word to hold the axe (%s)" % String(held_fell.recipe.get("label", "")) if held_fell else "")
+	var hard := _tree_near(w, false)
+	if not hard.is_empty():
+		_kneel_at_tree(w, hard)
+		var hard_fell: Dictionary = _wood_option(w, "fell")
+		w.close_work()
+		check(not hard_fell.is_empty() and hard_fell.missing.any(func(m): return "your copper axe in hand" in m), "a hard tree asks for the carried copper axe in hand (%s)" % str(hard_fell.get("missing", [])))
+	else:
+		print("  (no hard tree near: the copper-axe-in-hand check skipped)")
+	inv.clear()
+	inv.add("copper_axe", 1)
+	_kneel_at_tree(w, t)
+	_do_wood(w, "fell")
+	await _frames(2)
+	var st: Node = t.stump
+	check(st != null, "felled, it leaves a stump")
+	if st:
+		_hold("copper_shovel")
+		check(not Items.works_on("copper_shovel", st.dug_by()) and not "hack" in st.prompt(p), "a shovel doesn't take a stump out")
+		_hold("copper_axe")
+		check("swing the axe to hack it out" in st.prompt(p), "an axe hacks it out (%s)" % st.prompt(p))
+		var need := ceili(Stump.DIG_HITS * Items.SLOW_DIG)
+		for k in need - 1:
+			st.dig(true)
+		check(is_instance_valid(st) and not st.is_queued_for_deletion(), "the stone mattock is slower at it (still in after %d)" % (need - 1))
+		st.dig(true)
+		await _frames(1)
+		check(not is_instance_valid(st), "and gets it out in %d swings, not %d" % [need, Stump.DIG_HITS])
+	# Plants: an axe cuts one down for just what digging it up gives.
+	inv.clear()
+	_hold("copper_axe")
+	var hf: Node = Harvestable.new().setup("fern", "ttest:fern")
+	w.add_child(hf)
+	hf.global_position = p.global_position + Vector3(2.0, 0, 0)
+	await _frames(1)
+	check("swing the axe to cut it down" in hf.prompt(p), "an axe cuts a fern down (%s)" % hf.prompt(p))
+	hf.dig()
+	await _frames(1)
+	check(not is_instance_valid(hf) and inv.count("fern_spores") == 3 and inv.slots.filter(func(x): return x != null).size() == 2, "for the same spores a mattock digs up, and nothing more")
+	var sf: Node = Harvestable.new().setup("seed_fern", "ttest:sfern")
+	w.add_child(sf)
+	sf.global_position = p.global_position + Vector3(-2.0, 0, 0)
+	await _frames(1)
+	inv.clear()
+	sf.interact(p)  # picked clean first: digging gives just the roots
+	inv.clear()
+	_hold("mattock")
+	var sneed := ceili(int(Harvestable.KINDS.seed_fern.dig_hits) * Items.SLOW_DIG)
+	for k in sneed - 1:
+		sf.dig(true)
+	check(not sf.is_queued_for_deletion(), "the mattock takes longer over a seed fern")
+	sf.dig(true)
+	check(sf.is_queued_for_deletion() and inv.count("fern_root") == 4, "but gets the same roots (%d)" % inv.count("fern_root"))
+	# Clay: a shovel digs four times as much.
+	var bank: Node = Harvestable.new().setup("clay_bank", "ttest:clay")
+	w.add_child(bank)
+	bank.global_position = p.global_position + Vector3(0, 0, 2.0)
+	await _frames(1)
+	inv.clear()
+	bank.interact(p)
+	var by_hand: int = inv.count("clay")
+	check(by_hand >= 2 and by_hand <= 4, "by hand, a clay bank gives 2-4 clay (%d)" % by_hand)
+	Game.harvested.erase("ttest:clay")
+	bank._ready_time = 0.0
+	inv.clear()
+	_hold("copper_shovel")
+	check("with the shovel" in bank.prompt(p), "with a shovel it says so (%s)" % bank.prompt(p))
+	bank.interact(p)
+	var dug: int = inv.count("clay")
+	check(dug >= 8 and dug <= 16 and dug % Harvestable.SHOVEL_BONUS == 0, "a shovel digs four times as much (%d)" % dug)
+	check(inv.edge_left(inv.find("copper_shovel")) == int(Items.def("copper_shovel").edge) - 1, "and wears its edge")
+	Game.harvested.erase("ttest:clay")
+	bank._ready_time = 0.0
+	inv.clear()
+	_hold("mattock")
+	bank.interact(p)
+	check(inv.count("clay") <= 4 and not "with the shovel" in bank.prompt(p), "the stone mattock is no shovel for that (%d)" % inv.count("clay"))
+	Game.harvested.erase("ttest:clay")
+	bank._ready_time = 0.0
+	inv.clear()
+	inv.add("copper_shovel", 1, 0.0, false, {"edge_left": 0})
+	inv.select(0)
+	check("blunt" in bank.prompt(p) and not "with the shovel" in bank.prompt(p), "a blunt shovel says to sharpen it (%s)" % bank.prompt(p))
+	bank.interact(p)
+	check(inv.count("clay") >= 2 and inv.count("clay") <= 4, "and digs no more than by hand (%d)" % inv.count("clay"))
+	# A meteorite is dug out with a shovel (the mattock slowly), not an axe.
+	var met: Node = w.add_heavy_stone("meteorite", p.global_position + Vector3(3, 0, 3), 0.0, 40.0)
+	met.buried = true
+	check(met.dug_by() == ["dig"] and not Items.works_on("copper_axe", met.dug_by()) and Items.works_on("iron_shovel", met.dug_by()), "a meteorite is dug out with a shovel")
+	var mneed := ceili(HeavyStone.DIG_HITS * Items.SLOW_DIG)
+	for k in mneed - 1:
+		met.dig(true)
+	check(met.buried, "the mattock takes longer")
+	met.dig(true)
+	check(not met.buried, "%d swings with the mattock" % mneed)
+	# A planting hole: one swing of a shovel, two of the mattock.
+	p.global_position = Vector3(p.global_position.x, w.ground_height(p.global_position.x, p.global_position.z), p.global_position.z)
+	p.rotation.y = 0.0
+	p.head.rotation.x = -1.0
+	p._pitch = -1.0
+	await _frames(2)
+	_hold("mattock")
+	var holes: int = Game.plantings.size()
+	p._attack_cd = 0.0
+	p.dig_hole()
+	check(Game.plantings.size() == holes, "the mattock's first swing only breaks the ground")
+	p._attack_cd = 0.0
+	p.dig_hole()
+	var mattock_hole: bool = Game.plantings.size() == holes + 1
+	check(mattock_hole, "the second digs the hole")
+	if mattock_hole:
+		p._attack_cd = 0.0
+		p.dig_hole()
+		check(Game.plantings.size() == holes + 1 and not p._hole_at.is_finite(), "no ground is broken where no hole can go (right by the last one)")
+	p.global_position += Vector3(4, 0, 0)
+	p.global_position.y = w.ground_height(p.global_position.x, p.global_position.z)
+	await _frames(2)
+	_hold("copper_shovel")
+	p._attack_cd = 0.0
+	p.dig_hole()
+	check(Game.plantings.size() == holes + (2 if mattock_hole else 1), "a shovel digs one in a swing")
+	# Slowed woodwork (the stone mattock, a blunt axe) takes more clicks for
+	# the same marks: every one of them stays on the log.
+	for tool in ["mattock", "blunt"]:
+		inv.clear()
+		if tool == "blunt":
+			inv.add("copper_axe", 1, 0.0, false, {"edge_left": 0})
+		else:
+			inv.add("mattock", 1)
+		inv.select(0)
+		for what in ["shorten", "split"]:
+			var spot2: Vector3 = _ahead(p, 2.0)
+			var lg: Node = w.add_log("log" if what == "shorten" else "short_log", spot2, 0.0)
+			await _frames(1)
+			_kneel_at(w, lg)
+			var o := _wood_option(w, what)
+			check(not o.is_empty() and o.missing.is_empty() and w.work.begin(o.recipe), "%s: %s can be begun" % [tool, what])
+			if w.work == null or w.work.recipe.is_empty():
+				continue
+			var n: int = Items.recipe_steps(w.work.recipe)
+			var base: int = int(w.work.recipe.get("base_steps", 0))
+			var axis: Vector3 = lg.global_basis.x.normalized()
+			var half: float = lg.length() * 0.5
+			var worst := 0.0
+			for k in n:
+				var off: Vector3 = w.work.marker_position() - lg.global_position
+				worst = maxf(worst, absf(off.dot(axis)) - half)
+				w.work.step()
+			check(base > 0 and n == base * 2, "%s: %s takes twice the clicks (%d, not %d)" % [tool, what, n, base])
+			check(worst <= 0.05, "%s: every mark to %s stays on the log (%.2f m past its end at worst)" % [tool, what, worst])
+			w.close_work()
+			await _frames(1)
+	w.queue_free()
+	await _frames(1)
+
+
 func test_fern_dig() -> void:
 	## A mattock tears out a decorative fern for nothing, and digs up a
 	## harvestable fern for its spores, which grow ferns as fast as seed ferns.
@@ -5105,7 +5421,22 @@ func test_debug_world() -> void:
 	dp._stop_weather()
 	check(w.weather.kind == "" and not w.raining, "and clears the weather")
 	Game.inventory.clear()
-	dp._item.selected = dp._items.find("flint")
+	# Items are picked from a list you can type into to narrow down.
+	dp._open_item_pop()
+	check(dp._item_pop.visible and dp._item_list.item_count == dp._items.size(), "the item picker lists every item")
+	dp._item_search.text = "FLIN"
+	dp._item_search.text_changed.emit(dp._item_search.text)
+	var found: Array = range(dp._item_list.item_count).map(func(i): return dp._item_list.get_item_metadata(i))
+	check(found.has("flint") and found.size() < 10 and found.all(func(id): return Items.item_name(id).to_lower().contains("flin") or id.contains("flin")),
+			"typing narrows it to the items that match (%s)" % str(found))
+	dp._item_search.text = "flint"
+	dp._item_search.text_changed.emit(dp._item_search.text)
+	var fi_at: int = range(dp._item_list.item_count).filter(func(i): return dp._item_list.get_item_metadata(i) == "flint")[0]
+	dp._item_chosen(fi_at)
+	check(dp._item_id == "flint" and not dp._item_pop.visible and dp._item.text.begins_with(Items.item_name("flint")), "picking one closes the list and shows it")
+	dp._item_search.text = "zzzz"
+	dp._item_search.text_changed.emit(dp._item_search.text)
+	check(dp._item_list.item_count == 0, "nothing matching lists nothing")
 	dp._count.value = 3
 	dp._give()
 	check(Game.inventory.count("flint") == 3, "it gives items")
@@ -6538,11 +6869,11 @@ func test_fishing() -> void:
 	# Chitin only ever comes out as a chitin shape, never a chert head.
 	_lay_all(ws, {"chitin": 1})
 	ws.begin(_option_for(ws, "chitin_hook").recipe)
-	var axe: Array = Items.knap_grid("axe_head")
+	var mhead: Array = Items.knap_grid("mattock_head")
 	for c in 25:
-		if not axe[c]:
+		if not mhead[c]:
 			ws.strike(c)
-	check(inv.count("axe_head") == 0 and not ws.recipe.is_empty(), "knapped to an axe head's shape, chitin is still not a chert axe head")
+	check(inv.count("mattock_head") == 0 and not ws.recipe.is_empty(), "knapped to a mattock head's shape, chitin is still not a chert mattock head")
 	w.close_work()
 
 	# The rod blank: a branch, with the woodworking tools on the rack.
@@ -6606,6 +6937,27 @@ func test_fishing_line() -> void:
 				"the rod now carries a grub (%s)" % rs.get("data", {}).get("name", ""))
 		check(ws.lay(inv.find("fishing_rod"), 1) == 0, "a baited rod stays in your bag")
 		w.close_work()
+	# Drawn: baiting shows just the rod's own hook (copper on a copper rod);
+	# swapping a copper hook on shows the chitin one coming off too.
+	inv.clear()
+	w.start_work()
+	ws = w.work
+	if ws and ws.bench == null:
+		_lay_all(ws, {"fishing_rod_copper": 1, "grub": 1})
+		var co: Array = ws.options().filter(func(o): return o.recipe.get("bait", false) is String)
+		check(co.size() == 1 and co[0].recipe.get("rod", "") == "fishing_rod_copper" and ws.begin(co[0].recipe) and ws._rod_hooks() == ["copper_fishhook"],
+				"baiting a copper rod draws only its copper hook (%s)" % str(ws._rod_hooks()))
+		w.close_work()
+	inv.clear()
+	w.start_work()
+	ws = w.work
+	if ws and ws.bench == null:
+		_lay_all(ws, {"fishing_rod": 1, "copper_fishhook": 1})
+		var sw := _option_for(ws, "fishing_rod_copper")
+		check(not sw.is_empty() and sw.missing.is_empty() and ws.begin(sw.recipe) and ws._rod_hooks() == ["chitin_hook", "copper_fishhook"],
+				"swapping a copper hook on draws both (%s)" % str(ws._rod_hooks()))
+		w.close_work()
+	inv.clear()
 	check(Items.RECIPES.any(func(r): return r.get("bait", false) and r.tier == "hand" and r.cat == "Fishing"), "baiting is in the book, by hand (so on a bench too)")
 
 	# No bait, no cast.
@@ -7214,7 +7566,10 @@ func test_farming_holes() -> void:
 	p._attack_cd = 0.0
 	var n_before: int = Game.plantings.size()
 	p._use_held()
-	check(Game.plantings.size() == n_before + 1, "right-clicking the ground with a mattock digs a hole")
+	check(Game.plantings.size() == n_before, "the stone mattock's first swing only breaks the ground")
+	p._attack_cd = 0.0
+	p._use_held()
+	check(Game.plantings.size() == n_before + 1, "right-clicking the ground twice with a mattock digs a hole")
 	if Game.plantings.size() == n_before:
 		w.dig_hole(spot)
 
@@ -8236,6 +8591,99 @@ func test_boats() -> void:
 	check(lk.state != "charge" and p.grabbed_by == null and not Game.dock_keeps_out(lk.global_position),
 			"and it never comes back in for you on the bank behind the dock")
 	lk.queue_free()
+	# Drawn to a baitbox on the far side of a dock, one swims round the end
+	# of the dock's keep-out water instead of stopping at its edge. (A second
+	# dock, out in open water so there is a way round.)
+	var fz: Node = Creature.new().setup("eogyrinus", d.to_global(Vector3(0, -1.0, -Dock.LEN - Dock.GUARD - 4.0)), w)
+	w.add_child(fz)
+	await _frames(2)
+	var open_at := Vector3.INF
+	for gx in range(-20, 21):
+		for gz in range(-20, 21):
+			var c: Vector3 = Vector3(gx * 30.0, 0, gz * 30.0)
+			if open_at.is_finite():
+				break
+			var all_wet := true
+			for xx in range(-26, 27, 4):
+				for zz in range(-38, 34, 4):
+					if fz._ground(c.x + xx, c.z + zz) >= w.water_level() - 0.1:
+						all_wet = false
+			if all_wet:
+				open_at = c
+	check(open_at.is_finite(), "(test) open water for a dock")
+	if open_at.is_finite():
+		var d2: Node = w.add_dock(Vector3(open_at.x, w.water_level() + 0.4, open_at.z), 0.0)
+		await _frames(2)
+		d2.build_to(Dock.PARTS.size())
+		if not Game.docks.has(d2):
+			Game.docks.append(d2)
+		await _frames(2)
+		var wide: float = Dock.HALF_W + Dock.GUARD + 8.0
+		var from_at: Vector3 = d2.to_global(Vector3(-wide, 0, -8.0))
+		fz.global_position = Vector3(from_at.x, fz._ground(from_at.x, from_at.z) + 0.3, from_at.z)
+		fz.state = "wander"
+		var bx: Vector3 = d2.to_global(Vector3(wide, 0, -8.0))
+		check(fz.frenzy(bx, 40.0), "it goes for a baitbox on the far side of the dock")
+		var cuts := false
+		var at: Vector3 = fz.global_position
+		for q in fz._frenzy_path:
+			var legs := ceili(Vector2(q.x - at.x, q.z - at.z).length())
+			for i in range(1, legs + 1):
+				if Game.dock_keeps_out(at.lerp(q, i / float(legs))):
+					cuts = true
+			at = q
+		check(not fz._frenzy_path.is_empty() and not cuts, "its way there goes round the dock's keep-out water (%d legs)" % fz._frenzy_path.size())
+		var went_in := false
+		await _run_for(40.0, func():
+			went_in = went_in or Game.dock_keeps_out(fz.global_position) != null
+			return Vector2(fz.global_position.x - bx.x, fz.global_position.z - bx.z).length() < 6.0)
+		check(not went_in and Vector2(fz.global_position.x - bx.x, fz.global_position.z - bx.z).length() < 6.0,
+				"and gets there without going in (%.1f m off)" % Vector2(fz.global_position.x - bx.x, fz.global_position.z - bx.z).length())
+		# Carrying a kill home to water on the far side of the dock, an
+		# ambusher swims round the keep-out water too, not wedging at its edge.
+		var am: Node = Creature.new().setup("uranocentrodon", from_at, w)
+		w.add_child(am)
+		await _frames(2)
+		var kill := Node3D.new()
+		w.add_child(kill)
+		am.global_position = Vector3(from_at.x, am._ground(from_at.x, from_at.z) + 0.3, from_at.z)
+		am.water_home = Vector3(bx.x, 0.0, bx.z)
+		am.home = am.water_home
+		am._prey = kill
+		am.state = "feed"
+		var cut_in := false
+		await _run_for(40.0, func():
+			cut_in = cut_in or Game.dock_keeps_out(am.global_position) != null
+			return am.state != "feed")
+		check(am.state != "feed" and not is_instance_valid(kill) and not cut_in
+				and Vector2(am.global_position.x - bx.x, am.global_position.z - bx.z).length() < 3.0,
+				"an ambusher takes its kill home round a dock (%s, %.1f m off)" % [am.state, Vector2(am.global_position.x - bx.x, am.global_position.z - bx.z).length()])
+		# Wedged with no way through (held in place here, as if pinned against
+		# a trunk), it gives up and takes the kill under where it is.
+		var kill2 := Node3D.new()
+		w.add_child(kill2)
+		am._prey = kill2
+		am.state = "feed"
+		am.water_home = am.global_position + Vector3(30.0, 0, 0)
+		var pinned: Vector3 = am.global_position
+		var t0 := Time.get_ticks_msec()
+		await _run_for(Creature.STALL_TIME + 4.0, func():
+			am.global_position = pinned
+			return am.state != "feed")
+		check(am.state != "feed" and not is_instance_valid(kill2) and (Time.get_ticks_msec() - t0) / 1000.0 > Creature.STALL_TIME - 0.5,
+				"one wedged with no way home gives up after a while and eats where it is (%s after %.1f s)" % [am.state, (Time.get_ticks_msec() - t0) / 1000.0])
+		am.queue_free()
+		# A box dropped inside the keep-out water: it comes to the edge, no further.
+		var near_end: Vector3 = d2.to_global(Vector3(0, 0, -Dock.LEN - 2.0))
+		check(fz.frenzy(near_end, 10.0) and not Game.dock_keeps_out(fz._frenzy_spot), "a box inside it draws one only to the edge")
+		var r2: Node = w.raft_at_dock(d2)
+		if r2:
+			Game.rafts.erase(r2)
+			r2.queue_free()
+		Game.docks.erase(d2)
+		d2.queue_free()
+	fz.queue_free()
+	await _frames(2)
 	var r: Node = w.raft_at_dock(d)
 	check(r != null and not r.complete(), "a finished dock marks out a raft at its berth")
 	if r:
@@ -8356,46 +8804,75 @@ func test_tool_wear() -> void:
 	_fresh_state()
 	var inv: Inventory = Game.inventory
 	inv.clear()
-	inv.add("stone_axe", 1)
-	var i: int = inv.find("stone_axe")
+	inv.add("mattock", 1)
+	var i: int = inv.find("mattock")
 	for k in Inventory.STONE_SAFE:
 		inv.use_tool(i, 0.0)
-	check(inv.slots[i] != null and inv.slots[i].id == "stone_axe", "a stone axe never breaks in its first uses")
-	check(inv.use_tool(i, 0.5) == "" and inv.slots[i].id == "stone_axe", "past them, a good roll keeps it")
+	check(inv.slots[i] != null and inv.slots[i].id == "mattock", "a stone mattock never breaks in its first uses")
+	check(inv.use_tool(i, 0.5) == "" and inv.slots[i].id == "mattock", "past them, a good roll keeps it")
 	check(inv.use_tool(i, 0.0) == "broke" and inv.slots[i].id == "stick", "a bad roll snaps the head off, leaving the haft")
 	# Fresh tools may share a slot (once stacks have no size limit): a use
 	# wears only the one in hand, and the next use wears the same one.
 	inv.clear()
-	inv.add("stone_axe", 3, 0.0, true)
-	i = inv.find("stone_axe")
+	inv.add("mattock", 3, 0.0, true)
+	i = inv.find("mattock")
 	inv.use_tool(i, 0.5)
 	inv.use_tool(i, 0.5)
 	var worn := 0
 	var fresh := 0
 	for s in inv.slots:
-		if s != null and s.id == "stone_axe":
+		if s != null and s.id == "mattock":
 			if s.has("data"):
 				worn += s.n
-				check(int(s.data.used) == 2, "the axe in hand took both uses")
+				check(int(s.data.used) == 2, "the mattock in hand took both uses")
 			else:
 				fresh += s.n
-	check(inv.count("stone_axe") == 3 and worn == 1 and fresh == 2 and inv.slots[i].has("data"), "only the axe in hand is worn, and it stays in hand")
+	check(inv.count("mattock") == 3 and worn == 1 and fresh == 2 and inv.slots[i].has("data"), "only the mattock in hand is worn, and it stays in hand")
 	inv.clear()
-	inv.add("stone_axe", 1)
-	i = inv.find("stone_axe")
+	inv.add("mattock", 1)
+	i = inv.find("mattock")
 	inv.clear()
 	inv.add("copper_axe", 1)
-	inv.add("stone_axe", 1)
+	inv.add("mattock", 1)
 	var c: int = inv.find("copper_axe")
 	check(inv.tool_slot("chop") == c, "the copper axe is picked over the stone one")
 	var edge := int(Items.def("copper_axe").edge)
+	check(["rough_copper_saw_blade", "copper_saw_blade"].all(func(id): return Items.def(id).shape == "saw_blade"), "saw blades are drawn as toothed blades, not boards")
+	var met_faces := func(seed: int) -> PackedVector3Array:
+		var mb = preload("res://src/core/mesh_builder.gd").new()
+		var mrng := RandomNumberGenerator.new()
+		mrng.seed = seed
+		Assets.meteorite(mb, mrng, 0.3)
+		var mm: ArrayMesh = mb.commit(Assets.materials)
+		check(mm.get_surface_count() == 1 and mm.surface_get_material(0) == Assets.materials["meteorite"], "a meteorite is drawn in its own crust material")
+		return mm.get_faces()
+	check(met_faces.call(7) == met_faces.call(7) and met_faces.call(7) != met_faces.call(8), "each meteorite keeps its own shape")
+	check(Items.def("meteorite").shape == "meteorite", "the meteorite item looks like one too")
+	check(Items.def("copper_saw").shape == "metal_saw" and Items.def("refined_iron_bar").shape == "metal_bar", "the copper saw is a metal saw (not the chert one) and refined iron a bar (not a board)")
+	check(Items.ITEMS.keys().all(func(id): return Items.def(id).get("shape", "") != "plank" or Items.def(id).get("fuel", 0.0) > 0.0), "only boards are drawn as boards")
+	var rough_saw = preload("res://src/core/mesh_builder.gd").new()
+	Assets.saw_blade(rough_saw, Color.WHITE, Transform3D.IDENTITY, true)
+	var sharp_saw = preload("res://src/core/mesh_builder.gd").new()
+	Assets.saw_blade(sharp_saw, Color.WHITE)
+	var deep := func(mb) -> float: return mb.commit(Assets.materials).get_aabb().end.z
+	check(deep.call(sharp_saw) > deep.call(rough_saw) + 0.005, "a ground blade's teeth stand out further than a fresh casting's")
+	check(edge == 60 and int(Items.def("iron_axe").edge) == 90, "metal edges last 60 uses (copper) and 90 (iron) between sharpenings")
+	check(inv.durability(c) == -1.0, "an edged tool shows no wear bar")
 	for k in edge - 1:
 		inv.use_tool(c)
 	check(inv.edge_left(c) == 1 and not inv.blunt(c), "each use wears the edge")
+	var worn_def: Dictionary = Items.def("copper_axe").merged(inv.slots[c].data, true)
+	check(Items.edge_line(worn_def) == "Uses since last sharpening %d/%d" % [edge - 1, edge], "its detail counts the uses since sharpening (%s)" % Items.edge_line(worn_def))
 	check(inv.use_tool(c) == "blunt" and inv.blunt(c), "the last use leaves it blunt")
-	check(inv.slots[c].data.get("name", "").ends_with("(blunt)"), "and named so")
+	check(inv.slots[c].data.get("name", "") == "Blunt Copper Axe", "and named so (%s)" % inv.slots[c].data.get("name", ""))
+	var hud_n = preload("res://src/ui/hud.gd").new()
+	inv.selected = c
+	check(hud_n.held_label() == "Blunt Copper Axe", "held, the hotbar names it blunt (%s)" % hud_n.held_label())
 	inv.sharpen(c)
+	check(hud_n.held_label() == "Copper Axe", "and sharp again once sharpened (%s)" % hud_n.held_label())
+	hud_n.free()
 	check(inv.edge_left(c) == edge and not inv.blunt(c), "sharpening puts the edge back")
+	check(Items.edge_line(Items.def("copper_axe").merged(inv.slots[c].get("data", {}), true)) == "Uses since last sharpening 0/%d" % edge, "and the count starts again")
 	inv.clear()
 	inv.add("copper_hammer", 1)
 	var h: int = inv.find("copper_hammer")
@@ -8456,6 +8933,35 @@ func test_metals() -> void:
 			check(cw._hammer.visible and cw._hammer.mesh == Assets.mesh(c[2]), "crushing %s, the %s comes down on it" % [c[0], c[2].substr(5)])
 			cw.step()
 		check(verts[0] > 0 and verts[1] > verts[0], "and the grit spreads round the lump as it is beaten (%s)" % str(verts))
+		w.close_work()
+	# Washing grit in the pan: water scooped in, then the pan tipped to pour
+	# the light grit off, fewer bits left after each pour.
+	p.focus = null
+	w.start_work()
+	if w.work:
+		var ww: Node = w.work
+		for out in ["copper_grains", "sifted_copper_ore"]:
+			ww.recipe = Items.recipe_for(out)
+			var faces: Array = []
+			var tilt: Array = []
+			for k in Items.recipe_steps(ww.recipe):
+				ww.steps = k
+				ww._rebuild_work()
+				faces.append(ww._work.mesh.get_faces().size() if ww._work.mesh else 0)
+				tilt.append(ww._pour_tilt)
+			check(faces[0] > 0 and faces[1] > faces[0], "washing for %s, water is scooped into the pan over the grit (%s)" % [out, str(faces)])
+			check(tilt[3] > 0.0 and tilt[1] == 0.0 and faces[3] < faces[0], "then it is tipped to pour the light grit off (%s)" % str(tilt))
+		# Laying a furnace's ring: the hole dug where it will stand, then the
+		# stones set round it a few at a time.
+		ww.recipe = Items.recipe_for("furnace")
+		var ring: Array = []
+		for k in Items.recipe_steps(ww.recipe):
+			ww.steps = k
+			ww._rebuild_work()
+			ring.append(ww._work.mesh.get_faces().size() if ww._work.mesh else 0)
+		check(ring[0] > 0 and ring[1] > ring[0] and ww._work.position.z < -0.5, "laying a furnace's ring shows its stones where it will stand (%s)" % str(ring))
+		check(ww._ring_stones(1, 4) == 0 and ww._ring_stones(2, 4) > 0 and ww._ring_stones(4, 4) == 8, "the first click digs the hole, the rest set all eight stones")
+		ww.recipe = {}
 		w.close_work()
 	Game.inventory.remove("smashed_native_copper", Game.inventory.count("smashed_native_copper"))
 	Game.inventory.remove("crushed_copper_ore", Game.inventory.count("crushed_copper_ore"))
@@ -8530,6 +9036,28 @@ func test_metals() -> void:
 	Game.inventory.selected = Game.inventory.find("whetstone")
 	anv.interact(p)
 	check(anv.whetstone and Game.inventory.count("whetstone") == 0, "and a whetstone can be seated in it")
+	# Work at the anvil is done on it, not on the ground in front: grinding
+	# on its seated whetstone, forging on its face.
+	p.focus = anv
+	w.start_work()
+	if w.work:
+		var on: Node = w.work
+		var top_y: float = anv.to_global(Vector3(0, anv.ANVIL.y, 0)).y
+		for ao in [["copper_axe_head", anv.to_global(anv.SEAT + Vector3(0, anv.ANVIL.y, 0))], ["refined_iron", null]]:
+			on.recipe = Items.recipe_for(ao[0])
+			on.steps = 1
+			on._rebuild_work()
+			var at: Vector3 = on._work.global_position
+			check(absf(at.y - top_y) < 0.05 and Vector2(at.x - anv.global_position.x, at.z - anv.global_position.z).length() < 0.45,
+					"making %s, the work lies on the anvil (%.2f above its face)" % [ao[0], at.y - top_y])
+			if ao[1] != null:
+				check(at.distance_to(ao[1]) < 0.03, "grinding sits on its seated whetstone")
+			check(on.look_point().distance_to(at) < 0.01, "and you look at it there")
+		on.recipe = {}
+		on.steps = 0
+		on._rebuild_work()
+		w.close_work()
+		await _frames(1)
 	var st_d: Dictionary = anv.to_dict()
 	var old_d := st_d.duplicate()
 	old_d.erase("stage")
@@ -8584,6 +9112,16 @@ func test_metals() -> void:
 	await _frames(2)
 	check(f.built.has("ring") and f.next_part().get("id", "") == "shaft", "a new furnace site has its stone ring laid")
 	check(not "metal" in Game.tiers, "no metal recipes before a furnace is finished")
+	var pipe_part: Dictionary = Furnace.PARTS.filter(func(pp): return pp.id == "blowpipes")[0]
+	check(pipe_part["in"] == {"blowpipe": 1} and pipe_part.steps == 1, "it is blown with one blowpipe")
+	var old_f: Dictionary = f.to_dict()
+	for pp in Furnace.PARTS:
+		old_f.built[pp.id] = pp["in"].duplicate()
+	old_f.built["blowpipes"] = {"blowpipe": 2}
+	var f_old: Node = w.add_furnace(dry + Vector3(-4.5, 0, 0), 0.0)
+	f_old.from_dict(old_f)
+	check(f_old.complete(), "a furnace saved with two blowpipes is still finished")
+	f_old.free()
 	f.build_to(Furnace.PARTS.size())
 	await _frames(1)
 	check(f.complete() and "metal" in Game.tiers, "a finished furnace opens the metal recipes")
@@ -8593,6 +9131,9 @@ func test_metals() -> void:
 	check(f.heat >= Furnace.HOT, "blowing hard brings it to full heat")
 	f.heat = 0.0
 
+	# Metal tools are hafted with string, not cordage.
+	var hafts := Items.RECIPES.filter(func(r): return r.get("tier", "") == "hand" and (r.out.begins_with("copper_") or r.out.begins_with("iron_")) and r["in"].has("stick"))
+	check(hafts.size() == 11 and hafts.all(func(r): return r["in"].has("string") and not r["in"].has("cordage")), "metal tools are bound with string (%d)" % hafts.size())
 	# Casting a copper axe head at it.
 	Game.inventory.clear()
 	var cast: Dictionary = Items.recipe_for("rough_copper_axe_head")
@@ -8621,6 +9162,100 @@ func test_metals() -> void:
 			check(Game.inventory.count("rough_copper_axe_head") == 1, "every click a breath: the head is cast (%d clicks)" % clicks)
 			check(clicks > Items.recipe_steps(cast), "clicks while it is still heating don't count")
 			check(Game.copper_cast, "the first casting is remembered (for the meteor showers)")
+			# Casting shows: grains in the mould, bedded in charcoal, melting
+			# down into the hollow, then raked out.
+			var cf: Array = []
+			ws.recipe = cast
+			for k in [0, 2, 5, 8]:
+				ws.steps = k
+				ws._rebuild_work()
+				cf.append((ws._work.mesh.get_faces().size() if ws._work.mesh else 0) + (ws._inside.mesh.get_faces().size() if ws._inside.mesh else 0))
+				# Bedded and melting, the mould and charcoal are in the
+				# furnace's mouth, the ground empty; laid out and raked, on
+				# the ground. The camera stands to look in.
+				var mouth: Vector3 = f.to_global(Vector3(0, f.TOP, 0))
+				var inside: bool = k in [2, 5]
+				var in_at: Vector3 = ws._inside.global_position
+				check((ws._inside.mesh != null and in_at.distance_to(mouth) < 0.05 and ws._work.mesh == null) == inside,
+						"casting step %d is %s" % [k, "in the furnace's mouth" if inside else "on the ground"])
+				if inside:
+					check(ws._marker.global_position.distance_to(mouth) < 0.4 and ws.look_point().distance_to(mouth) < 0.4 and ws.eye_height() > 1.4,
+							"and its mark and your eyes go to the mouth")
+			ws.recipe = {}
+			ws.steps = 0
+			ws._rebuild_work()
+			check(cf[0] > 0 and cf[1] > cf[0] and cf[2] != cf[1] and cf[3] != cf[2], "casting copper shows the mould filled, bedded, melting and raked out (%s)" % str(cf))
+			# Smelting: the ore melts down in the charcoal inside the furnace.
+			ws.recipe = Items.recipe_for("unrefined_copper")
+			var ore_f: Array = []
+			for k in [0, 3, 10]:
+				ws.steps = k
+				ws._rebuild_work()
+				ore_f.append(ws._inside.mesh.get_faces().size() if ws._inside.mesh else 0)
+			ws.recipe = {}
+			ws.steps = 0
+			ws._rebuild_work()
+			check(ore_f[0] == 0 and ore_f[1] > 0 and ore_f[2] < ore_f[1], "smelting, the ore goes into the furnace and melts down there (%s)" % str(ore_f))
+			# At every step of every casting and smelt, the marker for the next
+			# click is drawn over everything (charcoal, furnace, ground).
+			for r in Items.RECIPES.filter(func(r): return r.get("at", "") == "furnace" and r.get("act", "") == "steps"):
+				var hidden: Array = []
+				ws.recipe = r
+				for k in Items.recipe_steps(r):
+					ws.steps = k
+					ws._rebuild_work()
+					if not ws._marker.visible or ws._marker.material_override == null or not ws._marker.material_override.no_depth_test:
+						hidden.append(k)
+				ws.recipe = {}
+				ws.steps = 0
+				ws._rebuild_work()
+				check(hidden.is_empty(), "making %s, every step's marker is drawn over everything (not at %s)" % [r.out, str(hidden)])
+			# So does making every copper and iron tool: hafting it with string,
+			# grinding its head on the whetstone, forging iron with the hammer,
+			# and chipping iron off a meteorite.
+			for out in ["copper_axe", "copper_shovel", "copper_knife", "copper_spear", "copper_saw", "copper_hammer", "iron_axe", "iron_knife", "iron_spear", "iron_shovel", "iron_hammer",
+					"copper_axe_head", "copper_knife_blade", "copper_chisel", "copper_pole_shoe", "iron_axe_head", "iron_chisel",
+					"refined_iron", "rough_iron_axe_head", "rough_iron_knife_blade", "iron_hammer_head", "meteoric_iron"]:
+				var tf: Array = []
+				ws.recipe = Items.recipe_for(out)
+				for k in [1, 3]:
+					ws.steps = k
+					ws._rebuild_work()
+					tf.append(ws._work.mesh.get_faces().size() if ws._work.mesh else 0)
+				var struck: bool = ws._hammer.visible
+				ws.recipe = {}
+				ws.steps = 0
+				ws._rebuild_work()
+				var hammered: bool = Items.recipe_for(out).get("hammer_wear", false)
+				check(tf[0] > 0 and tf[1] != tf[0] and (struck or not hammered), "making %s shows step by step (%s)" % [out, str(tf)])
+			# Sharpening an edged tool shows only its metal working end, never
+			# the wooden handle.
+			var handle: Color = Items.def("copper_axe").color
+			for tool in ["copper_axe", "copper_knife", "copper_spear", "copper_shovel", "copper_saw", "copper_chisel", "iron_axe", "iron_chisel"]:
+				ws.recipe = {"sharpen_tool": tool, "out": tool, "n": 1, "in": {}, "at": "anvil", "whetstone": true, "act": "steps", "steps": 5}
+				ws.steps = 2
+				ws._rebuild_work()
+				var woody := false
+				var mesh: Mesh = ws._work.mesh
+				for si in (mesh.get_surface_count() if mesh else 0):
+					var cols = mesh.surface_get_arrays(si)[Mesh.ARRAY_COLOR]
+					if cols != null:
+						for cc in cols:
+							woody = woody or Vector3(cc.r - handle.r, cc.g - handle.g, cc.b - handle.b).length() < 0.05
+				ws.recipe = {}
+				ws.steps = 0
+				ws._rebuild_work()
+				check(mesh != null and not woody, "sharpening the %s shows only its metal edge on the whetstone" % tool.replace("_", " "))
+			# Chipping at a meteorite, the hammer comes down on a chisel held upright.
+			ws.recipe = Items.recipe_for("meteoric_iron")
+			ws.steps = 3
+			ws._rebuild_work()
+			var tall: float = ws._work.mesh.get_aabb().end.y if ws._work.mesh else 0.0
+			var face_y: float = ws._hammer_at.y + (Transform3D(ws._hammer.basis, Vector3.ZERO) * ws._hammer.mesh.get_aabb()).position.y
+			ws.recipe = {}
+			ws.steps = 0
+			ws._rebuild_work()
+			check(tall >= ws.CHISEL_LEN and absf(face_y - tall) < 0.01, "chipping a meteorite shows a chisel under the hammer (%.3f, face %.3f)" % [tall, face_y])
 		w.close_work()
 	await _frames(1)
 

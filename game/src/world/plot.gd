@@ -1,5 +1,5 @@
 extends StaticBody3D
-## Farming: a hole dug with a mattock (right-click), and what grows from it.
+## Farming: a hole dug with a shovel or the stone mattock (right-click), and what grows from it.
 ## Each one is kept in Game.plantings by its uid: {x, y, z, dug (the Game.time
 ## it was dug), item (what was buried in it: {id, age}), compost (true:
 ## compost buried with it), buried (the Game.time it was filled in over them),
@@ -27,6 +27,7 @@ const SHOOT_UNTIL := 1.0 / 3.0  # a young plant's shoot can be picked until it i
 const SHOOTS := {"seed_fern": "seed_fern_shoot"}
 const HOLE_R := 0.3
 
+var _slow_hits := 0  # stone mattock swings at a young plant so far
 var uid := ""
 var chunk: Node3D
 var _mesh: MeshInstance3D
@@ -226,8 +227,9 @@ func prompt(_player: Node) -> String:
 	var what := "Young %s, growing (%d%%)" % [Harvestable.KINDS[r.plant].name, roundi(g * 100.0)]
 	if Game.inventory.held_id() == "compost":
 		return what + Harvestable.feed_hint(_left(r))
-	if "dig" in Items.def(Game.inventory.held_id()).get("tags", []):
-		return "%s: swing the mattock to dig it up" % what
+	var held: String = Game.inventory.held_id()
+	if Items.works_on(held, dug_by()):
+		return "%s: swing the %s to %s" % [what, Items.tool_word(held), "cut it down" if Items.tool_word(held) == "axe" else "dig it up"]
 	if SHOOTS.has(r.plant) and g < SHOOT_UNTIL:
 		var wait := shoot_wait(r)
 		if wait > 0.0:
@@ -281,11 +283,23 @@ func feed(_player: Node) -> bool:
 	return true
 
 
-func dig() -> void:
-	## A mattock swing digs a young plant up for good, giving its root back.
+func dug_by() -> Array:
+	## A young plant is dug up with a shovel or cut down with an axe, alike.
+	return ["chop", "dig"]
+
+
+func dig(slow := false) -> void:
+	## A swing digs a young plant up for good, giving its root back (the
+	## stone mattock takes two).
 	var r := rec()
 	if r.is_empty() or is_hole():
 		return
+	if slow:
+		_slow_hits += 1
+		if _slow_hits < 2:
+			Sfx.play_at("chop", global_position, -4.0, 0.2)
+			Game.notify("You dig around the young plant (1 / 2).")
+			return
 	var root := "fern_root" if r.plant == "seed_fern" else ""
 	if root != "":
 		var left: int = Game.inventory.add(root, 1)

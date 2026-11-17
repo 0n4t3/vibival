@@ -172,7 +172,7 @@ your carry weight. You drop it if something grabs you.
 
 **Butchering where it lies.** Look at a medium or large carcass and press
 **C** to kneel beside it. It is done in three stages, one after another, and
-every stage needs a blade (a Chert Blade or a Stone Axe) in your bag or laid
+every stage needs a blade (a Chert Blade or a metal axe) in your bag or laid
 out:
 
 1. **Gut it.** The guts are left in a pile beside the carcass.

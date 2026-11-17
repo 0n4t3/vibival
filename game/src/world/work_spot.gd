@@ -48,6 +48,7 @@ const FIBER := Color(0.55, 0.65, 0.30)
 const BUILD_AT := Vector3(0, 0, -0.9)  # where a workbench goes up, from the spot
 const ZOOM := {"ash_pencil": 2.5, "pencil_core_unfired": 2.0, "blueprint_softwood_house": 1.3, "chart_map": 1.3, "spindle_whorl_unfired": 2.5, "spindle": 1.5}  # small work shown bigger, to see what you do
 const FISH_TRAP_SIZE := 0.55  # a fish trap being made at a bench, shown smaller
+const CHISEL_LEN := 0.15  # a chisel held upright on a meteorite
 const BLUEPRINT_AT := Vector3(0, 0, -0.19)  # where the sheet lies, the pencil in front of it
 
 signal changed
@@ -77,8 +78,11 @@ var station_kind := ""         # "furnace", "anvil", "boulder" (an anvil stone s
 
 var _piles: Array = []         # pile nodes
 var _work: MeshInstance3D
+var _inside: MeshInstance3D  # what is put in a furnace, heaped in its mouth
+var _on_whetstone := false   # ground on the anvil's own seated whetstone
 var _marker: MeshInstance3D
 var _hammer: MeshInstance3D
+var _pour_tilt := 0.0           # a washing pan tipped to pour the light grit off
 var _hammer_at := Vector3.ZERO  # where the striker comes down, from WORK (its face on the work)
 var _rng := RandomNumberGenerator.new()
 var _shown := -1.0             # twist progress the workpiece was built for
@@ -104,6 +108,8 @@ func _ready() -> void:
 	_work = MeshInstance3D.new()
 	_work.position = WORK
 	add_child(_work)
+	_inside = MeshInstance3D.new()
+	add_child(_inside)
 	_marker = MeshInstance3D.new()
 	var mb := MeshBuilder.new()
 	mb.cylinder(Vector3(0, -0.004, 0), Vector3(0, 0.004, 0), 0.03, 0.03, 10, Color(1.0, 0.78, 0.3), Color(-1, 0, 0), "glow")
@@ -166,7 +172,7 @@ func _process(delta: float) -> void:
 		var size := clampf(to.length() * 1.1, 2.5, 6.0) * (1.0 + 0.2 * sin(_t * 6.0))
 		_marker.global_basis = Basis(x, y, x.cross(y)).scaled(Vector3.ONE * size)
 	if _hammer.visible:
-		_hammer.position = WORK + _hammer_at + Vector3(0.02, _floor(WORK) + 0.03 + 0.14 * (1.0 - _thump), 0)
+		_hammer.position = _work.position + _hammer_at + Vector3(0.02, 0.03 + 0.14 * (1.0 - _thump), 0)
 
 
 # --- Laying out ---------------------------------------------------------------------
@@ -185,6 +191,9 @@ func lay(i: int, n := 1) -> int:
 	if s.has("data") and not keep:
 		if s.data.has("bait"):
 			Game.notify("This rod is already baited.")
+		elif Items.def(s.id).has("uses"):
+			# A worn tool (a used mould, a pencil): it works from the bag.
+			Game.notify("The %s works from your bag: no need to lay it out." % Items.item_name(s.id).to_lower())
 		else:
 			Game.notify("Keep the %s in your bag." % Items.item_name(s.id).to_lower())
 		return 0
@@ -648,18 +657,27 @@ func wood_options() -> Array:
 	var saw: bool = laid_tag("saw") != "" or Game.inventory.has_tag("saw")
 	var kind: String = tree.kind if on == "tree" else String(wood.get("kind")) if wood else ""
 	var hard: bool = Chunk.TREES.has(kind) and not Chunk.TREES[kind].get("soft", true)
-	# The best axe you have: a hard tree needs metal, and copper is slow on it.
-	var axe_tier := ""
+	# The axe the job will use (and wear): one laid out, else the one in your
+	# hand, else the best carried (Inventory.tool_slot). A hard tree needs
+	# metal, copper is slow on it, and the stone mattock is slow on anything.
+	# `better`: a carried axe that would do better, to say to hold it.
+	const RANK := {"stone": 1, "metal": 2, "advanced": 3}
+	var axe_id := laid_tag("chop")
 	var ai: int = Game.inventory.tool_slot("chop")
-	if laid_tag("chop") != "":
-		axe_tier = Items.def(laid_tag("chop")).get("tier", "")
-	elif ai >= 0:
-		axe_tier = Items.def(Game.inventory.slots[ai].id).get("tier", "")
-	for best in Game.inventory.slots:
-		if best != null and "chop" in Items.def(best.id).get("tags", []):
-			var t: String = Items.def(best.id).get("tier", "")
-			if t == "advanced" or (t == "metal" and axe_tier != "advanced"):
-				axe_tier = t
+	if axe_id == "" and ai >= 0:
+		axe_id = Game.inventory.slots[ai].id
+	var axe_tier: String = Items.def(axe_id).get("tier", "") if axe_id != "" else ""
+	var better := ""
+	var best_rank: int = RANK.get(axe_tier, 0)
+	for i in (Game.inventory.slots.size() if laid_tag("chop") == "" else 0):
+		var s = Game.inventory.slots[i]
+		if s == null or not "chop" in Items.def(s.id).get("tags", []) or Game.inventory.blunt(i):
+			continue
+		var rank: int = RANK.get(Items.def(s.id).get("tier", ""), 0)
+		if rank > best_rank:
+			best_rank = rank
+			better = s.id
+	var hold := " (hold your %s for it)" % Items.item_name(better).to_lower() if better != "" else ""
 	var metal_axe := axe_tier in ["metal", "advanced"]
 	for r in Items.woodwork(on):
 		r = r.duplicate()
@@ -684,12 +702,17 @@ func wood_options() -> Array:
 			missing.append("a saw (too hard to hew)")
 		elif hard and not r.get("saw", false) and r.wood in ["fell", "buck", "shorten"]:
 			if not metal_axe:
-				missing.append("a metal axe (too hard for stone)")
+				missing.append(("your %s in hand (too hard for stone)" % Items.item_name(better).to_lower()) if better != "" else "a metal axe (too hard for stone)")
 			elif axe_tier == "metal":
-				r.steps = Items.recipe_steps(r) * 2  # copper bites slowly into hardwood
-				r.label = String(r.get("label", "")) + " (slow going with copper)"
+				r.base_steps = Items.recipe_steps(r)
+				r.steps = r.base_steps * 2  # copper bites slowly into hardwood
+				r.label = String(r.get("label", "")) + " (slow going with copper)" + hold
+		elif axe_tier == "stone" and not r.get("saw", false):
+			r.base_steps = Items.recipe_steps(r)
+			r.steps = r.base_steps * 2  # the stone mattock chops poorly
+			r.label = String(r.get("label", "")) + " (slow going with a mattock)" + hold
 		if missing.is_empty() and not axe and not r.get("saw", false):
-			missing.append("a stone axe")
+			missing.append("an axe or a stone mattock")
 		out.append({"recipe": r, "missing": missing})
 	return out
 
@@ -752,6 +775,7 @@ func _paced(r: Dictionary) -> Dictionary:
 		tags.append("saw" if r.get("saw", false) else "chop")
 	if r.has("butcher"):
 		tags.append("cut")
+	var base := m
 	for tag in tags:
 		var i: int = Game.inventory.tool_slot(tag)
 		if i >= 0 and Game.inventory.blunt(i) and laid_tag(tag) == "":
@@ -761,7 +785,21 @@ func _paced(r: Dictionary) -> Dictionary:
 		return r
 	var out := r.duplicate()
 	out.steps = m
+	if m != base:
+		out.base_steps = int(r.get("base_steps", base))
 	return out
+
+
+func _drawn_steps() -> Vector2i:
+	## (step, steps) as the work is drawn and marked. A job slowed down (a
+	## blunt tool, the stone mattock, copper on hardwood: `base_steps`) takes
+	## more clicks for the same marks: each mark holds for several of them,
+	## so none runs off the end of what is being worked.
+	var n := Items.recipe_steps(recipe) if not recipe.is_empty() else 0
+	var base := int(recipe.get("base_steps", n))
+	if base <= 0 or base >= n:
+		return Vector2i(steps, n)
+	return Vector2i(mini(steps * base / n, base), base)
 
 
 func _use_tools(r: Dictionary) -> void:
@@ -1239,9 +1277,9 @@ func _wood_mark(k: int, n: int) -> Vector3:
 	match recipe.wood:
 		"shorten":
 			# Two strokes for each of three cuts.
-			return top + axis * ((k / 2) - 1) * Assets.SHORT_LOG_LEN * 1.0
+			return top + axis * (mini(k * 3 / maxi(n, 1), 2) - 1) * Assets.SHORT_LOG_LEN * 1.0
 		"split":
-			return top + axis * [0.0, -0.1, 0.1][mini(k, 2)]
+			return top + axis * [0.0, -0.1, 0.1][mini(k * 3 / maxi(n, 1), 2)]
 	return top + axis * lerpf(-0.8, 0.8, f) * (wood.length() * 0.5)
 
 
@@ -1344,7 +1382,7 @@ func step() -> void:
 	if recipe.has("at") and recipe.at != "water" and not _station_ok():
 		return  # the anvil or meteorite was carried off
 	if recipe.has("melt") and station and station.has_method("blow"):
-		# Every click at the furnace is a breath down the blowpipes; while the
+		# Every click at the furnace is a breath down the blowpipe; while the
 		# copper melts, a step only counts at full heat.
 		var hot: bool = station.blow(player)
 		_cold_step = steps >= recipe.melt[0] and steps < recipe.melt[1] and not hot
@@ -1516,7 +1554,14 @@ func eye_height() -> float:
 	## stooped over a workbench, or standing to build one.
 	if house and _house_ok():
 		return house.eye_height(recipe.get("house", house.next_part().get("id", "")), player)
+	if _furnace_mouth_work():
+		return 1.55  # standing at the furnace, to look down into its mouth
 	return 1.5 if bench or recipe.get("build", false) else 0.95
+
+
+func _furnace_mouth_work() -> bool:
+	## Casting or smelting at a furnace: some steps are done in its mouth.
+	return recipe.has("melt") and recipe.get("at", "") == "furnace" and station != null and station.has_method("heat_name")
 
 
 func eye_back() -> float:
@@ -1533,21 +1578,26 @@ func view_points() -> Array:
 	if _marker.visible:
 		out.append(_marker.global_position)
 	# The marks still to come, so none of them turns up under a panel.
-	var n := Items.recipe_steps(recipe) if not recipe.is_empty() else 0
-	for k in range(steps + 1, n):
+	var drawn := _drawn_steps()
+	var n := drawn.y
+	for k in range(drawn.x + 1, n):
 		if recipe.has("wood") and wood_on() != "":
 			out.append(_wood_mark(k, n))
 		elif recipe.has("shape_anvil") and _station_ok():
 			out.append(station.shape_mark(k, n))
 		elif recipe.get("act", "") == "steps" and not recipe.has("butcher") and not recipe.has("house") and not recipe.has("trap") and not recipe.has("plot"):
-			out.append(to_global(_work.transform * _target(recipe.out, k)))
+			# At a furnace only the marks in the same place as this step
+			# (its mouth, or the ground), so the view can close in on it.
+			if _furnace_mouth_work() and _inside_mark(k).is_finite() != _inside_mark(drawn.x).is_finite():
+				continue
+			out.append(to_global(_mark_local(k)))
 	if recipe.get("act", "") == "peck" and _station_ok():
 		for c in [0, 4, 20, 24]:
 			out.append(station.cell_point(c))
 	if recipe.is_empty():
 		for p in _piles:
 			out.append(p.global_position + Vector3(0, 0.04, 0))
-	if _work.mesh and _work.visible and house == null:
+	if _work.mesh and _work.visible and house == null and not (_furnace_mouth_work() and _inside_mark(drawn.x).is_finite() and drawn.x > 1):
 		var box: AABB = _work.global_transform * _work.mesh.get_aabb()
 		for i in 8:
 			out.append(box.get_endpoint(i))
@@ -1576,6 +1626,12 @@ func look_point() -> Vector3:
 		return Vector3(tree.at.x, global_position.y + 0.35, tree.at.z)
 	if wood and _wood_ok() and wood.has_method("cut_point"):
 		return wood.cut_point()
+	if not recipe.is_empty() and _on_anvil():
+		return to_global(_work.position)
+	if _furnace_mouth_work():
+		# Into the furnace's mouth for the steps done there, else the ground.
+		var inside := _inside_mark(_drawn_steps().x)
+		return to_global(_furnace_mouth() * inside) if inside.is_finite() else to_global(_work.position)
 	return global_position
 
 
@@ -1660,6 +1716,9 @@ func _rebuild_work() -> void:
 	_roll_shown = _roll
 	_marker.visible = false
 	_hammer.visible = false
+	_inside.mesh = null
+	_pour_tilt = 0.0
+	_on_whetstone = _on_anvil() and station.whetstone and _anvil_work_kind(recipe.get("out", "")) == "grind"
 	_work.position = WORK + Vector3(0, _floor(WORK), 0)
 	_work.rotation = Vector3.ZERO
 	_work.scale = Vector3.ONE * float(ZOOM.get(recipe.get("out", ""), 1.0))
@@ -1703,10 +1762,41 @@ func _rebuild_work() -> void:
 			_marker_size = 1.5
 		return
 	var b := MeshBuilder.new()
-	var k := steps
-	var n := Items.recipe_steps(recipe)
+	var at_step := _drawn_steps()
+	var k := at_step.x
+	var n := at_step.y
 	# Every small prey animal is dressed the same way, at its own size.
-	match "dress" if recipe.get("dress", false) else recipe.out:
+	match "dress" if recipe.get("dress", false) else ("cast" if recipe.get("cast", false) else ("smelt" if recipe.has("melt") else ("haft" if _metal_haft() else _anvil_work_kind(recipe.out)))):
+		"cast":
+			_cast_work(b, k, n)
+		"smelt":
+			_smelt_work(b, k, n)
+		"haft":
+			_haft_work(b, k, n)
+		"whetstone":
+			# One river stone rubbed back and forth on the other, water poured
+			# from the pot: the lower one's top ground flatter and wetter, a
+			# grey slurry building round it.
+			var f := k / float(n)
+			var stone: Color = Items.def("stone").color if Items.def("stone").has("color") else Color(0.55, 0.55, 0.52)
+			var hump := lerpf(0.06, 0.035, f)
+			b.blob(Vector3(0, hump * 0.8, 0), Vector3(0.11, hump, 0.08), 3, 8, stone, _rng, lerpf(0.2, 0.06, f), "stone")
+			if k > 0:
+				var face := lerpf(0.03, 0.09, f)
+				b.cylinder(Vector3(0, hump * 1.55, 0), Vector3(0, hump * 1.55 + 0.002, 0), face, face * 0.75, 10,
+						stone.lerp(Color(0.32, 0.32, 0.3), 0.6), Color(-1, 0, 0), "stone")
+			if k < n:
+				var rub := 0.04 * (1.0 if k % 2 == 1 else -1.0) if k > 0 else 0.0
+				b.blob(Vector3(rub, hump * 1.6 + 0.035, 0.0), Vector3(0.07, 0.035, 0.055), 2, 7, stone.darkened(0.08), _rng, 0.18, "stone")
+			for i in k * 2:
+				var a := _rng.randf() * TAU
+				b.blob(Vector3(cos(a) * 0.12, 0.004, sin(a) * 0.09), Vector3(0.016, 0.004, 0.012), 1, 5, Color(0.42, 0.42, 0.4), _rng, 0.3, "stone")
+			Assets.bowl(b, Items.def("clay_pot").get("color", Assets.FIRED), Vector3(0.24, 0, 0.12), 0.8)
+			if k < n:
+				var water := lerpf(0.055, 0.02, f)
+				b.cylinder(Vector3(0.24, water, 0.12), Vector3(0.24, water + 0.002, 0.12), 0.085, 0.085, 10, Items.def("pot_dirty").color.darkened(0.2), Color(-1, 0, 0), "solid")
+		"grind", "forge", "chip":
+			_anvil_work(b, k, n)
 		"cordage", "fishing_line":
 			# Three strands that wind tighter around each other (three strings,
 			# finer and paler, for a fishing line).
@@ -1732,13 +1822,9 @@ func _rebuild_work() -> void:
 			b.blob(Vector3(0, 0.02, 0), Vector3(0.24, 0.035, 0.22), 2, 8, Color(0.5, 0.5, 0.47), _rng, 0.08, "stone")
 			Assets.knapped(b, knap_grid, KNAP_CELL, 0.02, Items.def("chitin").color, _rng, Transform3D(Basis(), Vector3(0, 0.05, 0)), "organic")
 			_outline(b, Items.knap_grid(recipe.knap), 0.075)
-		"stone_axe":
-			Assets.stick(b, _rng, Vector3(-0.3, 0.03, 0.05), Vector3(0.26, 0.03, 0.05), 0.022)
-			Assets.knapped(b, Items.knap_grid("axe_head"), 0.036, 0.034, Assets.CHERT, _rng, Transform3D(Basis(), Vector3(0.24, 0.03, -0.025)))
-			_wraps(b, Vector3(0.19, 0.03, 0.05), Vector3(0.29, 0.03, 0.05), 0.03, k, n)
 		"mattock":
 			Assets.stick(b, _rng, Vector3(-0.32, 0.03, 0.0), Vector3(0.28, 0.03, 0.0), 0.022)
-			Assets.knapped(b, Items.knap_grid("mattock_head"), 0.04, 0.034, Assets.CHERT, _rng, Transform3D(Basis(), Vector3(0.27, 0.03, 0.0)))
+			Assets.stone_tool_head(b, "mattock", _rng, Vector3(0.27, 0.03, 0.0))
 			_wraps(b, Vector3(0.2, 0.03, 0.0), Vector3(0.31, 0.03, 0.0), 0.03, k, n)
 		"torch":
 			# The stick rolled through the wax picks up a thicker coat.
@@ -1753,6 +1839,7 @@ func _rebuild_work() -> void:
 			if k > 0:
 				b.blob(Vector3(0.0, 0.016, 0.0), Vector3(0.03 + crush * 0.05, 0.012, 0.025 + crush * 0.04), 2, 7, Items.def("wax").color, _rng, 0.2, "organic")
 			_hammer.mesh = Assets.mesh("item_stone")
+			_hammer.rotation = Vector3.ZERO
 			_hammer.scale = Vector3.ONE * 0.6
 			_hammer_at = Vector3.ZERO
 			_hammer.visible = true
@@ -1772,19 +1859,21 @@ func _rebuild_work() -> void:
 				var fleck: bool = recipe.out == "smashed_native_copper" and i % 3 == 0
 				b.blob(Vector3(cos(a) * d, g * 0.5, sin(a) * d), Vector3(g, g * 0.6, g), 2, 5,
 						COPPER.lightened(0.15) if fleck else col.darkened(_rng.randf_range(0.0, 0.2)), _rng, 0.3, "metal" if fleck else "solid")
-			var hammer: bool = recipe.out == "crushed_copper_ore"
-			_hammer.mesh = Assets.mesh("item_stone" if not hammer else
-					("item_iron_hammer" if Game.inventory.count("iron_hammer") > 0 or laid("iron_hammer") > 0 else "item_copper_hammer"))
-			_hammer.scale = Vector3.ONE * (1.0 if hammer else 0.45)
-			# Its face (a hammer's head, at the end of the handle) on top of the lump.
-			var box: AABB = _hammer.mesh.get_aabb()
-			var face := Vector3(box.end.x - 0.03 if hammer else box.get_center().x, box.position.y, box.get_center().z) * _hammer.scale.x
-			_hammer_at = Vector3(-face.x - 0.02, r * 1.6 - face.y - 0.03, -face.z)
-			_hammer.visible = true
+			if recipe.out == "crushed_copper_ore":
+				_strike_with_hammer(r * 1.6 - 0.03)
+			else:
+				_hammer.mesh = Assets.mesh("item_stone")
+				_hammer.rotation = Vector3.ZERO
+				_hammer.scale = Vector3.ONE * 0.45
+				# The river stone comes down on top of the lump.
+				var box: AABB = _hammer.mesh.get_aabb()
+				var face := Vector3(box.get_center().x, box.position.y, box.get_center().z) * _hammer.scale.x
+				_hammer_at = Vector3(-face.x - 0.02, r * 1.6 - face.y - 0.03, -face.z)
+				_hammer.visible = true
 		"spear":
 			Assets.stick(b, _rng, Vector3(-0.75, 0.026, 0), Vector3(0.05, 0.026, 0), 0.022)
 			Assets.stick(b, _rng, Vector3(-0.01, 0.026, 0), Vector3(0.67, 0.026, 0), 0.02)
-			Assets.knapped(b, Items.knap_grid("spear_head"), 0.036, 0.03, Assets.CHERT, _rng, Transform3D(Basis(Vector3.UP, -PI * 0.5), Vector3(0.75, 0.026, 0)))
+			Assets.stone_tool_head(b, "spear", _rng, Vector3(0.65, 0.026, 0))
 			_wraps(b, Vector3(-0.04, 0.026, 0), Vector3(0.08, 0.026, 0), 0.027, mini(k, 3), 3)
 			_wraps(b, Vector3(0.62, 0.026, 0), Vector3(0.7, 0.026, 0), 0.025, maxi(k - 3, 0), 3)
 		"bow_drill":
@@ -1901,6 +1990,65 @@ func _rebuild_work() -> void:
 				Assets.canteen(b, Items.def("canteen").color, Vector3(0, 0, -0.08), k / float(n))
 			if k >= 2 and k < 4:
 				b.blob(Vector3(0.18, 0.02, -0.05), Vector3(0.04, 0.02, 0.03), 2, 6, Items.def("wax").color, _rng, 0.2, "organic")
+		"wooden_cap":
+			# A round sawn off the end of the board each step and carved into
+			# a cap with a lip, the caps set out in a row.
+			var left := 1.0 - k / float(n)
+			var board: Color = Items.def("board").color
+			b.box(Vector3(-0.3 + 0.3 * left, 0.015, 0.0), Vector3(0.6 * left, 0.03, 0.16), board, Basis(), "wood")
+			b.box(Vector3(-0.3 + 0.6 * left, 0.031, 0.0), Vector3(0.004, 0.001, 0.16), Assets.CUT_WOOD, Basis(), "wood")
+			for i in k:
+				_cap(b, Vector3(-0.25 + i * 0.13, 0, 0.2))
+			for i in mini(k * 4, 14):
+				b.box(Vector3(_rng.randf_range(-0.3, 0.3), 0.002, _rng.randf_range(0.1, 0.3)), Vector3(0.018, 0.002, 0.006),
+						Assets.CUT_WOOD, Basis(Vector3.UP, _rng.randf() * PI), "wood")
+		"copper_shod_pole", "iron_shod_pole":
+			# The pole's tip pared to a point, the shoe fitted over it, then
+			# (the last click) pinned on.
+			var shoe: String = recipe.in.keys()[1] if recipe.in.keys()[0] == "calamites_pole" else recipe.in.keys()[0]
+			var shoe_col: Color = Items.def(shoe).color
+			var pole: Color = Items.def("calamites_pole").color
+			var tip := 0.5
+			if k == 0:
+				b.cylinder(Vector3(-0.9, 0.025, 0), Vector3(tip, 0.025, 0), 0.025, 0.025, 7, pole, Color(-1, 0, 0), "wood")
+			else:
+				b.cylinder(Vector3(-0.9, 0.025, 0), Vector3(tip - 0.1, 0.025, 0), 0.025, 0.025, 7, pole, Color(-1, 0, 0), "wood")
+				b.cylinder(Vector3(tip - 0.1, 0.025, 0), Vector3(tip + 0.04, 0.025, 0), 0.025, 0.01, 7, Assets.CUT_WOOD, Color(-1, 0, 0), "wood")
+				for i in 8:
+					b.box(Vector3(tip + _rng.randf_range(-0.15, 0.1), 0.002, _rng.randf_range(0.04, 0.12)), Vector3(0.02, 0.002, 0.006),
+							Assets.CUT_WOOD, Basis(Vector3.UP, _rng.randf() * PI), "wood")
+			if k >= 2:
+				_pole_shoe(b, shoe_col, Vector3(tip - 0.11, 0.025, 0), Vector3(tip + 0.1, 0.025, 0))
+			else:
+				_pole_shoe(b, shoe_col, Vector3(0.15, 0.02, 0.16), Vector3(0.36, 0.02, 0.16))
+		"charcoal_clamp":
+			# Where it will stand: the pit dug, the firewood stood in it on
+			# end a few at a time, then wet clay plastered over it from the
+			# bottom up, what is still to use piled beside it.
+			_work.position = BUILD_AT + Vector3(0, _floor(BUILD_AT), 0)
+			var wood: Color = Items.def("firewood").color
+			var clay: Color = Items.def("clay").color
+			if k > 0:
+				b.cylinder(Vector3(0, 0.0, 0), Vector3(0, 0.006, 0), 0.62, 0.62, 14, Color(0.22, 0.18, 0.13), Color(-1, 0, 0), "solid")
+				for i in 5:
+					var a := TAU * (i + 0.5) / 5.0 + 0.6
+					b.blob(Vector3(cos(a), 0, sin(a)) * 0.85, Vector3(0.1, 0.035, 0.08), 2, 6, Color(0.36, 0.29, 0.21), _rng, 0.3, "solid")
+			var stood := _clamp_wood(k, n)
+			for i in 10:
+				if i < stood:
+					var p := _clamp_log(i)
+					b.cylinder(Vector3(p.x, 0.0, p.y), Vector3(p.x * 1.08, 0.42, p.y * 1.08), 0.05, 0.045, 6, wood, Color(-1, 0, 0), "wood")
+				else:
+					var j := i - stood
+					var z := -0.3 + 0.12 * (j % 5)
+					var y := 0.05 + 0.09 * floorf(j / 5.0)
+					b.cylinder(Vector3(0.95, y, z), Vector3(1.35, y, z), 0.045, 0.045, 6, wood, Color(-1, 0, 0), "wood")
+			var plastered := _clamp_clay(k, n)
+			for i in plastered:
+				b.blob(_clamp_patch(i), Vector3(0.2, 0.09, 0.2), 2, 6, clay, _rng, 0.2, "clay")
+			var lump := 1.0 - plastered / 12.0
+			if lump > 0.0:
+				b.blob(Vector3(-0.95, 0.06, 0.2), Vector3(0.16, 0.08, 0.13) * lerpf(0.4, 1.0, lump), 2, 6, clay, _rng, 0.15, "clay")
 		"flask":
 			# Two bars beaten flat, raised into bowls, seamed and necked,
 			# waxed, then stoppered and corded (Assets.flask's stages).
@@ -1940,12 +2088,18 @@ func _rebuild_work() -> void:
 			for i in mini(k * 3, 10):
 				b.box(Vector3(_rng.randf_range(-0.4, 0.4), 0.002, _rng.randf_range(0.05, 0.12)), Vector3(0.02, 0.002, 0.006),
 						Assets.CUT_WOOD, Basis(Vector3.UP, _rng.randf() * PI), "wood")
-		"fishing_rod":
+		"fishing_rod", "fishing_rod_copper":
 			# The line tied on at the tip, run down the rod, then the hook (or,
-			# baiting, the finished rod with the bait beside its hook).
+			# baiting, the finished rod with the bait beside its hook). Swapping
+			# on a copper hook: the chitin one untied and set aside, then the
+			# copper one tied on.
 			var baiting: bool = recipe.get("bait", false) is String
-			if baiting:
+			var hooks := _rod_hooks()
+			var swap: bool = hooks.size() == 2
+			var hook: String = hooks[-1]
+			if baiting or swap:
 				k = 3
+			if baiting:
 				b.blob(Vector3(-0.2, 0.02, 0.12), Vector3(0.03, 0.02, 0.025), 1, 5, Items.def(recipe.bait).color, _rng, 0.3, "organic")
 			var tip := Vector3(0.6, 0.02, 0)
 			Assets.stick(b, _rng, Vector3(-0.6, 0.02, 0), Vector3(0.3, 0.02, 0), 0.016)
@@ -1957,8 +2111,13 @@ func _rebuild_work() -> void:
 				b.cylinder(tip, tip + Vector3(-0.02, 0, 0.02), 0.012, 0.012, 5, line, Color(-1, 0, 0), "fiber")
 				var end := Vector3(-0.3, 0.025, 0.012) if k >= 2 else Vector3(0.45, 0.01, 0.12)
 				b.cylinder(tip, end, 0.002, 0.002, 3, line, Color(-1, 0, 0), "fiber")
-			Assets.knapped(b, Items.knap_grid("chitin_hook"), 0.008, 0.004, Items.def("chitin_hook").color, _rng,
-					Transform3D(Basis(), Vector3(-0.32, 0.01, 0.06)), "organic")
+			if swap:
+				# The chitin hook on the line, then untied and laid aside; the
+				# copper hook beside the rod until it goes on.
+				_hook(b, "chitin_hook", Vector3(-0.32, 0.01, 0.06) if steps == 0 else Vector3(-0.1, 0.01, 0.2))
+				_hook(b, hook, Vector3(-0.2, 0.01, 0.14))
+			else:
+				_hook(b, hook, Vector3(-0.32, 0.01, 0.06))
 		"meat_bait":
 			# The meat torn into smaller and smaller pieces.
 			var left := 1.0 - k / float(n)
@@ -2011,6 +2170,136 @@ func _rebuild_work() -> void:
 			var col: Color = Items.def("clay").color
 			Assets.bowl(b, col, Vector3.ZERO, 1.0, maxf(k / float(n), 0.15))
 			b.blob(Vector3(0.22, 0.04, 0.08), Vector3(0.08, 0.045, 0.06) * (1.0 - k / float(n) * 0.7), 2, 6, col, _rng, 0.12, "clay")
+		"tuyere_unfired":
+			# Clay rolled round a stick into a thick tube, longer each step;
+			# the last click draws the stick out.
+			var col: Color = Items.def("clay").color.lerp(Items.def("tuyere_unfired").color, k / float(n))
+			Assets.stick(b, _rng, Vector3(-0.22, 0.04, 0), Vector3(0.2, 0.04, 0), 0.012)
+			if k > 0:
+				var half := 0.12 * k / float(n - 1)
+				b.cylinder(Vector3(-half, 0.04, 0), Vector3(half, 0.04, 0), 0.035, 0.035, 10, col, Color(-1, 0, 0), "clay")
+			if k < n - 1:
+				b.blob(Vector3(0.05, 0.035, 0.14), Vector3(0.07, 0.04, 0.055) * (1.0 - k / float(n) * 0.8), 2, 6, Items.def("clay").color, _rng, 0.12, "clay")
+		"blowpipe_unfired":
+			# A green Calamites shoot sawn square (its leafy collars and pale
+			# cone trimmed off), the pith pushed out of its joints in crumbs,
+			# then a clay tip moulded on. It browns toward the pole's wood
+			# (Assets "blowpipe") as it is worked.
+			var shoot: Color = Items.def("calamites_shoot").color
+			var wood: Color = shoot.lerp(Assets.WOOD, clampf(k / float(n - 1), 0.0, 1.0))
+			var x0 := -0.38 if k == 0 else -0.35
+			var x1 := 0.3 if k == 0 else 0.28
+			for j in 5:
+				var a := lerpf(x0, x1, j / 5.0)
+				var e := lerpf(x0, x1, (j + 1) / 5.0)
+				b.cylinder(Vector3(a, 0.02, 0), Vector3(e, 0.02, 0), 0.018 - j * 0.0005, 0.017 - j * 0.0005, 6, wood * (0.96 + 0.04 * (j % 2)), Color(-1, 0, 0), "organic")
+				if j < 4:
+					# The joint: a collar of tiny leaves on the shoot, a
+					# trimmed ridge once it is sawn.
+					var leafy := k == 0
+					b.cylinder(Vector3(e - 0.005, 0.02, 0), Vector3(e + 0.005, 0.02, 0), 0.024 if leafy else 0.019, 0.024 if leafy else 0.019, 6,
+							shoot.darkened(0.4) if leafy else wood.darkened(0.2), Color(-1, 0, 0), "organic")
+			if k == 0:
+				b.cone(Vector3(x1, 0.02, 0), Vector3(x1 + 0.08, 0.02, 0), 0.014, 6, shoot.lightened(0.3), "organic")
+			else:
+				for x in [x0, x1]:
+					var out := -1.0 if x == x0 else 1.0
+					b.cylinder(Vector3(x, 0.02, 0), Vector3(x + out * 0.003, 0.02, 0), 0.0175, 0.0175, 6, Assets.CUT_WOOD, Color(-1, 0, 0), "wood")
+					if k >= 2:
+						b.cylinder(Vector3(x + out * 0.003, 0.02, 0), Vector3(x + out * 0.004, 0.02, 0), 0.009, 0.009, 6, Color(0.12, 0.09, 0.06), Color(-1, 0, 0), "wood")
+				# The cut-off cone and leafy ends lie beside it.
+				b.cone(Vector3(0.36, 0.012, 0.09), Vector3(0.43, 0.012, 0.11), 0.012, 6, shoot.lightened(0.2), "organic")
+			if k >= 2:
+				for i in 6:
+					b.blob(Vector3(x0 - 0.04 - _rng.randf() * 0.06, 0.006, _rng.randf_range(-0.04, 0.04)), Vector3.ONE * _rng.randf_range(0.006, 0.01), 1, 4,
+							Color(0.86, 0.82, 0.68), _rng, 0.3, "organic")
+			var clay: Color = Items.def("clay").color.lerp(Items.def("blowpipe_unfired").color, 0.5)
+			if k >= n:
+				b.cylinder(Vector3(x1 - 0.01, 0.02, 0), Vector3(x1 + 0.08, 0.02, 0), 0.019, 0.011, 6, Items.def("blowpipe_unfired").color, Color(-1, 0, 0), "clay")
+			else:
+				b.blob(Vector3(0.3, 0.03, 0.14), Vector3(0.045, 0.03, 0.04), 2, 6, clay, _rng, 0.15, "clay")
+		"furnace":
+			# Its stone ring, where it will stand: the first click digs the
+			# hole, the rest set the river stones round it (as the furnace
+			# draws them), the stones still to set piled beside it.
+			_work.position = BUILD_AT + Vector3(0, _floor(BUILD_AT), 0)
+			var ring_r: float = 0.48
+			var stone: Color = Color(0.50, 0.50, 0.47)
+			if k > 0:
+				b.cylinder(Vector3(0, 0.0, 0), Vector3(0, 0.006, 0), ring_r - 0.02, ring_r - 0.02, 14, Color(0.22, 0.18, 0.13), Color(-1, 0, 0), "solid")
+				for i in 6:
+					var a := TAU * (i + 0.5) / 6.0 + 0.3
+					b.blob(Vector3(cos(a), 0, sin(a)) * (ring_r + 0.3), Vector3(0.09, 0.03, 0.07), 2, 6, Color(0.36, 0.29, 0.21), _rng, 0.3, "solid")
+			var set_n := _ring_stones(k, n)
+			for i in 8:
+				var shade := 0.9 + 0.1 * float(i % 3) / 2.0
+				if i < set_n:
+					var a := TAU * i / 8.0
+					b.blob(Vector3(cos(a), 0, sin(a)) * ring_r + Vector3(0, 0.08, 0), Vector3(0.13, 0.09, 0.11), 2, 7, stone * shade, _rng, 0.15, "stone")
+				else:
+					var j := i - set_n
+					b.blob(Vector3(ring_r + 0.45 + 0.13 * (j % 2), 0.07 + 0.1 * floorf(j / 4.0), -0.25 + 0.14 * floorf(j / 2.0) - 0.28 * floorf(j / 4.0)),
+							Vector3(0.11, 0.08, 0.09), 2, 7, stone * shade, _rng, 0.15, "stone")
+		"copper_grains", "sifted_copper_ore":
+			# Washing grit in the pan, step by step as `step_how` says: water
+			# scooped in, the grit swirled round into a ring, the pan tipped to
+			# pour the light grit off (less left each time), until only the
+			# heavy copper or ore is left in the bottom.
+			var how: Array = recipe.get("step_how", [])
+			var last: String = String(how[k - 1]).to_lower() if k > 0 and k <= how.size() else ""
+			var pours := 0
+			var wet := false
+			for i in mini(k, how.size()):
+				var h := String(how[i]).to_lower()
+				if "pour" in h:
+					pours += 1
+					wet = false
+				if "scoop" in h or ("swirl" in h and not "pour" in h and wet):
+					wet = true
+			var swirl := "swirl" in last
+			_pour_tilt = 0.45 if "pour" in last else 0.0
+			Assets.bowl(b, Items.def("washing_pan").color, Vector3.ZERO, 1.0, 1.0)
+			var grit: Color = Items.def(recipe.in.keys()[0]).color
+			var heavy: Color = COPPER.lightened(0.15) if recipe.out == "copper_grains" else Items.def("sifted_copper_ore").color
+			var light := maxi(14 - pours * 6, 0)
+			for i in light + 5:
+				# The heavy bits (the last five) settle in the bottom, bigger.
+				var a := _rng.randf() * TAU
+				var d := _rng.randf_range(0.0, 0.03) if i >= light else (_rng.randf_range(0.05, 0.085) if swirl else _rng.randf_range(0.0, 0.05))
+				var g := _rng.randf_range(0.01, 0.015) if i >= light else _rng.randf_range(0.006, 0.011)
+				var y := 0.012 + _rng.randf() * 0.01
+				b.blob(Vector3(cos(a) * d, y, sin(a) * d), Vector3(g, g * 0.6, g), 2, 5,
+						heavy if i >= light else grit.lightened(_rng.randf_range(0.0, 0.15)), _rng, 0.3, "metal" if i >= light and recipe.out == "copper_grains" else "solid")
+			if wet:
+				var murk: float = 0.5 if swirl else 0.15
+				b.lathe([Vector2(0.105, 0.045), Vector2(0.0, 0.045)], 12, Items.def("pot_dirty").color.lerp(grit.darkened(0.3), murk), "solid", Vector3.ZERO, false)
+		"washing_pan_unfired":
+			# The ash kneaded into the clay (greying it), pressed out wider and
+			# its rim pinched up with each step until it is the shallow pan.
+			var f := k / float(n)
+			var col: Color = Items.def("clay").color.lerp(Items.def("washing_pan_unfired").color, f)
+			if k > 0:
+				Assets.bowl(b, col, Vector3.ZERO, lerpf(0.7, 1.0, f), maxf(f, 0.15))
+			b.blob(Vector3(0.22, 0.04, 0.08), Vector3(0.09, 0.05, 0.07) * (1.0 - f * 0.8), 2, 6, col, _rng, 0.12, "clay")
+			if k < n:
+				b.blob(Vector3(0.2, 0.012, -0.13), Vector3(0.05, 0.015, 0.04) * (1.0 - f * 0.9), 2, 6, Items.def("ash").color, _rng, 0.2, "organic")
+		"mould_axe_unfired", "mould_knife_unfired", "mould_spear_unfired", "mould_hammer_unfired", "mould_saw_unfired", "mould_shovel_unfired", "mould_bar_unfired", "mould_hook_unfired", "mould_beads_unfired":
+			# The ash kneaded into the clay, the lump pressed into a thick
+			# slab, then its hollow (Assets.mould_hollow, each kind its own)
+			# cut in over the last steps, larger and deeper each click.
+			var col: Color = Items.def("clay").color.lerp(Items.def(recipe.out).color, k / float(n))
+			if k == 0:
+				for i in 3:
+					b.blob(Vector3(-0.06 + i * 0.07, 0.03, 0.02 * (i - 1)), Vector3(0.045, 0.032, 0.04), 2, 6, Items.def("clay").color, _rng, 0.15, "clay")
+				b.blob(Vector3(0.12, 0.012, -0.1), Vector3(0.05, 0.015, 0.04), 2, 6, Items.def("ash").color, _rng, 0.2, "organic")
+			elif k == 1:
+				b.blob(Vector3(0, 0.045, 0), Vector3(0.1, 0.045, 0.08), 2, 7, col, _rng, 0.1, "clay")
+			else:
+				Assets.mould(b, col, Assets.mould_kind(recipe.out), _mould_cut(k, n))
+				if k < n:
+					# The trimmings from the cut.
+					for i in k - 1:
+						b.blob(Vector3(0.18, 0.01, -0.06 + i * 0.05), Vector3(0.018, 0.01, 0.014), 1, 5, col, _rng, 0.3, "clay")
 		"woodworking_tools":
 			Assets.chisel_saw(b, _rng, k)
 		"papermaking_tools":
@@ -2073,13 +2362,13 @@ func _rebuild_work() -> void:
 			for i in mini(k, 3):
 				b.box(Vector3(0.17 + _rng.randf_range(0, 0.08), 0.002, _rng.randf_range(0.03, 0.09)), Vector3(0.012, 0.002, 0.006),
 						Assets.CUT_WOOD, Basis(Vector3.UP, _rng.randf() * PI), "wood")
-		"blueprint_softwood_house":
-			# The house drawn a few lines at a time on the sheet, the pencil
+		"blueprint_softwood_house", "blueprint_dock":
+			# The house (or dock) drawn a few lines at a time on the sheet, the pencil
 			# beside it, sharpened with the blade at the start and halfway.
 			Assets.paper(b, _rng, Items.def("paper_sheet").color, BLUEPRINT_AT, 1.0, 0.85)
 			var drawn: int = k - recipe.sharpen.filter(func(s): return s < k).size()
 			for g in drawn:
-				for seg in Assets.blueprint_lines(g):
+				for seg in Assets.blueprint_lines(g, recipe.out):
 					Assets.line_on(b, BLUEPRINT_AT, seg[0], seg[1])
 			Assets.pencil(b, _rng)
 			if k in recipe.sharpen:
@@ -2115,6 +2404,12 @@ func _rebuild_work() -> void:
 				b.cylinder(Vector3(0.25, 0, 0.2), Vector3(0.25, 0.1, 0.2), 0.1, 0.1, 8, COPPER)
 	_work.mesh = b.commit(Assets.materials) if not b.is_empty() else null
 	_fit_to_ground()
+	if _on_anvil():
+		_place_on_anvil()
+	if _pour_tilt != 0.0:
+		# Tipped up on one side, the far rim held over the water.
+		_work.rotation.z += _pour_tilt
+		_work.position.y += 0.06
 	if recipe.out == "workbench":
 		_work.position = BUILD_AT + Vector3(0, player.world.bench_height(to_global(BUILD_AT), global_rotation.y) - global_position.y, 0)
 	if recipe.has("wood") and wood_on() != "":
@@ -2146,9 +2441,149 @@ func _rebuild_work() -> void:
 		_marker_size = 2.5
 	elif recipe.act == "steps":
 		_marker.visible = true
-		_marker.material_override = null
+		# At the furnace the mark sits low among the charcoal, by the furnace
+		# and on whatever ground it stands on: drawn over all of it.
+		_marker.material_override = _marker_on_top() if recipe.get("at", "") == "furnace" else null
 		_marker_size = 1.0
-		_marker.position = _work.transform * _target(recipe.out, k) + Vector3(0, 0.03, 0)
+		_marker.position = _mark_local(k) + Vector3(0, 0.03, 0)
+
+
+static func _mould_cut(k: int, n: int) -> float:
+	## How far a mould's hollow is cut after k of its n steps: nothing until
+	## the slab is pressed (2 steps), then in even bites to the full hollow.
+	return clampf((k - 1) / float(n - 1), 0.0, 1.0) if k >= 2 else 0.0
+
+
+const CLAMP_CLAY_STEPS := 3  # a charcoal clamp's last steps plaster on the clay
+const CLAMP_PATCHES := 12     # patches of clay that cover it
+
+
+static func _clamp_wood(k: int, n: int) -> int:
+	## Firewood stood in a charcoal clamp's pit after k of its n steps (the
+	## first digs the pit, the last few plaster on the clay).
+	var w := maxi(n - 1 - CLAMP_CLAY_STEPS, 1)
+	return 0 if k <= 1 else mini(10, ceili(10.0 * (k - 1) / w))
+
+
+static func _clamp_clay(k: int, n: int) -> int:
+	## Patches of clay plastered on a charcoal clamp after k of its n steps.
+	var start := maxi(n - CLAMP_CLAY_STEPS, 2)
+	return 0 if k <= start else mini(CLAMP_PATCHES, ceili(float(CLAMP_PATCHES) * (k - start) / CLAMP_CLAY_STEPS))
+
+
+static func _clamp_log(i: int) -> Vector2:
+	## Where the i'th piece of firewood stands in the pit: three in the
+	## middle, seven round them.
+	if i < 3:
+		var a := TAU * i / 3.0
+		return Vector2(cos(a), sin(a)) * 0.13
+	var b := TAU * (i - 3) / 7.0 + 0.4
+	return Vector2(cos(b), sin(b)) * 0.36
+
+
+static func _clamp_patch(i: int) -> Vector3:
+	## Where the i'th patch of clay goes: round the bottom, then higher up,
+	## then the top.
+	if i < 6:
+		var a := TAU * i / 6.0
+		return Vector3(cos(a) * 0.5, 0.1, sin(a) * 0.5)
+	if i < 11:
+		var b := TAU * (i - 6) / 5.0 + 0.5
+		return Vector3(cos(b) * 0.36, 0.3, sin(b) * 0.36)
+	return Vector3(0, 0.44, 0)
+
+
+func _cap(b, at: Vector3) -> void:
+	## A carved wooden cap lying top down, its lip up.
+	var col: Color = Items.def("wooden_cap").color
+	b.cylinder(at, at + Vector3(0, 0.014, 0), 0.055, 0.055, 10, col, Color(-1, 0, 0), "wood")
+	b.cylinder(at + Vector3(0, 0.014, 0), at + Vector3(0, 0.03, 0), 0.042, 0.042, 10, col.darkened(0.08), Color(-1, 0, 0), "wood")
+
+
+func _pole_shoe(b, col: Color, from: Vector3, to: Vector3) -> void:
+	## A metal pole shoe: a socket tapering to a point at `to`.
+	b.cylinder(from, from.lerp(to, 0.15), 0.031, 0.031, 7, col.darkened(0.1), Color(-1, 0, 0), "metal")
+	b.cylinder(from.lerp(to, 0.15), to, 0.03, 0.003, 7, col, Color(-1, 0, 0), "metal")
+
+
+func _rod_hooks() -> Array:
+	## The hooks drawn making or baiting a fishing rod: the rod's own (copper
+	## on a copper rod, also when baiting it), or, swapping a copper hook on,
+	## the chitin one coming off and then the copper one.
+	var baiting: bool = recipe.get("bait", false) is String
+	var hook := "copper_fishhook" if recipe.get("rod", recipe.out) == "fishing_rod_copper" else "chitin_hook"
+	if not baiting and recipe.get("in", {}).has("fishing_rod"):
+		return ["chitin_hook", hook]
+	return [hook]
+
+
+func _hook(b, id: String, at: Vector3) -> void:
+	## A fishhook lying flat: chitin, or copper.
+	var copper := id == "copper_fishhook"
+	Assets.fish_hook(b, Items.def(id).color, Transform3D(Basis(), at), 0.7, "metal" if copper else "organic")
+
+
+func _smelt_work(b, k: int, n: int) -> void:
+	## Smelting ore in the furnace: the ore and charcoal heaped by it, then
+	## loaded into its mouth (drawn in _inside, among glowing charcoal) and
+	## the slag running out into the clay-lined tap pit in front,
+	## glowing with the furnace's heat; raked out glowing, then broken up
+	## for the drops of copper in it.
+	var melt: Array = recipe.get("melt", [2, n - 2])
+	var molten := Color(1.0, 0.55, 0.15)
+	var slag := Color(0.2, 0.17, 0.15)
+	var heat := 0.0
+	if station and "heat" in station and "HOT" in station:
+		heat = clampf(station.heat / station.HOT, 0.0, 1.0)
+	var melted := clampf((k - melt[0]) / float(melt[1] - melt[0]), 0.0, 1.0)
+	b.cylinder(Vector3(0, 0, 0), Vector3(0, 0.008, 0), 0.17, 0.17, 12, Items.def("clay").color.darkened(0.25), Color(-1, 0, 0), "clay")
+	b.cylinder(Vector3(0, 0.008, 0), Vector3(0, 0.01, 0), 0.13, 0.13, 12, Color(0.16, 0.13, 0.11), Color(-1, 0, 0), "solid")
+	if k == 0:
+		var ore: Color = Items.def(recipe.in.keys()[0]).color
+		for i in 9:
+			b.blob(Vector3(0.26 + _rng.randf_range(-0.04, 0.04), 0.015, 0.12 + _rng.randf_range(-0.04, 0.04)), Vector3.ONE * 0.02, 1, 5, ore, _rng, 0.3, "stone")
+		for i in 7:
+			b.blob(Vector3(0.26 + _rng.randf_range(-0.04, 0.04), 0.015, -0.1 + _rng.randf_range(-0.04, 0.04)), Vector3(0.025, 0.018, 0.02), 1, 5, Items.def("charcoal").color, _rng, 0.35, "stone")
+	if k >= 1:
+		# Loaded in: ore among the charcoal in the furnace's mouth, glowing
+		# with the heat, the ore going as it smelts; burnt low once raked.
+		var inside := MeshBuilder.new()
+		var smelting: bool = k < melt[1]
+		_charcoal_heap(inside, heat * (1.0 if smelting else 0.4), 18 if smelting else 10)
+		if smelting:
+			var ore: Color = Items.def(recipe.in.keys()[0]).color
+			for i in roundi(8 * (1.0 - melted)):
+				var a := _rng.randf() * TAU
+				var r := sqrt(_rng.randf()) * 0.2
+				inside.blob(Vector3(cos(a) * r, 0.04, sin(a) * r), Vector3.ONE * 0.02, 1, 5, ore.lerp(molten, heat * 0.4), _rng, 0.3, "stone")
+		_inside.mesh = inside.commit(Assets.materials)
+		_inside.transform = _furnace_mouth()
+	if k >= 1 and k < melt[1]:
+		# Slag running out into the pit as the ore smelts.
+		var pool := lerpf(0.02, 0.11, melted)
+		b.cylinder(Vector3(0, 0.01, 0), Vector3(0, 0.016, 0), pool, pool * 0.9, 10, slag.lerp(molten, heat * 0.85), Color(-1, 0, 0), "metal")
+		for i in roundi(melted * 5):
+			var a := _rng.randf() * TAU
+			b.blob(Vector3(cos(a), 0, sin(a)) * (pool + 0.01) + Vector3(0, 0.014, 0), Vector3.ONE * 0.012, 1, 4, slag.lerp(molten, heat * 0.6), _rng, 0.3, "metal")
+	elif k >= melt[1]:
+		var cool := clampf((k - melt[1]) / float(maxi(n - 1 - melt[1], 1)), 0.0, 1.0)
+		var col := molten.lerp(slag, cool)
+		if k < n - 1:
+			# Raked out of the pit, still glowing.
+			b.blob(Vector3(0, 0.025, 0.2), Vector3(0.11, 0.025, 0.09), 2, 7, col, _rng, 0.25, "metal")
+		else:
+			# Broken up, the drops of copper showing in it.
+			for i in 5:
+				var a := TAU * i / 5.0 + 0.3
+				b.blob(Vector3(cos(a) * 0.08, 0.018, 0.2 + sin(a) * 0.06), Vector3(0.045, 0.018, 0.04), 2, 6, col, _rng, 0.3, "metal")
+			for i in 6:
+				b.blob(Vector3(_rng.randf_range(-0.07, 0.07), 0.03, 0.2 + _rng.randf_range(-0.05, 0.05)), Vector3.ONE * 0.012, 1, 4, Items.def("copper").color, _rng, 0.3, "metal")
+
+
+static func _ring_stones(k: int, n: int) -> int:
+	## River stones set in a furnace's ring after k of its n steps (the
+	## first digs the hole).
+	return 0 if k <= 1 else ceili(8.0 * (k - 1) / float(n - 1))
 
 
 var _on_top: StandardMaterial3D
@@ -2163,11 +2598,373 @@ func _marker_on_top() -> StandardMaterial3D:
 	return _on_top
 
 
+func _on_anvil() -> bool:
+	## Working at a dressed anvil (not shaping it): the work lies on its face.
+	return station_kind == "anvil" and _station_ok() and station.has_method("cell_point") and not recipe.has("shape_anvil") and not recipe.is_empty()
+
+
+func _place_on_anvil() -> void:
+	## Moves the work up onto the anvil's face, clear of the whetstone's
+	## corner, still facing you; grinding goes onto the seated whetstone,
+	## along it.
+	_work.rotation = Vector3.ZERO
+	if _on_whetstone:
+		# The drawn work rests on y 0.04 (its own stone's top): the seated
+		# whetstone's top is 0.03 above the face.
+		_work.position = to_local(station.to_global(station.SEAT + Vector3(0, station.ANVIL.y - 0.01, 0)))
+		_work.basis = (global_basis.inverse() * station.global_basis).orthonormalized().scaled(_work.scale)
+	else:
+		_work.position = to_local(station.to_global(Vector3(-0.08, station.ANVIL.y, -0.04)))
+		_work.basis = Basis().scaled(_work.scale)
+
+
+func _furnace_mouth() -> Transform3D:
+	## Where what goes into the furnace is drawn (spot-local): heaped in the
+	## top of its shaft. Away from a furnace, beside the work.
+	if station and station.has_method("heat_name") and "TOP" in station:
+		return Transform3D(Basis(), to_local(station.to_global(Vector3(0, station.TOP, 0))))
+	return Transform3D(Basis(), WORK + Vector3(0.35, 0.0, -0.3))
+
+
+func _inside_mark(k: int) -> Vector3:
+	## Where step k (as drawn: _drawn_steps) has its mark in the furnace's mouth (_furnace_mouth), or
+	## INF when that step is done on the ground.
+	if not recipe.has("melt") or recipe.get("at", "") != "furnace":
+		return Vector3.INF
+	var melt: Array = recipe.get("melt", [3, 8])
+	if recipe.get("cast", false):
+		if k == 1:
+			return Vector3(0, 0.07, 0)  # bed the mould down in the charcoal
+		if k >= 2 and k < melt[1]:
+			return Vector3(0, Assets.MOULD_SIZE.y + 0.07, 0)  # blow on it
+		return Vector3.INF
+	return Vector3(0, 0.1, 0) if k < melt[1] else Vector3.INF  # load it, blow it
+
+
+func _mark_local(k: int) -> Vector3:
+	## Step k's mark, spot-local.
+	var inside := _inside_mark(k)
+	if inside.is_finite():
+		return _furnace_mouth() * inside
+	return _work.transform * _target(recipe.out, k)
+
+
+func _charcoal_heap(b, glow: float, lumps: int, keep_clear := Vector2.ZERO) -> void:
+	## The furnace's mouth heaped with charcoal, glowing with `glow` (0..1),
+	## leaving `keep_clear` (half sizes, x and z) free in the middle.
+	var char_col: Color = Items.def("charcoal").color
+	var ember := char_col.lerp(Color(0.95, 0.35, 0.08), glow * 0.85)
+	b.cylinder(Vector3(0, -0.005, 0), Vector3(0, 0.02, 0), 0.28, 0.26, 12, char_col.lerp(ember, 0.5), Color(-1, 0, 0), "stone")
+	var placed := 0
+	var tries := 0
+	while placed < lumps and tries < lumps * 6:
+		tries += 1
+		var a := _rng.randf() * TAU
+		var r := sqrt(_rng.randf()) * 0.23
+		var p := Vector2(cos(a), sin(a)) * r
+		if absf(p.x) < keep_clear.x and absf(p.y) < keep_clear.y:
+			continue
+		b.blob(Vector3(p.x, 0.028, p.y), Vector3(0.03, 0.022, 0.026), 1, 5, ember if placed % 3 != 0 else char_col, _rng, 0.35, "stone")
+		placed += 1
+
+
+func _anvil_work_kind(out: String) -> String:
+	## Metalwork at an anvil or meteorite (not shaping the anvil itself):
+	## "grind" on its whetstone, "forge" with a hammer, "chip" at a meteorite.
+	## Anything else is matched on what it makes.
+	var at: String = recipe.get("at", "")
+	if recipe.has("shape_anvil") or not at in ["anvil", "meteorite"]:
+		return out
+	if at == "meteorite":
+		return "chip"
+	if recipe.get("hammer_wear", false) or recipe.get("tool_tag", "") == "hammer":
+		return "forge"
+	return "grind"
+
+
+func _metal_piece(b, id: String, col: Color, xf: Transform3D) -> void:
+	## A metal piece lying flat, shaped as the item it is or becomes: a head
+	## or blade as its knapped outline, a bar, chisel or shoe as a bar, a saw
+	## blade as its toothed strip, anything else a lump.
+	var shape: String = Items.def(id).get("shape", "")
+	var kind := Assets.metal_kind(id)
+	if kind in ["axe", "knife", "spear", "chisel"]:
+		# Its head alone, smooth metal (a knife's blade, an axe's head).
+		Assets.metal_head(b, kind, col, xf * Transform3D(Basis(), Vector3(-0.08, 0.0, 0)), id.begins_with("rough_"))
+		return
+	if kind == "shoe":
+		Assets.pole_shoe(b, col, xf)
+		return
+	if Assets.HEAD_SHAPES.has(shape):
+		Assets.knapped(b, Items.knap_grid(Assets.HEAD_SHAPES[shape]), 0.034, 0.026, col, _rng, xf * Transform3D(Basis(), Vector3(0, 0.013, 0)), "metal")
+		return
+	match shape:
+		"pencil_core":
+			b.box(xf * Vector3(0, 0.011, 0), Vector3(0.2, 0.022, 0.026), col, xf.basis, "metal")
+		"plank":
+			b.box(xf * Vector3(0, 0.012, 0), Vector3(0.26, 0.024, 0.045), col, xf.basis, "metal")
+		"metal_saw":
+			Assets.saw_blade(b, col, xf)
+		"metal_bar":
+			b.box(xf * Vector3(0, 0.012, 0), Vector3(0.2, 0.024, 0.03), col, xf.basis, "metal")
+		"saw_blade":
+			Assets.saw_blade(b, col, xf, id.begins_with("rough_"))
+		"shovel_blade":
+			Assets.shovel_blade(b, col, xf, id.begins_with("rough_"))
+		"hammer_head":
+			b.box(xf * Vector3(0, 0.031, 0), Vector3(0.062, 0.062, 0.13), col, xf.basis, "metal")
+		_:
+			if Items.def(id).has("head") or shape in ["axe", "mattock", "spear", "hammer", "blade"]:
+				# A whole tool being sharpened: its head.
+				var grid: String = {"axe": "axe_head", "mattock": "mattock_head", "spear": "spear_head"}.get(shape, "flint_blade")
+				Assets.knapped(b, Items.knap_grid(grid), 0.034, 0.026, col, _rng, xf * Transform3D(Basis(), Vector3(0, 0.013, 0)), "metal")
+			else:
+				b.blob(xf * Vector3(0, 0.03, 0), Vector3(0.06, 0.03, 0.05), 2, 6, col, _rng, 0.3, "metal")
+
+
+func _edge_piece(b, id: String, f: float, xf: Transform3D) -> void:
+	## A tool on the whetstone: only its metal working end (a head, the
+	## blade's teeth, a chisel's bit), dull at first and coming up bright.
+	var def := Items.def(id)
+	var metal: Color = def.get("head", def.get("color2", Color(0.60, 0.61, 0.63) if id.begins_with("iron_") else Color(0.80, 0.47, 0.24)))
+	var col := metal.darkened(0.25).lerp(metal.lightened(0.25), f)
+	match def.get("shape", ""):
+		"metal_saw":
+			# The saw's blade, its teeth along one side.
+			Assets.saw_blade(b, col, xf)
+		"shovel":
+			# The shovel's blade, its edge.
+			Assets.shovel_blade(b, col, xf)
+		"pencil_core" when Assets.metal_kind(id) == "chisel":
+			# The chisel's bit, bevelled to its edge.
+			Assets.metal_head(b, "chisel", col, xf * Transform3D(Basis(), Vector3(-0.15, 0.0, 0)))
+		_:
+			_metal_piece(b, id, col, xf)
+
+
+func _anvil_work(b, k: int, n: int) -> void:
+	## Metalwork at the anvil or a meteorite, drawn where you kneel.
+	var f := k / float(n)
+	var src: String = recipe.in.keys()[0] if not recipe.get("in", {}).is_empty() else recipe.out
+	var out_def := Items.def(recipe.out)
+	var out_col: Color = out_def.get("head", out_def.get("color", Color(0.6, 0.6, 0.6)))
+	var src_col: Color = Items.def(src).get("head", Items.def(src).get("color", out_col))
+	match _anvil_work_kind(recipe.out):
+		"grind":
+			# Drawn back and forth along the wet whetstone, turned over for
+			# the other side, the edge coming up bright.
+			# (On the anvil's seated whetstone the stone is the anvil's own:
+			# only the wet stripe and the grit are drawn on it.)
+			var stone := Vector2(0.2, 0.09) if _on_whetstone else Vector2(0.4, 0.16)
+			if not _on_whetstone:
+				b.box(Vector3(0, 0.02, 0), Vector3(0.4, 0.04, 0.16), Color(0.46, 0.45, 0.42), Basis(), "stone")
+			if k > 0:
+				b.box(Vector3(0, 0.0405, 0), Vector3(stone.x - 0.03, 0.001, stone.y - 0.02), Color(0.3, 0.3, 0.29), Basis(), "stone")
+			var turned := k >= n - 2
+			var slide := 0.05 * (1.0 if k % 2 == 1 else -1.0) if k > 0 else 0.0
+			var basis := Basis(Vector3.RIGHT, PI) if turned else Basis()
+			var lift := 0.04 + (0.026 if turned else 0.0)
+			var col := src_col.lerp(out_col.lightened(0.25), f)
+			var xf := Transform3D(basis, Vector3(slide, lift, 0))
+			if recipe.has("sharpen_tool"):
+				_edge_piece(b, recipe.out, f, xf)
+			else:
+				_metal_piece(b, recipe.out, col, xf)
+			for i in k * 3:
+				b.blob(Vector3(_rng.randf_range(-0.45, 0.45) * stone.x, 0.042, _rng.randf_range(-0.42, 0.42) * stone.y), Vector3(0.008, 0.003, 0.008), 1, 4, Color(0.36, 0.35, 0.33), _rng, 0.2, "stone")
+		"forge":
+			# Beaten out on the anvil's face with the copper (or iron)
+			# hammer: the lump gives way to the shape, scale flaking off.
+			var lump := 1.0 - f
+			if lump > 0.05:
+				b.blob(Vector3(0, 0.03 * lump, 0), Vector3(0.06, 0.03, 0.05) * maxf(lump, 0.2), 2, 6, src_col, _rng, 0.3, "metal")
+			var grow := Transform3D(Basis().scaled(Vector3.ONE * lerpf(0.3, 1.0, f)), Vector3.ZERO)
+			_metal_piece(b, recipe.out, src_col.lerp(out_col, f), grow)
+			for i in mini(k * 2, 40):
+				var a := _rng.randf() * TAU
+				var d := _rng.randf_range(0.09, 0.16)
+				b.blob(Vector3(cos(a) * d, 0.003, sin(a) * d), Vector3(0.008, 0.003, 0.006), 1, 4, Color(0.2, 0.18, 0.17), _rng, 0.3, "metal")
+			_strike_with_hammer(0.03 + 0.02 * f)
+		"chip":
+			# Each blow knocks iron off the meteorite: the chips pile up.
+			var col: Color = Items.def(recipe.out).get("color", Color(0.36, 0.28, 0.22))
+			for i in k:
+				var a := i * 2.4
+				var d := 0.02 + 0.012 * sqrt(i)
+				b.blob(Vector3(cos(a) * d, 0.012 + 0.004 * (i % 3), sin(a) * d), Vector3(0.018, 0.012, 0.015), 1, 5, col * _rng.randf_range(0.85, 1.1), _rng, 0.35, "metal")
+			# The chisel held upright on the iron, the hammer coming down on it.
+			var chisel := "iron_chisel" if Game.inventory.count("iron_chisel") > 0 or laid("iron_chisel") > 0 else "copper_chisel"
+			var steel: Color = Items.def(chisel).get("color2", Color(0.45, 0.45, 0.48))
+			var foot := 0.03 + 0.01 * sqrt(k)
+			b.cylinder(Vector3(0, foot, 0), Vector3(0, foot + 0.025, 0), 0.002, 0.009, 6, steel.lightened(0.15), Color(-1, 0, 0), "metal")
+			b.cylinder(Vector3(0, foot + 0.025, 0), Vector3(0, foot + CHISEL_LEN, 0), 0.009, 0.009, 6, steel, steel.darkened(0.2), "metal")
+			_strike_with_hammer(foot + CHISEL_LEN)
+
+
+func _strike_with_hammer(top: float) -> void:
+	## The copper (or iron) hammer comes down on the work on each click.
+	var iron: bool = Game.inventory.count("iron_hammer") > 0 or laid("iron_hammer") > 0
+	_hammer.mesh = Assets.mesh("item_iron_hammer" if iron else "item_copper_hammer")
+	# The model lies on its cheek (faces sideways, along z): rolled a quarter
+	# turn about the handle so a face comes down on the work.
+	var roll := Basis(Vector3.RIGHT, PI * 0.5)
+	_hammer.basis = roll
+	var box: AABB = Transform3D(roll, Vector3.ZERO) * _hammer.mesh.get_aabb()
+	var face := Vector3(box.end.x - 0.03, box.position.y, box.get_center().z)
+	_hammer_at = Vector3(-face.x - 0.02, top - face.y, -face.z)
+	_hammer.visible = true
+
+
+func _metal_haft() -> bool:
+	## A copper or iron head (or blade) bound to a stick by hand.
+	if recipe.get("tier", "") != "hand" or not recipe.get("in", {}).has("stick"):
+		return false
+	for id in recipe.in:
+		if (id.begins_with("copper_") or id.begins_with("iron_")) and (id.ends_with("_head") or id.ends_with("_blade")):
+			return true
+	return false
+
+
+func _haft_layout() -> Dictionary:
+	## Where a metal tool's binding runs (from, to, radius), laid out as the
+	## finished tool is (Assets._item_mesh).
+	match Items.def(recipe.out).get("shape", ""):
+		"axe":
+			return {"from": Vector3(0.17, 0.03, 0), "to": Vector3(0.22, 0.03, 0), "r": 0.026}
+		"mattock":
+			return {"from": Vector3(0.2, 0.03, 0), "to": Vector3(0.31, 0.03, 0), "r": 0.03}
+		"spear":
+			return {"from": Vector3(0.27, 0.026, 0), "to": Vector3(0.33, 0.026, 0), "r": 0.024}
+		"hammer":
+			return {"from": Vector3(0.1, 0.03, 0), "to": Vector3(0.16, 0.03, 0), "r": 0.026}
+		"shovel":
+			return {"from": Vector3(0.08, 0.024, 0), "to": Vector3(0.15, 0.022, 0), "r": 0.022}
+		"metal_saw":  # the saw blade into its handle
+			return {"from": Vector3(-0.04, 0.025, 0), "to": Vector3(0.04, 0.025, 0), "r": 0.026}
+		_:  # a knife blade's tang into its handle
+			return {"from": Vector3(-0.03, 0.022, 0), "to": Vector3(0.025, 0.022, 0), "r": 0.022}
+
+
+func _haft_work(b, k: int, n: int) -> void:
+	## Hafting a copper or iron tool: the head on its stick, laid out as the
+	## finished tool, and a turn of string bound round with each click.
+	var def := Items.def(recipe.out)
+	var head: Color = def.get("head", Items.def("copper").color)
+	var lay := _haft_layout()
+	match def.get("shape", ""):
+		"axe":
+			Assets.metal_axe(b, _rng, head, false)
+		"mattock":
+			Assets.stick(b, _rng, Vector3(-0.32, 0.03, 0), Vector3(0.28, 0.03, 0), 0.022)
+			Assets.knapped(b, Items.knap_grid("mattock_head"), 0.04, 0.034, head, _rng, Transform3D(Basis(), Vector3(0.27, 0.03, 0.0)))
+		"spear":
+			# The shaft (two sticks, joined further down) with the point at its end.
+			Assets.stick(b, _rng, Vector3(-0.45, 0.026, 0), Vector3(0.32, 0.026, 0), 0.02)
+			Assets.metal_head(b, "spear", head, Transform3D(Basis(), Vector3(0.3, 0.007, 0)))
+		"hammer":
+			Assets.stick(b, _rng, Vector3(-0.2, 0.03, 0), Vector3(0.235, 0.03, 0), 0.02)
+			b.box(Vector3(0.2, 0.03, 0.0), Vector3(0.062, 0.062, 0.13), head, Basis(), "metal")
+			for side in [-1.0, 1.0]:
+				b.box(Vector3(0.2, 0.03, side * 0.072), Vector3(0.07, 0.07, 0.016), head * 0.92, Basis(), "metal")
+		"metal_saw":
+			# The toothed blade's tang laid in a short handle.
+			Assets.metal_saw(b, _rng, head, false)
+		"shovel":
+			# The long handle in the blade's socket.
+			Assets.shovel(b, _rng, head, false)
+		_:
+			# A knife: the blade's tang in a short handle.
+			Assets.metal_knife(b, _rng, head, false)
+	_wraps(b, lay.from, lay.to, lay.r, k, n, Items.def("string").color)
+	if k < n:
+		# The rest of the string, coiled by.
+		b.cylinder(Vector3(0.0, 0.0, 0.14), Vector3(0.0, 0.012, 0.14), 0.04 * (1.0 - k / float(n) * 0.6), 0.04 * (1.0 - k / float(n) * 0.6), 9,
+				Items.def("string").color, Color(-1, 0, 0), "fiber")
+
+
+func _cast_work(b, k: int, n: int) -> void:
+	## Casting copper at the furnace (recipes with "cast"): the fired mould
+	## (its own hollow, Assets.mould_hollow) filled with grains on the ground,
+	## then bedded in the charcoal heaped in the furnace's mouth (drawn in
+	## _inside), which glows with the heat as the copper melts down into the
+	## hollow; then raked out onto the ground glowing, left to cool and (the
+	## last click) broken out.
+	var mould: String = recipe.get("tools", {}).keys()[0] if not recipe.get("tools", {}).is_empty() else "mould_bar"
+	var kind := Assets.mould_kind(mould)
+	var melt: Array = recipe.get("melt", [n / 3, n - 2])
+	var copper: Color = Items.def("copper").color
+	var molten := Color(1.0, 0.62, 0.2)
+	var heat := 0.0
+	if station and "heat" in station and "HOT" in station:
+		heat = clampf(station.heat / station.HOT, 0.0, 1.0)
+	var top := Assets.MOULD_SIZE.y
+	var melted := clampf((k - melt[0]) / float(melt[1] - melt[0]), 0.0, 1.0)
+	var raked: bool = k >= melt[1]
+	var inside := MeshBuilder.new()
+	if k < 2:
+		# On the ground: the mould, the grains laid by (then in its hollow),
+		# and the charcoal waiting to go in.
+		Assets.mould(b, Items.def(mould).color, kind)
+		if k == 0:
+			for i in 7:
+				b.blob(Vector3(0.2 + _rng.randf_range(-0.03, 0.03), 0.008, 0.08 + _rng.randf_range(-0.03, 0.03)), Vector3.ONE * 0.011, 1, 4, copper, _rng, 0.3, "metal")
+		else:
+			_mould_grains(b, kind, 1.0, copper, Vector3.ZERO)
+		b.blob(Vector3(0.2, 0.015, -0.1), Vector3(0.05, 0.02, 0.04), 2, 5, Items.def("charcoal").color, _rng, 0.35, "stone")
+	elif not raked:
+		# In the furnace: bedded in the charcoal, the grains melting into a pool.
+		var bed := Vector3(0, 0.012, 0)
+		_charcoal_heap(inside, heat, 22, Vector2(Assets.MOULD_SIZE.x, Assets.MOULD_SIZE.z) * 0.5)
+		Assets.mould(inside, Items.def(mould).color, kind, 1.0, 1.0, bed)
+		_mould_grains(inside, kind, 1.0 - melted, copper.lerp(molten, melted * heat), bed)
+		Assets.mould_fill(inside, copper.lerp(molten, heat), kind, melted, bed)
+		for i in 10:
+			# Charcoal banked up round the mould's sides.
+			var a := TAU * i / 10.0 + _rng.randf() * 0.2
+			inside.blob(Vector3(cos(a) * Assets.MOULD_SIZE.x * 0.58, 0.045, sin(a) * Assets.MOULD_SIZE.z * 0.62), Vector3(0.028, 0.026, 0.024), 1, 5,
+					Items.def("charcoal").color.lerp(Color(0.95, 0.35, 0.08), heat * 0.85 * float(i % 3 != 0)), _rng, 0.35, "stone")
+	else:
+		# Raked out onto the ground: glowing, then cooled to copper; the
+		# charcoal left in the furnace dying down.
+		Assets.mould(b, Items.def(mould).color, kind)
+		Assets.mould_fill(b, molten.lerp(copper, clampf((k - melt[1]) / float(maxi(n - 1 - melt[1], 1)), 0.0, 1.0)), kind, 1.0)
+		_charcoal_heap(inside, heat * 0.4, 12)
+	_inside.mesh = inside.commit(Assets.materials) if not inside.is_empty() else null
+	_inside.transform = _furnace_mouth()
+
+
+func _mould_grains(b, kind: String, left: float, col: Color, at: Vector3) -> void:
+	## Copper grains heaped in a mould's hollow, `left` (0..1) of them.
+	var hollow: Array = Assets.mould_hollow(kind)
+	for i in roundi(9 * left):
+		var poly: Array = hollow[i % hollow.size()]
+		var p: Vector2 = poly[_rng.randi() % poly.size()].lerp(poly[0], 0.4)
+		b.blob(at + Vector3(p.x, Assets.MOULD_SIZE.y + 0.006, p.y), Vector3.ONE * 0.011, 1, 4, col, _rng, 0.3, "metal")
+
+
 func _target(out: String, k: int) -> Vector3:
 	## Where the marker for step k sits, relative to the workpiece.
+	if out == "whetstone":
+		return Vector3(0.0, 0.14, 0.0)
+	match _anvil_work_kind(out):
+		"grind":
+			return Vector3(0.0, 0.1, 0.0)
+		"forge", "chip":
+			return Vector3(0.0, 0.08, 0.06)
+	if _metal_haft():
+		# Where the next turn of string goes.
+		var lay := _haft_layout()
+		return lay.from.lerp(lay.to, (k + 0.5) / float(Items.recipe_steps(recipe))) + Vector3(0, lay.r + 0.01, 0)
+	if recipe.get("cast", false):
+		# The grains into the mould, the charcoal round it, then each breath
+		# over the mould; then the mould to rake out and break open.
+		var melt: Array = recipe.get("melt", [3, 8])
+		if k == 1:
+			return Vector3(0.2, 0.06, -0.1)
+		if k >= melt[1]:
+			return Vector3(0.1, Assets.MOULD_SIZE.y + 0.03, 0.06)
+		return Vector3(0, Assets.MOULD_SIZE.y + 0.05, 0)
 	match "dress" if recipe.get("dress", false) else out:
-		"stone_axe":
-			return Vector3(lerpf(0.19, 0.29, (k + 0.5) / 5.0), 0.03, 0.05)
 		"mattock":
 			return Vector3(lerpf(0.2, 0.31, (k + 0.5) / 5.0), 0.03, 0.0)
 		"wax":
@@ -2241,11 +3038,68 @@ func _target(out: String, k: int) -> Vector3:
 		"clay_bowl_unfired":
 			var a := TAU * k / 4.0 + 0.4
 			return Vector3(cos(a) * 0.125, 0.08 * (k + 1) / 4.0, sin(a) * 0.125)
+		"tuyere_unfired":
+			return [Vector3(0.05, 0.07, 0.14), Vector3(0.12, 0.08, 0), Vector3(0.21, 0.06, 0)][mini(k, 2)]
+		"mould_axe_unfired", "mould_knife_unfired", "mould_spear_unfired", "mould_hammer_unfired", "mould_saw_unfired", "mould_shovel_unfired", "mould_bar_unfired", "mould_hook_unfired", "mould_beads_unfired":
+			# The clay, the kneaded lump, then along the hollow as it is cut.
+			var hollow: Array = Assets.mould_hollow(Assets.mould_kind(recipe.out))
+			if k < 2 or hollow.is_empty():
+				return Vector3(0, 0.09, 0)
+			var poly: Array = hollow[mini(k - 2, hollow.size() - 1)]
+			var p: Vector2 = poly[0] * _mould_cut(k + 1, Items.recipe_steps(recipe))
+			return Vector3(p.x, Assets.MOULD_SIZE.y + 0.03, p.y)
+		"wooden_cap":
+			# Where the next round is sawn off the board.
+			return Vector3(-0.3 + 0.6 * (1.0 - k / float(Items.recipe_steps(recipe))), 0.04, 0.0)
+		"copper_shod_pole", "iron_shod_pole":
+			# The tip to pare, the shoe to fit, then where it is pinned.
+			return [Vector3(0.48, 0.05, 0), Vector3(0.25, 0.05, 0.16), Vector3(0.44, 0.06, 0)][mini(k, 2)]
+		"unrefined_copper":
+			# The ore to load, the pit as the slag runs, then the slag to rake
+			# out and break up.
+			var melt: Array = recipe.get("melt", [2, 13])
+			if k == 0:
+				return Vector3(0.26, 0.06, 0.12)
+			if k < melt[1]:
+				return Vector3(0, 0.07, 0)
+			return Vector3(0, 0.07, 0.2)
+		"charcoal_clamp":
+			# The middle of the pit to dig it, the next log's place, then the
+			# next patch of clay.
+			var n := Items.recipe_steps(recipe)
+			if k == 0:
+				return Vector3(0, 0.05, 0)
+			var stood := _clamp_wood(k, n)
+			if stood < 10:
+				var p := _clamp_log(stood)
+				return Vector3(p.x, 0.45, p.y)
+			return _clamp_patch(_clamp_clay(k, n)) + Vector3(0, 0.1, 0)
+		"blowpipe_unfired":
+			# The cone to saw off, the butt end to push the pith out of, then
+			# the clay to mould the tip from.
+			return [Vector3(0.33, 0.06, 0), Vector3(-0.37, 0.06, 0), Vector3(0.3, 0.08, 0.14)][mini(k, 2)]
+		"furnace":
+			# The middle of the hole to dig it, then where the next stone goes.
+			if k == 0:
+				return Vector3(0, 0.05, 0)
+			var a := TAU * mini(_ring_stones(k, Items.recipe_steps(recipe)), 7) / 8.0
+			return Vector3(cos(a), 0, sin(a)) * 0.48 + Vector3(0, 0.12, 0)
+		"copper_grains", "sifted_copper_ore":
+			# On the rim of the pan, where you take hold of it.
+			var a := 0.6 + k * 1.1
+			return Vector3(cos(a) * 0.13, 0.08, sin(a) * 0.13)
+		"washing_pan_unfired":
+			# Round the rim of the pan as it is pressed out.
+			var a := TAU * k / 4.0 + 0.4
+			var sc := lerpf(0.7, 1.0, (k + 1) / 4.0)
+			return Vector3(cos(a) * 0.125 * sc, 0.08 * maxf((k + 1) / 4.0, 0.15), sin(a) * 0.125 * sc)
 		"spindle_whorl_unfired":
 			return [Vector3(0, 0.06, 0), Vector3(0, 0.03, 0), Vector3(0, 0.025, 0)][mini(k, 2)]
 		"rod_blank":
 			return [Vector3(-0.15, 0.03, 0.02), Vector3(0.2, 0.03, -0.02), Vector3(-0.3, 0.03, 0), Vector3(0.45, 0.03, 0)][mini(k, 3)]
-		"fishing_rod":
+		"fishing_rod", "fishing_rod_copper":
+			if recipe.get("in", {}).has("fishing_rod"):
+				return [Vector3(-0.32, 0.03, 0.06), Vector3(-0.2, 0.03, 0.14)][mini(k, 1)]  # the old hook, then the new
 			if recipe.get("bait", false) is String:
 				return Vector3(-0.32, 0.03, 0.06)  # the hook
 			return [Vector3(0.6, 0.03, 0), Vector3(0.1, 0.03, 0.01), Vector3(-0.3, 0.03, 0.03)][mini(k, 2)]
@@ -2268,11 +3122,11 @@ func _target(out: String, k: int) -> Vector3:
 			if k == 0:
 				return Vector3(0.15, 0.02, 0)
 			return Assets.on_sheet(BLUEPRINT_AT, [Vector2(0.0, -0.14), Vector2(0.0, 0.14), Vector2(0.14, 0.08)][mini(k - 1, 2)]) + Vector3(0, 0.005, 0)
-		"blueprint_softwood_house":
+		"blueprint_softwood_house", "blueprint_dock":
 			if k in recipe.get("sharpen", []):
 				return Vector3(0.15, 0.02, 0)
 			var g: int = k - recipe.get("sharpen", []).filter(func(s): return s < k).size()
-			var seg: Array = Assets.blueprint_lines(g)[0]
+			var seg: Array = Assets.blueprint_lines(g, out)[0]
 			return Assets.on_sheet(BLUEPRINT_AT, (seg[0] + seg[1]) * 0.5) + Vector3(0, 0.005, 0)
 		"papermaking_tools":
 			if k < 4:
@@ -2294,12 +3148,12 @@ func _target(out: String, k: int) -> Vector3:
 	return Vector3(0, 0.05, 0)
 
 
-func _wraps(b, from: Vector3, to: Vector3, r: float, done: int, total: int) -> void:
-	## The first `done` of `total` turns of cord around a shaft.
+func _wraps(b, from: Vector3, to: Vector3, r: float, done: int, total: int, col := Assets.CORD) -> void:
+	## The first `done` of `total` turns of cord (or string) around a shaft.
 	for i in done:
 		var c := from.lerp(to, (i + 0.5) / total)
 		var axis := (to - from).normalized() * 0.006
-		b.cylinder(c - axis, c + axis, r, r, 6, Assets.CORD * (0.9 + 0.1 * (i % 2)), Color(-1, 0, 0), "fiber", false)
+		b.cylinder(c - axis, c + axis, r, r, 6, col * (0.9 + 0.1 * (i % 2)), Color(-1, 0, 0), "fiber", false)
 
 
 func _outline(b, pattern: Array, y: float) -> void:

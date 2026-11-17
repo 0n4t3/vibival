@@ -353,6 +353,15 @@ func hotbar_slot_at(p: Vector2) -> int:
 	return -1
 
 
+func held_label() -> String:
+	## The held item's name over the hotbar, as its slot names it (a "Blunt
+	## Copper Axe", a pencil's uses left), else the item's own name.
+	var inv = Game.inventory
+	if inv.slots[inv.selected] == null:
+		return ""
+	return String(inv.def_of(inv.selected).get("name", Items.item_name(inv.held_id())))
+
+
 func _draw_hotbar(_c: Vector2, size: Vector2) -> void:
 	var inv = Game.inventory
 	var slot := 54.0
@@ -378,7 +387,7 @@ func _draw_hotbar(_c: Vector2, size: Vector2) -> void:
 		_canvas.draw_string(ThemeDB.fallback_font, r.position + Vector2(4, 14), str(i + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1, 1, 1, 0.5))
 	var held: String = inv.held_id()
 	if held != "":
-		_canvas.draw_string(ThemeDB.fallback_font, Vector2(x0, y0 - 8), Items.item_name(held), HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1, 1, 1, 0.8))
+		_canvas.draw_string(ThemeDB.fallback_font, Vector2(x0, y0 - 8), held_label(), HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1, 1, 1, 0.8))
 
 	# Carried weight
 	var font := ThemeDB.fallback_font

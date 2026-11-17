@@ -5,7 +5,8 @@ extends StaticBody3D
 ## Things put on the fire sit on one of SPOTS places around the edge and must
 ## be picked up once they are done. Food left on for BURN times its cooking
 ## time chars. Burning leaves ash (one per ASH_EVERY seconds of fuel burned),
-## which a mattock scoops out; swinging a mattock knocks the fire apart.
+## which a shovel scoops out; swinging a shovel knocks the fire apart (the
+## stone mattock does both too).
 ##
 ## A house's fireplace (house.gd) is one too, with `hearth` set: it sits in
 ## the house's own stone ring, under its chimney, and can't be knocked apart.
@@ -449,7 +450,7 @@ func _light_up() -> void:
 
 
 func break_apart() -> void:
-	## A mattock knocks the fire apart: the ring stones and any ash come back,
+	## A shovel knocks the fire apart: the ring stones and any ash come back,
 	## and whatever was cooking is left on the ground. A fireplace is built
 	## into its house.
 	if hearth:

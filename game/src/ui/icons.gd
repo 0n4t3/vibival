@@ -48,6 +48,10 @@ static func draw_item(ci: CanvasItem, r: Rect2, id: String) -> void:
 				var line: Color = Items.def("fishing_line").color
 				ci.draw_line(o + Vector2(s, -s * 0.9), o + Vector2(s * 0.75, s * 0.5), line, 1.0)
 				ci.draw_arc(o + Vector2(s * 0.62, s * 0.5), s * 0.13, 0.0, PI, 6, Items.def("chitin_hook").color, s * 0.08)
+		"blowpipe":
+			# The pole's wood, with the clay tip in the item's own colour.
+			ci.draw_line(o + Vector2(-s * 0.9, s * 0.8), o + Vector2(s * 0.6, -s * 0.55), Items.def("calamites_pole").color, s * 0.16)
+			ci.draw_line(o + Vector2(s * 0.55, -s * 0.5), o + Vector2(s * 0.9, -s * 0.8), c, s * 0.2)
 		"root":
 			_blob(ci, o + Vector2(s * 0.15, 0), s * 0.55, c, hash(id))
 			for i in 3:
@@ -82,11 +86,25 @@ static func draw_item(ci: CanvasItem, r: Rect2, id: String) -> void:
 			ci.draw_line(o + Vector2(-s, s * 0.6), o + Vector2(s, -s * 0.6), c, s * 0.22)
 			ci.draw_line(o + Vector2(-s * 0.1, s * 0.05), o + Vector2(s * 0.2, s * 0.7), c, s * 0.12)
 			_leaf(ci, o + Vector2(s * 0.3, s * 0.75), s * 0.35, Color(0.28, 0.48, 0.18))
+		"saw_blade":
+			# A blade with a tang to the left and teeth along its lower edge.
+			ci.draw_rect(Rect2(o + Vector2(-s * 0.55, -s * 0.3), Vector2(s * 1.5, s * 0.5)), c)
+			ci.draw_rect(Rect2(o + Vector2(-s, -s * 0.18), Vector2(s * 0.5, s * 0.22)), c.darkened(0.1))
+			var deep: float = s * (0.12 if id.begins_with("rough_") else 0.24)
+			for i in 7:
+				var x0: float = -s * 0.55 + i * s * 1.5 / 7.0
+				ci.draw_colored_polygon(PackedVector2Array([o + Vector2(x0, s * 0.2), o + Vector2(x0 + s * 1.5 / 7.0, s * 0.2),
+						o + Vector2(x0 + s * 1.5 / 7.0, s * 0.2 + deep)]), c.lightened(0.1))
+			ci.draw_line(o + Vector2(-s * 0.5, -s * 0.22), o + Vector2(s * 0.9, -s * 0.22), c.lightened(0.25), 1.5)
 		"plank":
 			ci.draw_rect(Rect2(o - Vector2(s, s * 0.25), Vector2(s * 2, s * 0.5)), c)
 			ci.draw_line(o + Vector2(-s * 0.9, 0), o + Vector2(s * 0.9, s * 0.05), c.darkened(0.2), 1.5)
 		"rock", "clay", "chitin", "blob", "guts", "lizard", "dragonfly", "salt", "ember":
 			_blob(ci, o, s * 0.8, c, hash(id))
+		"copper_drops":
+			for i in 7:
+				var a := i * 2.4
+				ci.draw_circle(o + Vector2(cos(a), sin(a)) * s * (0.12 + 0.2 * sqrt(i)), s * 0.22, c * (0.9 + 0.04 * (i % 3)))
 		"flint":
 			_blob(ci, o, s * 0.8, c, hash(id))
 			ci.draw_colored_polygon(PackedVector2Array([o + Vector2(s * 0.1, -s * 0.5), o + Vector2(s * 0.6, -s * 0.1), o + Vector2(s * 0.2, s * 0.1)]), Color(0.8, 0.78, 0.7))
@@ -165,6 +183,17 @@ static func draw_item(ci: CanvasItem, r: Rect2, id: String) -> void:
 		"axe":
 			ci.draw_line(o + Vector2(-s * 0.6, s), o + Vector2(s * 0.3, -s * 0.6), Color(0.5, 0.38, 0.24), s * 0.18)
 			ci.draw_colored_polygon(PackedVector2Array([o + Vector2(0, -s), o + Vector2(s * 0.8, -s * 0.6), o + Vector2(s * 0.5, -s * 0.05), o + Vector2(s * 0.05, -s * 0.35)]), Color(0.32, 0.32, 0.38))
+		"shovel", "shovel_blade":
+			# A spade blade pointing up and right, on a long handle if hafted.
+			var head: Color = def.get("head", c)
+			var at := o + (Vector2(s * 0.35, -s * 0.35) if def.shape == "shovel" else Vector2.ZERO)
+			var k := 0.55 if def.shape == "shovel" else 1.0
+			if def.shape == "shovel":
+				ci.draw_line(o + Vector2(-s, s), at, Color(0.5, 0.38, 0.24), s * 0.14)
+			var pts := PackedVector2Array()
+			for p in [Vector2(-0.35, 0.45), Vector2(0.35, 0.45), Vector2(0.35, -0.15), Vector2(0, -0.6), Vector2(-0.35, -0.15)]:
+				pts.append(at + p.rotated(PI * 0.25) * s * k)
+			ci.draw_colored_polygon(pts, head)
 		"spear":
 			ci.draw_line(o + Vector2(-s, s), o + Vector2(s * 0.5, -s * 0.5), Color(0.5, 0.38, 0.24), s * 0.14)
 			ci.draw_colored_polygon(PackedVector2Array([o + Vector2(s, -s), o + Vector2(s * 0.35, -s * 0.6), o + Vector2(s * 0.6, -s * 0.35)]), Color(0.32, 0.32, 0.38))
@@ -252,6 +281,16 @@ static func draw_item(ci: CanvasItem, r: Rect2, id: String) -> void:
 			ci.draw_colored_polygon(PackedVector2Array([o + Vector2(-s, -s * 0.1), o + Vector2(s, -s * 0.1),
 				o + Vector2(s * 0.6, s * flat), o + Vector2(-s * 0.6, s * flat)]), c)
 			ci.draw_line(o + Vector2(-s, -s * 0.1), o + Vector2(s, -s * 0.1), c.lightened(0.25), s * 0.12)
+		"mould":
+			# The slab from above, its side below, and its own hollow.
+			ci.draw_rect(Rect2(o + Vector2(-s, -s * 0.55), Vector2(s * 2.0, s * 1.3)), c.darkened(0.25))
+			ci.draw_rect(Rect2(o + Vector2(-s, -s * 0.7), Vector2(s * 2.0, s * 1.3)), c)
+			var k := s / 0.12
+			for poly in Assets.mould_hollow(Assets.mould_kind(id)):
+				var pts := PackedVector2Array()
+				for p in poly:
+					pts.append(o + Vector2(p.x, p.y - 0.005) * k)
+				ci.draw_colored_polygon(pts, c.darkened(0.55))
 		"mug", "mug_full":
 			ci.draw_rect(Rect2(o - Vector2(s * 0.55, s * 0.6), Vector2(s * 1.1, s * 1.3)), c)
 			ci.draw_arc(o + Vector2(s * 0.6, s * 0.05), s * 0.3, -PI * 0.5, PI * 0.5, 8, c, s * 0.15)

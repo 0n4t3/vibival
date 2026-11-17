@@ -66,23 +66,23 @@ const ITEMS := {
 		"color": Color(0.70, 0.58, 0.38), "shape": "tinder", "fuel": 32.0, "pile": true},
 	"clay": {"name": "Wet Clay", "desc": "Sticky grey clay from the banks.", "stack": 20, "w": 0.5,
 		"color": Color(0.48, 0.46, 0.42), "shape": "clay", "pile": true},
-	"wax": {"name": "Waxy Residue", "desc": "Wax crushed out of tree fern fronds. Roll a stick in it to make a torch, or seal a clean wound that has stopped bleeding with it (Treat): it keeps water out better than a bandage.", "stack": 20, "w": 0.05,
+	"wax": {"name": "Waxy Residue", "desc": "Wax crushed out of tree fern fronds. Makes torches and seals clean wounds.", "stack": 20, "w": 0.05,
 		"color": Color(0.78, 0.74, 0.42), "shape": "wax", "pile": true, "treat": "wax"},
 	"ash": {"name": "Ash", "desc": "Fine grey wood ash, scooped from a campfire.", "stack": 30, "w": 0.05,
 		"color": Color(0.56, 0.55, 0.52), "shape": "ash", "pile": true},
 	"charred_stick": {"name": "Charred Stick", "desc": "What is left of a torch. Burns a little, or roll it in wax again.", "stack": 20, "w": 0.25,
 		"color": Color(0.16, 0.13, 0.11), "shape": "stick", "fuel": 80.0, "pile": true},
-	"salt": {"name": "Salt Crust", "desc": "A crust of salt left where swamp water dried on the bank. Not much use yet.", "stack": 20, "w": 0.1,
+	"salt": {"name": "Salt Crust", "desc": "A crust of salt from dried swamp water. Salts meat in a sealed vessel.", "stack": 20, "w": 0.1,
 		"color": Color(0.90, 0.89, 0.84), "shape": "salt", "pile": true},
 	"chitin": {"name": "Chitin Plate", "desc": "A tough plate of arthropod shell.", "stack": 10, "w": 0.4,
 		"color": Color(0.35, 0.22, 0.15), "shape": "chitin", "pile": true},
 
 	# Wood. Logs and short logs are carried in your arms, never in the bag.
-	"log": {"name": "Log", "desc": "A 2 m length of trunk, still in its bark. Carry it in your arms (E). Kneel at it (C) with an axe to strip the bark or cut it into short logs.", "stack": 1, "w": 0.0,
+	"log": {"name": "Log", "desc": "A 2 m length of trunk, still in its bark. Kneel at it with an axe to work it.", "stack": 1, "w": 0.0,
 		"color": Color(0.36, 0.30, 0.20), "shape": "log", "carry": true, "pile": true},
-	"log_stripped": {"name": "Stripped Log", "desc": "A 2 m log with the bark off. Kneel at it (C) with an axe to hew it into boards or cut it into short logs.", "stack": 1, "w": 0.0,
+	"log_stripped": {"name": "Stripped Log", "desc": "A 2 m log with the bark off, ready to hew into boards.", "stack": 1, "w": 0.0,
 		"color": Color(0.70, 0.58, 0.40), "shape": "log", "carry": true, "pile": true},
-	"short_log": {"name": "Short Log", "desc": "A half-metre round of trunk. Kneel at it (C) with an axe to split it into firewood.", "stack": 1, "w": 0.0,
+	"short_log": {"name": "Short Log", "desc": "A half-metre round of trunk. Split it into firewood with an axe.", "stack": 1, "w": 0.0,
 		"color": Color(0.62, 0.50, 0.34), "shape": "short_log", "carry": true, "pile": true},
 	"firewood": {"name": "Firewood", "desc": "A split piece of log. Burns long and hot.", "stack": 12, "w": 0.8,
 		"color": Color(0.66, 0.52, 0.34), "shape": "firewood", "fuel": 420.0, "pile": true},
@@ -143,7 +143,7 @@ const ITEMS := {
 		"cook": "roast_grub", "cook_time": 16.0, "tags": ["bait"]},
 	"roast_grub": {"name": "Roasted Grub", "desc": "Crunchy.", "stack": 20, "w": 0.03,
 		"color": Color(0.70, 0.50, 0.25), "shape": "grub", "energy": 9.0, "protein": 13.0, "decay": 1500.0},
-	"raw_meat": {"name": "Raw Meat", "desc": "Pale, fishy flesh. Cook it before eating.", "stack": 10, "w": 0.5,
+	"raw_meat": {"name": "Raw Meat", "desc": "Raw meat. Cook it before eating.", "stack": 10, "w": 0.5,
 		"color": Color(0.80, 0.40, 0.38), "shape": "meat", "energy": 8.0, "protein": 14.0, "sick": 0.5, "decay": 900.0,
 		"cook": "cooked_meat", "cook_time": 40.0, "as": "any_raw_meat"},
 	"cooked_meat": {"name": "Cooked Meat", "desc": "Hot and filling.", "stack": 10, "w": 0.4,
@@ -159,7 +159,7 @@ const ITEMS := {
 	# roasts as it is; a big one is carried and cut into fish meat.
 	# `as` small_fish: any small fish will do where a recipe asks for one
 	# (tearing it up for bait). "small_fish" itself is never found.
-	"small_fish": {"name": "Small Fish", "desc": "Any small fish.", "stack": 5, "w": 0.3,
+	"small_fish": {"name": "Small Fish", "desc": "Any kind of small fish.", "stack": 5, "w": 0.3,
 		"color": Color(0.55, 0.58, 0.52), "shape": "fish"},
 	"elonichthys_carcass": {"name": "Elonichthys", "desc": "A small, bony ray-finned fish. Roast it whole, or tear it up for bait.", "stack": 5, "w": 0.3,
 		"color": Color(0.55, 0.58, 0.52), "shape": "fish", "energy": 6.0, "protein": 10.0, "sick": 0.3, "decay": 900.0,
@@ -195,7 +195,7 @@ const ITEMS := {
 		"color": Color(0.50, 0.28, 0.17), "shape": "scraps", "energy": 8.0, "protein": 9.0, "decay": 1800.0},
 	# Small kills go into the bag whole. A lizard is gutted and skinned by hand
 	# before it is roasted; a dragonfly roasts as it is.
-	"lizard_carcass": {"name": "Hylonomus Carcass", "desc": "A dead lizard. Gut and skin it by hand (lay it out with C) before you roast it.", "stack": 5, "w": 0.4,
+	"lizard_carcass": {"name": "Hylonomus Carcass", "desc": "A dead lizard. Gut and skin it before you roast it.", "stack": 5, "w": 0.4,
 		"color": Color(0.42, 0.40, 0.24), "shape": "lizard", "decay": 900.0},
 	"lizard_dressed": {"name": "Dressed Hylonomus", "desc": "Gutted and skinned. Roast it on a fire.", "stack": 5, "w": 0.3,
 		"color": Color(0.80, 0.48, 0.44), "shape": "lizard", "energy": 7.0, "protein": 13.0, "sick": 0.5, "decay": 900.0,
@@ -205,35 +205,35 @@ const ITEMS := {
 	# The other small prey go the same way as a Hylonomus: gutted and skinned
 	# by hand (a "dress" recipe), then roasted whole. `animal` picks their
 	# shape (Assets.small_prey) and `body_scale` sizes it.
-	"petrolacosaurus_carcass": {"name": "Petrolacosaurus Carcass", "desc": "A dead long-tailed reptile. Gut and skin it by hand (lay it out with C) before you roast it.", "stack": 5, "w": 0.35,
+	"petrolacosaurus_carcass": {"name": "Petrolacosaurus Carcass", "desc": "A dead long-tailed reptile. Gut and skin it before you roast it.", "stack": 5, "w": 0.35,
 		"color": Color(0.50, 0.42, 0.27), "shape": "lizard", "animal": "petrolacosaurus", "body_scale": 1.05, "decay": 900.0},
 	"petrolacosaurus_dressed": {"name": "Dressed Petrolacosaurus", "desc": "Gutted and skinned. Roast it on a fire.", "stack": 5, "w": 0.25,
 		"color": Color(0.80, 0.50, 0.45), "shape": "lizard", "animal": "petrolacosaurus", "body_scale": 1.05, "energy": 6.0, "protein": 12.0, "sick": 0.5, "decay": 900.0,
 		"cook": "roast_petrolacosaurus", "cook_time": 32.0},
 	"roast_petrolacosaurus": {"name": "Roast Petrolacosaurus", "desc": "Lean and stringy, mostly tail.", "stack": 5, "w": 0.2,
 		"color": Color(0.56, 0.33, 0.18), "shape": "lizard", "animal": "petrolacosaurus", "body_scale": 1.05, "energy": 18.0, "protein": 22.0, "decay": 2400.0},
-	"archaeothyris_carcass": {"name": "Archaeothyris Carcass", "desc": "A dead heavy-headed reptile, a good meal. Gut and skin it by hand (lay it out with C) before you roast it.", "stack": 5, "w": 0.8,
+	"archaeothyris_carcass": {"name": "Archaeothyris Carcass", "desc": "A dead heavy-headed reptile, a good meal. Gut and skin it before you roast it.", "stack": 5, "w": 0.8,
 		"color": Color(0.36, 0.29, 0.23), "shape": "lizard", "animal": "archaeothyris", "body_scale": 1.4, "decay": 900.0},
 	"archaeothyris_dressed": {"name": "Dressed Archaeothyris", "desc": "Gutted and skinned. Roast it on a fire.", "stack": 5, "w": 0.6,
 		"color": Color(0.78, 0.46, 0.42), "shape": "lizard", "animal": "archaeothyris", "body_scale": 1.4, "energy": 12.0, "protein": 22.0, "sick": 0.5, "decay": 900.0,
 		"cook": "roast_archaeothyris", "cook_time": 48.0},
 	"roast_archaeothyris": {"name": "Roast Archaeothyris", "desc": "Rich, dark meat on a thick-boned frame.", "stack": 5, "w": 0.5,
 		"color": Color(0.50, 0.29, 0.15), "shape": "lizard", "animal": "archaeothyris", "body_scale": 1.4, "energy": 32.0, "protein": 40.0, "decay": 2400.0},
-	"amphibamus_carcass": {"name": "Amphibamus Carcass", "desc": "A dead little amphibian from the water's edge. Gut and skin it by hand (lay it out with C) before you roast it.", "stack": 5, "w": 0.2,
+	"amphibamus_carcass": {"name": "Amphibamus Carcass", "desc": "A dead little amphibian from the water's edge. Gut and skin it before you roast it.", "stack": 5, "w": 0.2,
 		"color": Color(0.30, 0.36, 0.22), "shape": "lizard", "animal": "amphibamus", "body_scale": 0.7, "decay": 900.0},
 	"amphibamus_dressed": {"name": "Dressed Amphibamus", "desc": "Gutted and skinned. Roast it on a fire.", "stack": 5, "w": 0.15,
 		"color": Color(0.84, 0.58, 0.52), "shape": "lizard", "animal": "amphibamus", "body_scale": 0.7, "energy": 4.0, "protein": 8.0, "sick": 0.5, "decay": 900.0,
 		"cook": "roast_amphibamus", "cook_time": 24.0},
 	"roast_amphibamus": {"name": "Roast Amphibamus", "desc": "A mouthful of soft white meat, like frog.", "stack": 5, "w": 0.12,
 		"color": Color(0.60, 0.40, 0.22), "shape": "lizard", "animal": "amphibamus", "body_scale": 0.7, "energy": 12.0, "protein": 15.0, "decay": 2400.0},
-	"tuditanus_carcass": {"name": "Tuditanus Carcass", "desc": "A dead stubby night-crawler. Gut and skin it by hand (lay it out with C) before you roast it.", "stack": 5, "w": 0.35,
+	"tuditanus_carcass": {"name": "Tuditanus Carcass", "desc": "A dead stubby night-crawler. Gut and skin it before you roast it.", "stack": 5, "w": 0.35,
 		"color": Color(0.42, 0.31, 0.29), "shape": "lizard", "animal": "tuditanus", "body_scale": 0.9, "decay": 900.0},
 	"tuditanus_dressed": {"name": "Dressed Tuditanus", "desc": "Gutted and skinned. Roast it on a fire.", "stack": 5, "w": 0.25,
 		"color": Color(0.80, 0.47, 0.44), "shape": "lizard", "animal": "tuditanus", "body_scale": 0.9, "energy": 6.0, "protein": 11.0, "sick": 0.5, "decay": 900.0,
 		"cook": "roast_tuditanus", "cook_time": 32.0},
 	"roast_tuditanus": {"name": "Roast Tuditanus", "desc": "Small, but tender.", "stack": 5, "w": 0.2,
 		"color": Color(0.54, 0.31, 0.17), "shape": "lizard", "animal": "tuditanus", "body_scale": 0.9, "energy": 17.0, "protein": 21.0, "decay": 2400.0},
-	"morganucodon_carcass": {"name": "Morganucodon Carcass", "desc": "A dead little furry creature, like a shrew. Gut and skin it by hand (lay it out with C) before you roast it.", "stack": 5, "w": 0.12,
+	"morganucodon_carcass": {"name": "Morganucodon Carcass", "desc": "A dead little furry creature, like a shrew. Gut and skin it before you roast it.", "stack": 5, "w": 0.12,
 		"color": Color(0.40, 0.34, 0.28), "shape": "lizard", "animal": "morganucodon", "body_scale": 0.55, "decay": 900.0},
 	"morganucodon_dressed": {"name": "Dressed Morganucodon", "desc": "Gutted and skinned. Roast it on a fire.", "stack": 5, "w": 0.08,
 		"color": Color(0.82, 0.52, 0.48), "shape": "lizard", "animal": "morganucodon", "body_scale": 0.55, "energy": 3.0, "protein": 6.0, "sick": 0.5, "decay": 900.0,
@@ -255,11 +255,11 @@ const ITEMS := {
 	# Thrown into the water, a baitbox sends every Uranocentrodon and Eogyrinus
 	# within Creature.FRENZY_RADIUS into a feeding frenzy round it for `frenzy`
 	# seconds (swamp.start_frenzy). On land it is just dropped.
-	"baitbox": {"name": "Baitbox", "desc": "A little wooden cage of board strips packed with raw meat. Throw it (Use) into the water and every big amphibian for a long way round rushes to it and tears at it for half a minute, ignoring you unless you come too close. It goes off like raw meat.", "stack": 3, "w": 1.6,
+	"baitbox": {"name": "Baitbox", "desc": "A wooden cage packed with raw meat. Throw it in the water to draw amphibians to it.", "stack": 3, "w": 1.6,
 		"color": Color(0.62, 0.48, 0.30), "shape": "baitbox", "throw": true, "frenzy": 30.0, "decay": 900.0, "spoil": "baitbox_rotten"},
-	"baitbox_rotten": {"name": "Rotten Baitbox", "desc": "A baitbox whose meat has gone off. Thrown into the water it still draws the big amphibians, but they lose interest in half the time.", "stack": 3, "w": 1.5,
+	"baitbox_rotten": {"name": "Rotten Baitbox", "desc": "A baitbox whose meat has gone off. It still draws amphibians, but not for as long.", "stack": 3, "w": 1.5,
 		"color": Color(0.45, 0.40, 0.28), "shape": "baitbox", "throw": true, "frenzy": 15.0},
-	"guts": {"name": "Guts", "desc": "A slippery handful of offal. Scavengers smell it from far off. Throw it (Use) to lay a lure on land, or into the water to draw what lives there.", "stack": 10, "w": 0.4,
+	"guts": {"name": "Guts", "desc": "A slippery handful of offal. Throw it to lure scavengers, or into the water.", "stack": 10, "w": 0.4,
 		"color": Color(0.62, 0.30, 0.36), "shape": "guts", "decay": 900.0, "throw": true, "splat": true, "tags": ["bait"]},
 	"charred": {"name": "Charred Remains", "desc": "Left on the fire far too long.", "stack": 20, "w": 0.1,
 		"color": Color(0.10, 0.09, 0.08), "shape": "blob", "energy": 1.0, "fuel": 20.0},
@@ -269,8 +269,6 @@ const ITEMS := {
 	# --- Crafted --------------------------------------------------------------
 	"flint_blade": {"name": "Chert Blade", "desc": "A sharp flake. Butchers carcasses fully and cuts fiber.", "stack": 1, "w": 0.2,
 		"color": Color(0.32, 0.32, 0.38), "shape": "blade", "damage": 7.0, "tier": "stone", "reach": 2.2, "tags": ["cut"]},
-	"axe_head": {"name": "Axe Head", "desc": "Knapped chert head. Haft it to make an axe.", "stack": 4, "w": 0.6,
-		"color": Color(0.32, 0.32, 0.38), "shape": "axe_head"},
 	"spear_head": {"name": "Spear Point", "desc": "A long knapped point. Haft it to make a spear.", "stack": 4, "w": 0.3,
 		"color": Color(0.32, 0.32, 0.38), "shape": "spear_head"},
 	"mattock_head": {"name": "Mattock Head", "desc": "A heavy knapped chert blade. Haft it crosswise to make a mattock.", "stack": 4, "w": 0.6,
@@ -280,13 +278,11 @@ const ITEMS := {
 	# Spun on a spindle at a workbench (the spindle on its rack or in your bag).
 	"string": {"name": "String", "desc": "Fine, strong thread spun from plant fiber on a spindle: better than cordage, and what a bow drill needs.", "stack": 10, "w": 0.05,
 		"color": Color(0.86, 0.80, 0.60), "shape": "cord", "pile": true},
-	"stone_axe": {"name": "Stone Axe", "desc": "Heavy chopping tool and weapon.", "stack": 1, "w": 1.4,
-		"color": Color(0.50, 0.40, 0.28), "shape": "axe", "damage": 12.0, "tier": "stone", "reach": 2.4, "tags": ["cut", "chop"], "breaks": "stick"},
 	"spear": {"name": "Chert Spear", "desc": "Long reach keeps teeth and claws at a distance.", "stack": 1, "w": 1.6,
 		"color": Color(0.55, 0.45, 0.30), "shape": "spear", "damage": 16.0, "tier": "stone", "reach": 3.4, "breaks": "stick"},
-	"mattock": {"name": "Stone Mattock", "desc": "A digging tool. Use it on open ground to dig a hole for planting. Swing it at a campfire to knock it apart, a stump or seed fern to dig it up, or press E at a fire to scoop out the ash.", "stack": 1, "w": 1.5,
-		"color": Color(0.50, 0.40, 0.28), "shape": "mattock", "damage": 9.0, "tier": "stone", "reach": 2.3, "tags": ["dig"], "breaks": "stick"},
-	"torch": {"name": "Torch", "desc": "A stick coated in fern wax. Light it at a campfire (E).", "stack": 5, "w": 0.45,
+	"mattock": {"name": "Stone Mattock", "desc": "A primitive axe and shovel in one: chops soft trees and digs, both slowly.", "stack": 1, "w": 1.5,
+		"color": Color(0.50, 0.40, 0.28), "shape": "mattock", "damage": 9.0, "tier": "stone", "reach": 2.3, "tags": ["dig", "chop"], "breaks": "stick"},
+	"torch": {"name": "Torch", "desc": "A stick coated in fern wax. Light it at a campfire.", "stack": 5, "w": 0.45,
 		"color": Color(0.62, 0.50, 0.30), "shape": "torch"},
 	"torch_lit": {"name": "Lit Torch", "desc": "Lights the way while you hold it, and can light a campfire. Burns for about 14 minutes, twice as fast in rain.", "stack": 1, "w": 0.45,
 		"color": Color(1.0, 0.6, 0.2), "shape": "torch_lit", "decay": 840.0, "spoil": "charred_stick", "light": 9.0, "tags": ["fire"]},
@@ -294,16 +290,16 @@ const ITEMS := {
 	# out (`spoil` "": nothing is left) after `decay` seconds, three game hours,
 	# in the bag, a stash or on the ground (`goes_out`, see pickup.gd). Set in an
 	# unlit campfire with fuel and blown on, it lights it (campfire.gd).
-	"ember": {"name": "Ember", "desc": "A glowing coal from a fire. It goes out in about three hours, wherever it is. Set it in an unlit campfire that has fuel, then blow on it to bring it to flame.", "stack": 1, "w": 0.05,
+	"ember": {"name": "Ember", "desc": "A glowing coal from a fire. Blow it to flame in a campfire with fuel before it goes out.", "stack": 1, "w": 0.05,
 		"color": Color(1.0, 0.42, 0.12), "shape": "ember", "decay": 180.0, "spoil": "", "goes_out": true},
 	"bow_drill": {"name": "Bow Drill", "desc": "Lights campfires. Keep it in your inventory.", "stack": 1, "w": 0.6,
 		"color": Color(0.60, 0.48, 0.30), "shape": "drill", "tags": ["fire"]},
 	# Farming (compost.gd, plot.gd): a basket filled to level 20 composts for
 	# 5 days (twice as long with sticks or branches in it, three times with a
 	# log), then gives 5 compost. `compost` in an item: what it adds to the level.
-	"compost_basket": {"name": "Compost Basket", "desc": "A slatted crate for rotting scraps down into compost. Set it down with Use, then fill it (E) with food, sticks, branches, guts or a carried log.", "stack": 1, "w": 6.0,
+	"compost_basket": {"name": "Compost Basket", "desc": "A slatted crate that rots scraps, sticks and guts into compost.", "stack": 1, "w": 6.0,
 		"color": Color(0.62, 0.48, 0.30), "shape": "basket", "place": "compost"},
-	"compost": {"name": "Compost", "desc": "Dark, rich, rotted-down earth. Set it in a hole with a seed or root to grow it in half the time, for twice the yield; or hold it and right-click a growing plant to speed it on.", "stack": 20, "w": 0.5,
+	"compost": {"name": "Compost", "desc": "Dark, rotted-down earth. Plants grown with it grow faster and yield more.", "stack": 20, "w": 0.5,
 		"color": Color(0.22, 0.15, 0.09), "shape": "compost"},
 	"campfire_kit": {"name": "Campfire", "desc": "Place it with Use. Light it with an ember (or a bow drill, or a lit torch). Predators fear fire.", "stack": 2, "w": 3.5,
 		"color": Color(0.85, 0.45, 0.15), "shape": "fire", "place": "campfire"},
@@ -321,18 +317,18 @@ const ITEMS := {
 	# the lot in the slot's data (and its weight, `w`). Sealed with a wooden
 	# cap and wax (a hand recipe), nothing in it ages, and it no longer shows
 	# what it holds.
-	"pot_preserves": {"name": "Unsealed Pot of Preserves", "desc": "An open clay pot of preserved food in its liquid. Seal it with a wooden cap and a lump of wax (Craft).", "stack": 1, "w": 3.0,
+	"pot_preserves": {"name": "Unsealed Pot of Preserves", "desc": "An open clay pot of preserved food. Seal it with a wooden cap and wax.", "stack": 1, "w": 3.0,
 		"color": Color(0.72, 0.70, 0.48), "shape": "pot_water", "preserves": true},
-	"pot_sealed": {"name": "Sealed Pot", "desc": "A clay pot with a wooden cap waxed down over its mouth. You can't see what is inside. Nothing in it spoils while it stays sealed. Open it (Use) to take everything out: the cap comes back, the wax doesn't.", "stack": 1, "w": 3.0,
+	"pot_sealed": {"name": "Sealed Pot", "desc": "A clay pot sealed with a waxed wooden cap. Nothing inside spoils until it is opened.", "stack": 1, "w": 3.0,
 		"color": Color(0.70, 0.42, 0.28), "shape": "pot_capped", "preserves": true},
-	"wooden_cap": {"name": "Wooden Cap", "desc": "A round wooden cap carved to fit a clay pot's mouth. With a lump of wax it seals a pot of preserves (Craft), and comes back when the pot is opened.", "stack": 1, "w": 0.1,
+	"wooden_cap": {"name": "Wooden Cap", "desc": "A carved cap that fits a clay pot's mouth. Seal it down with wax.", "stack": 1, "w": 0.1,
 		"color": Color(0.62, 0.47, 0.30), "shape": "pot_cap"},
 	# Soup: a soup pot is carried and hangs over a fire (see soup_pot.gd); a
 	# clay pot scoops one serving out of it. A Pot of Soup's values are its
 	# serving's, kept in its slot's `data`; the ones here are a stand-in.
-	"soup_pot_unfired": {"name": "Unfired Soup Pot", "desc": "A big coil-built pot hanging from a tripod of boards. Too big for the bag: carry it (E) and set it down over a lit campfire to fire it.", "stack": 1, "w": 0.0,
+	"soup_pot_unfired": {"name": "Unfired Soup Pot", "desc": "A big unfired pot on a board tripod. Set it over a lit campfire to fire it.", "stack": 1, "w": 0.0,
 		"color": Color(0.58, 0.56, 0.52), "shape": "soup_pot", "carry": true},
-	"soup_pot": {"name": "Soup Pot", "desc": "A big fired pot on a board tripod that hangs over a campfire. Carry it to the water to fill it, boil it, then add food (hold it and press E) to make soup. Holds 16 servings.", "stack": 1, "w": 0.0,
+	"soup_pot": {"name": "Soup Pot", "desc": "A big clay pot on a board tripod, for boiling water and soup. Holds 16 servings.", "stack": 1, "w": 0.0,
 		"color": Color(0.70, 0.42, 0.28), "shape": "soup_pot", "carry": true},
 	"pot_soup": {"name": "Pot of Soup", "desc": "A serving of soup scooped from a soup pot. Keeps as long as the soup in the pot would have.", "stack": 1, "w": 3.0,
 		"color": Color(0.62, 0.45, 0.22), "shape": "pot_water", "energy": 6.0, "protein": 4.0, "greens": 4.0, "starch": 4.0, "water": 30.0,
@@ -343,7 +339,7 @@ const ITEMS := {
 	# item: "_1" half full, "_2" full. Drinking one leaves the one below
 	# (`empty`), keeping a soup's serving `data`. Weighs 80% of a clay pot
 	# empty; each serving adds what a pot's does (1.5 kg).
-	"canteen": {"name": "Wooden Canteen", "desc": "A hollowed, wax-sealed length of jointed stem with a carved wooden lid, on a cord. Holds two servings: fill it at the water, or with boiled water or soup from a soup pot (hold it and press E at the pot). Wood can't go on the fire, so boil water in a pot first.", "stack": 1, "w": 1.2,
+	"canteen": {"name": "Wooden Canteen", "desc": "A wax-sealed wooden canteen on a cord. Holds two servings of water or soup.", "stack": 1, "w": 1.2,
 		"color": Color(0.42, 0.30, 0.18), "shape": "canteen", "hold": "canteen_dirty_2"},
 	"canteen_dirty_1": {"name": "Canteen of Swamp Water (1/2)", "desc": "Half full of murky swamp water. Risky to drink.", "stack": 1, "w": 2.7,
 		"color": Color(0.40, 0.42, 0.25), "shape": "canteen", "water": 35.0, "sick": 0.35, "empty": "canteen", "hold": "canteen_dirty_2"},
@@ -366,17 +362,17 @@ const ITEMS := {
 	# Alcohol drawn from a sealed fermentation vessel: ten measures, each a
 	# drink or a wound cleaned. How many are left is in the slot's `data`
 	# ("left", and the name that says so).
-	"canteen_alcohol": {"name": "Canteen of Alcohol", "desc": "Strong, sour drink fermented in a sealed vessel. Drink a measure (a little food, starch and water, and it goes to your head) or clean a wound with it (Treat): it fights infection.", "stack": 1, "w": 2.7,
+	"canteen_alcohol": {"name": "Canteen of Alcohol", "desc": "Strong, sour drink from a sealed vessel. Drink it, or clean a wound with it.", "stack": 1, "w": 2.7,
 		"color": Color(0.85, 0.66, 0.30), "shape": "canteen", "energy": 1.0, "starch": 3.0, "water": 3.0, "alcohol": 1.0, "treat": "alcohol", "measures": 10},
 	# A copper soup pot (late game; see soup_pot.gd COPPER_*): raised on the
 	# anvil, so never fired.
-	"soup_pot_copper": {"name": "Copper Soup Pot", "desc": "A big copper pot raised on the anvil, on a board tripod that hangs over a campfire. Holds 20 servings, comes to the boil half again as fast as clay, and its soup keeps a fifth longer after it last boiled. Carry it to the water to fill it, boil it, then add food (hold it and press E) to make soup.", "stack": 1, "w": 0.0,
+	"soup_pot_copper": {"name": "Copper Soup Pot", "desc": "A copper pot on a board tripod. Holds 20 servings, boils faster than clay and keeps soup longer.", "stack": 1, "w": 0.0,
 		"color": Color(0.80, 0.47, 0.24), "shape": "soup_pot", "carry": true},
 	# A copper flask (late game): four servings of water or soup, each kind its
 	# own item like the wooden canteen ("_1" to "_4"), or twenty measures of
 	# alcohol. Lighter than the two canteens it replaces, and soup keeps twice
 	# as long in it (`decay`). Its `shape` is "flask".
-	"flask": {"name": "Copper Flask", "desc": "A flat, round copper flask raised on the anvil, its seam hammered tight and waxed, with a wooden stopper on a cord. Holds four servings of water or soup, or twenty measures of alcohol, and weighs less than two wooden canteens. Soup keeps twice as long in it. Fill it at the water, at a soup pot, or draw alcohol into it from a sealed vessel.", "stack": 1, "w": 1.4,
+	"flask": {"name": "Copper Flask", "desc": "A copper flask with a wooden stopper. Holds four servings of water or soup, or twenty of alcohol.", "stack": 1, "w": 1.4,
 		"color": Color(0.80, 0.47, 0.24), "shape": "flask", "hold": "flask_dirty_4"},
 	"flask_dirty_1": {"name": "Flask of Swamp Water (1/4)", "desc": "A quarter full of murky swamp water. Risky to drink.", "stack": 1, "w": 2.9,
 		"color": Color(0.40, 0.42, 0.25), "shape": "flask", "water": 35.0, "sick": 0.35, "empty": "flask", "hold": "flask_dirty_4"},
@@ -414,27 +410,27 @@ const ITEMS := {
 		"color": Color(0.42, 0.44, 0.24), "shape": "flask", "energy": 2.0, "water": 15.0, "sick": 0.9, "empty": "flask_soup_spoiled_2"},
 	"flask_soup_spoiled_4": {"name": "Flask of Spoiled Soup (4/4)", "desc": "Full of spoiled soup. Drinking it will very likely make you sick.", "stack": 1, "w": 7.4,
 		"color": Color(0.42, 0.44, 0.24), "shape": "flask", "energy": 2.0, "water": 15.0, "sick": 0.9, "empty": "flask_soup_spoiled_3"},
-	"flask_alcohol": {"name": "Flask of Alcohol", "desc": "Strong, sour drink fermented in a sealed vessel, twenty measures to a flask. Drink a measure (a little food, starch and water, and it goes to your head) or clean a wound with it (Treat): it fights infection.", "stack": 1, "w": 4.4,
+	"flask_alcohol": {"name": "Flask of Alcohol", "desc": "Strong, sour drink, twenty measures to a flask. Drink it, or clean a wound with it.", "stack": 1, "w": 4.4,
 		"color": Color(0.85, 0.66, 0.30), "shape": "flask", "energy": 1.0, "starch": 3.0, "water": 3.0, "alcohol": 1.0, "treat": "alcohol", "measures": 20, "drained": "flask"},
 	# Fermentation vessels: carried like the soup pot, made at a bench with
 	# the clay platter on its rack and fired by sitting them in a campfire
 	# (see ferment_vessel.gd).
-	"vessel_open_unfired": {"name": "Unfired Unsealed Fermentation Vessel", "desc": "A big open-mouthed crock. Too big for the bag: carry it (E) and set it down in a lit campfire to fire it.", "stack": 1, "w": 0.0,
+	"vessel_open_unfired": {"name": "Unfired Unsealed Fermentation Vessel", "desc": "A big unfired crock. Set it in a lit campfire to fire it.", "stack": 1, "w": 0.0,
 		"color": Color(0.58, 0.56, 0.52), "shape": "vessel", "carry": true},
 	"vessel_open": {"name": "Unsealed Fermentation Vessel", "desc": "An open crock for pickling (lacto fermentation): clean water, then up to 10 food items. After a day they are pickled.", "stack": 1, "w": 0.0,
 		"color": Color(0.66, 0.42, 0.28), "shape": "vessel", "carry": true},
-	"vessel_sealed_unfired": {"name": "Unfired Sealed Fermentation Vessel", "desc": "A big jar with a fitted lid. Too big for the bag: carry it (E) and set it down in a lit campfire to fire it.", "stack": 1, "w": 0.0,
+	"vessel_sealed_unfired": {"name": "Unfired Sealed Fermentation Vessel", "desc": "A big unfired jar with a lid. Set it in a lit campfire to fire it.", "stack": 1, "w": 0.0,
 		"color": Color(0.58, 0.56, 0.52), "shape": "vessel", "carry": true},
 	"vessel_sealed": {"name": "Sealed Fermentation Vessel", "desc": "A lidded jar for brewing alcohol (food in clean water, a day to ferment) or, with salt in it, for salting food at once.", "stack": 1, "w": 0.0,
 		"color": Color(0.70, 0.44, 0.28), "shape": "vessel", "carry": true},
 	"bandage": {"name": "Fiber Bandage", "desc": "Woven fern fiber. Covers a wound to keep dirt out, and stops bleeding once pressure has slowed it (Treat).", "stack": 10, "w": 0.05,
 		"color": Color(0.78, 0.74, 0.55), "shape": "bandage", "treat": "bandage"},
 	# The workbench, and the tools that hang on its rack.
-	"workbench": {"name": "Workbench", "desc": "A plain wooden table with a tool rack on its back. Kneel at it (C) to make things on it, including what only a bench allows. Hold a workbench tool and press E at the bench to hang it on the rack.", "stack": 1, "w": 30.0,
+	"workbench": {"name": "Workbench", "desc": "A wooden table with a tool rack. Kneel at it to make finer things.", "stack": 1, "w": 30.0,
 		"color": Color(0.70, 0.56, 0.37), "shape": "workbench", "build": "workbench"},
 	"clay_platter_unfired": {"name": "Unfired Platter", "desc": "Fire it in a campfire before use.", "stack": 2, "w": 2.0,
 		"color": Color(0.58, 0.56, 0.52), "shape": "platter", "cook": "clay_platter", "cook_time": 100.0},
-	"clay_platter": {"name": "Clay Platter", "desc": "A flat fired platter for forming clay on. Hang it on a workbench rack (hold it and press E at the bench) to work finer clay there.", "stack": 1, "w": 1.2,
+	"clay_platter": {"name": "Clay Platter", "desc": "A flat fired platter for forming clay. Hang it on a workbench rack.", "stack": 1, "w": 1.2,
 		"color": Color(0.70, 0.42, 0.28), "shape": "platter", "rack": true},
 	# The spindle: a clay whorl, fired, fitted on a stick at a workbench. It
 	# hangs on the rack (or rides in the bag) to spin string.
@@ -442,15 +438,15 @@ const ITEMS := {
 		"color": Color(0.58, 0.56, 0.52), "shape": "whorl", "cook": "spindle_whorl", "cook_time": 40.0},
 	"spindle_whorl": {"name": "Spindle Whorl", "desc": "A fired clay disc with a hole through it. Fit it on a stick at a workbench to make a spindle.", "stack": 2, "w": 0.1,
 		"color": Color(0.70, 0.42, 0.28), "shape": "whorl"},
-	"spindle": {"name": "Spindle", "desc": "A stick weighted with a fired clay whorl, for spinning plant fiber into string at a workbench. Hang it on the rack (hold it and press E at the bench), or carry it.", "stack": 1, "w": 0.25,
+	"spindle": {"name": "Spindle", "desc": "A weighted stick for spinning plant fiber into string. Hang it on a workbench rack.", "stack": 1, "w": 0.25,
 		"color": Color(0.60, 0.48, 0.30), "shape": "spindle", "rack": true},
 	"clay_bowl_unfired": {"name": "Unfired Bowl", "desc": "Fire it in a campfire before use.", "stack": 2, "w": 1.4,
 		"color": Color(0.58, 0.56, 0.52), "shape": "bowl", "cook": "clay_bowl", "cook_time": 80.0},
 	"clay_bowl": {"name": "Clay Bowl", "desc": "A wide fired bowl. With a fiber screen it makes papermaking tools.", "stack": 2, "w": 0.8,
 		"color": Color(0.70, 0.42, 0.28), "shape": "bowl"},
-	"woodworking_tools": {"name": "Woodworking Tools", "desc": "A chert chisel and a toothed chert saw in wooden handles. Hang them on a workbench rack (hold them and press E at the bench) for finer woodwork there.", "stack": 1, "w": 1.0,
+	"woodworking_tools": {"name": "Woodworking Tools", "desc": "A chert chisel and saw. Hang them on a workbench rack for finer woodwork.", "stack": 1, "w": 1.0,
 		"color": Color(0.32, 0.32, 0.38), "shape": "chisel_saw", "rack": true},
-	"papermaking_tools": {"name": "Papermaking Tools", "desc": "A clay bowl for mashing wood or plants to pulp and a fiber screen to lift sheets of it. Hang them on a workbench rack (hold them and press E at the bench) to make paper there.", "stack": 1, "w": 1.4,
+	"papermaking_tools": {"name": "Papermaking Tools", "desc": "A pulping bowl and a fiber screen. Hang them on a workbench rack to make paper.", "stack": 1, "w": 1.4,
 		"color": Color(0.70, 0.42, 0.28), "shape": "paper_tools", "rack": true},
 	# Paper and the pencil: made at a workbench with the papermaking tools on
 	# its rack. A blank sheet and a pencil are what a blueprint is drawn with.
@@ -464,13 +460,13 @@ const ITEMS := {
 		"color": Color(0.24, 0.23, 0.22), "shape": "pencil_core"},
 	# The charted map (core/chart.gd): one chart per world, which any Map
 	# shows; it is drawn in round you while you carry it and a sharp pencil.
-	"chart_map": {"name": "Map", "desc": "A Big Blank Sheet ruled for a map. Carry it with an ash pencil and the ground round you is drawn in as you go; the pencil goes blunt and needs sharpening (Use it with a blade in your bag). Use the map to look at it and to put markers on it.", "stack": 1, "w": 0.1,
+	"chart_map": {"name": "Map", "desc": "A sheet ruled for a map. Carry it with an ash pencil to draw the land as you go.", "stack": 1, "w": 0.1,
 		"color": Color(0.84, 0.80, 0.64), "shape": "blueprint", "chart": true},
-	"ash_pencil": {"name": "Ash Pencil", "desc": "A fired ash-and-clay core bound between the two halves of a split stick. It will draw blueprints on a Big Blank Sheet, and draws your map in as you go: it is good for 50 uses, and needs sharpening with a blade twice for each blueprint and whenever it goes blunt charting (Use it with a blade in your bag), which wears one use off each time.", "stack": 5, "w": 0.06,
+	"ash_pencil": {"name": "Ash Pencil", "desc": "A fired ash-and-clay core in a split stick. Draws blueprints and maps; sharpen it with a blade.", "stack": 5, "w": 0.06,
 		"color": Color(0.55, 0.42, 0.26), "shape": "pencil", "uses": 50},
 	# Blueprints: drawn at a workbench, then held to show where the building
 	# goes and right-clicked to mark out its site (see house.gd).
-	"blueprint_softwood_house": {"name": "Softwood House Blueprint", "desc": "Plans for a small wooden house on stilts, with a porch, a fireplace and a rope ladder. Hold it to see where the house would go and right-click to mark out the site. Then bring, part by part: 4 Calamites logs (carried, for the stilts) and a river stone to pound them in, 30 tree fern boards, 8 Calamites boards, 28 cordage, 6 sticks, 8 river stones and 6 wet clay.", "stack": 5, "w": 0.1,
+	"blueprint_softwood_house": {"name": "Softwood House Blueprint", "desc": "Plans for a small wooden house on stilts. Hold it to see where it would go; right-click to mark the site.", "stack": 5, "w": 0.1,
 		"color": Color(0.86, 0.84, 0.72), "shape": "blueprint", "blueprint": "softwood_house"},
 	# Sacks (`tags` "sack"): `carry_kg` kg more you can carry (only the best sack
 	# you have counts: Inventory.sack_bonus), `stash` kg it holds set down.
@@ -480,32 +476,32 @@ const ITEMS := {
 		"color": Color(0.56, 0.44, 0.27), "shape": "rod"},
 	"fishing_line": {"name": "Fishing Line", "desc": "Three strings braided into a long, thin, strong line. With a rod blank and a hook it makes a fishing rod at a workbench.", "stack": 5, "w": 0.05,
 		"color": Color(0.80, 0.76, 0.58), "shape": "cord"},
-	"chitin_hook": {"name": "Chitin Hook", "desc": "A small barbed hook knapped from a plate of arthropod shell. With a rod blank and a fishing line it makes a fishing rod at a workbench.", "stack": 10, "w": 0.02,
+	"chitin_hook": {"name": "Chitin Hook", "desc": "A small barbed hook knapped from arthropod shell. Makes a fishing rod.", "stack": 10, "w": 0.02,
 		"color": Color(0.42, 0.27, 0.18), "shape": "hook"},
 	# `fishing`: held, Use casts it (fishing.gd). Its bait is in the slot's
 	# data ("bait", and a name that says so: bait_data).
-	"fishing_rod": {"name": "Fishing Rod", "desc": "A rod, a braided line and a chitin hook. Bait it by laying it out with bait (meat bait, grubs, rotten food or guts), then cast it into the water (Use) and wait for a bite. Use again reels in.", "stack": 1, "w": 0.6,
+	"fishing_rod": {"name": "Fishing Rod", "desc": "A rod, line and chitin hook. Bait it, then cast it into the water.", "stack": 1, "w": 0.6,
 		"color": Color(0.56, 0.44, 0.27), "shape": "fishing_rod", "fishing": true},
 	# Traps (trap.gd), baited by kneeling at them (C) with bait laid out. A
 	# fish trap is carried in your arms and set down in the water; a snare is
 	# set on the ground with Use.
-	"fish_trap": {"name": "Fish Trap", "desc": "A long basket of sticks lashed with cordage, with a funnel mouth fish swim in by and can't find their way out of. Set it down in shallow water, bait it (C), and each night you sleep it catches a few small fish.", "stack": 1, "w": 3.0,
+	"fish_trap": {"name": "Fish Trap", "desc": "A funnel-mouthed basket of sticks. Set it in shallow water and bait it to catch fish overnight.", "stack": 1, "w": 3.0,
 		"color": Color(0.58, 0.48, 0.30), "shape": "fish_trap", "carry": true},
-	"snare": {"name": "Snare", "desc": "A running noose of string on a bent branch. Set it on the ground (Use) and bait it (C): most nights it catches a small animal, now and then something bigger that is still alive when you come.", "stack": 5, "w": 0.2,
+	"snare": {"name": "Snare", "desc": "A string noose on a bent branch. Set and bait it to catch small animals overnight.", "stack": 5, "w": 0.2,
 		"color": Color(0.60, 0.48, 0.30), "shape": "snare", "place": "snare"},
-	"fiber_sack": {"name": "Woven Frond Sack", "desc": "A shoulder sack of woven cordage. Lets you carry 17 kg more. Set it down with Use to leave a stash holding up to 50 kg. Only your best sack counts.", "stack": 1, "w": 0.6,
+	"fiber_sack": {"name": "Woven Frond Sack", "desc": "A woven shoulder sack. Carries 17 kg more, or set it down as a stash.", "stack": 1, "w": 0.6,
 		"color": Color(0.62, 0.55, 0.32), "shape": "sack", "tags": ["sack"], "place": "sack", "carry_kg": 17.0, "stash": 50.0},
-	"cloth_sack": {"name": "Woven Cloth Sack", "desc": "A light, finely woven sack of spun string. Lets you carry 40 kg more. Set it down with Use to leave a stash holding up to 100 kg. Only your best sack counts.", "stack": 1, "w": 0.5,
+	"cloth_sack": {"name": "Woven Cloth Sack", "desc": "A light sack of woven string. Carries 40 kg more, or set it down as a stash.", "stack": 1, "w": 0.5,
 		"color": Color(0.86, 0.82, 0.68), "shape": "sack", "tags": ["sack"], "place": "sack", "carry_kg": 40.0, "stash": 100.0},
 	# Set down (Use), still rolled up, only on the floor of a finished house (swamp._place_bedroll,
 	# bedroll.gd): sleep on it, or save the game at it.
-	"bedroll": {"name": "Bedroll", "desc": "A coarse, primitive sleeping bag of loosely woven string, rolled up and tied. Set it down (Use) on the floor of your house. Then look at it and press Z to sleep when you're tired, or E to save the game without sleeping. Right-click it to pick it up again.", "stack": 1, "w": 1.2,
+	"bedroll": {"name": "Bedroll", "desc": "A rough sleeping bag of woven string. Lay it on your house floor to sleep there.", "stack": 1, "w": 1.2,
 		"color": Color(0.64, 0.54, 0.36), "shape": "bedroll", "place": "bedroll"},
 
 	# --- Boats (boats.md) -------------------------------------------------------
-	"blueprint_dock": {"name": "Dock Blueprint", "desc": "Plans for a dock on Calamites piles, with a slipway for a raft and a mooring post. Hold it at the water's edge to see where it would go; right-click to mark out the site. Needs 5 carried Calamites logs, a river stone, 16 sticks, 8 Calamites boards, 12 tree fern boards, 3 branches, 22 cordage and a blade. You drive the piles standing in the water: throw a baitbox along the shore first.", "stack": 5, "w": 0.1,
+	"blueprint_dock": {"name": "Dock Blueprint", "desc": "Plans for a dock with a slipway and mooring post. Hold it at the water's edge; right-click to mark the site.", "stack": 5, "w": 0.1,
 		"color": Color(0.86, 0.84, 0.72), "shape": "blueprint", "blueprint": "dock"},
-	"calamites_pole": {"name": "Calamites Pole", "desc": "A long, light pole split from a Calamites trunk. Hold it on a raft and the movement keys pole the raft along. A weak jab at anything biting the raft, with a long reach. Char the tip in a campfire to harden it.", "stack": 1, "w": 1.2,
+	"calamites_pole": {"name": "Calamites Pole", "desc": "A long, light pole split from a Calamites trunk. Poles a raft along.", "stack": 1, "w": 1.2,
 		"color": Color(0.70, 0.62, 0.40), "shape": "rod", "damage": 3.5, "reach": 3.6, "tags": ["pole"], "cook": "hardened_pole", "cook_time": 40.0},
 	"hardened_pole": {"name": "Fire-Hardened Pole", "desc": "A Calamites pole with its tip charred hard in a fire. Poles a raft, and jabs a little harder.", "stack": 1, "w": 1.2,
 		"color": Color(0.42, 0.34, 0.22), "shape": "rod", "damage": 5.0, "reach": 3.6, "tags": ["pole"], "as": "calamites_pole"},
@@ -524,13 +520,13 @@ const ITEMS := {
 	# "copper" stands for anything castable (`as` "copper") in recipes.
 	"charcoal_clamp": {"name": "Charcoal Clamp", "desc": "A pit of firewood sealed under clay, built where you kneel. Lit with an ember or a lit torch, it smoulders for a day into charcoal.", "stack": 1, "w": 1.0,
 		"color": Color(0.50, 0.45, 0.38), "shape": "compost", "build": "clamp"},
-	"furnace": {"name": "Clay Furnace", "desc": "A waist-high clay shaft on a ring of river stones, blown with blowpipes. All the hot work with copper is done at it: smelting and casting.", "stack": 1, "w": 1.0,
+	"furnace": {"name": "Clay Furnace", "desc": "A waist-high clay shaft on a ring of river stones, blown with a blowpipe. All the hot work with copper is done at it: smelting and casting.", "stack": 1, "w": 1.0,
 		"color": Color(0.62, 0.42, 0.30), "shape": "pot", "build": "furnace"},
-	"copper": {"name": "Copper", "desc": "Copper grains or unrefined copper: what goes in a mould.", "stack": 20, "w": 0.4,
+	"copper": {"name": "Copper", "desc": "Copper grains or smelted copper: what goes in a mould.", "stack": 20, "w": 0.4,
 		"color": Color(0.80, 0.47, 0.24), "shape": "salt", "pile": true},
-	"native_copper": {"name": "Native Copper", "desc": "A lump of rock with twisted threads of bright copper running through it, washed up in the gravel round the islands. Smash it with a river stone, then wash the copper out of the grit in a washing pan.", "stack": 20, "w": 0.4,
+	"native_copper": {"name": "Native Copper", "desc": "Rock threaded with bright copper. Smash it, then wash the copper out in a pan.", "stack": 20, "w": 0.4,
 		"color": Color(0.62, 0.45, 0.32), "shape": "rock", "pile": true},
-	"copper_ore": {"name": "Copper Ore", "desc": "Green-stained malachite broken off an island outcrop. Crush it with a copper hammer, wash it in a washing pan, then smelt it in the furnace.", "stack": 20, "w": 1.0,
+	"copper_ore": {"name": "Copper Ore", "desc": "Green-stained malachite from an island outcrop. Crush, wash and smelt it for copper.", "stack": 20, "w": 1.0,
 		"color": Color(0.24, 0.56, 0.40), "shape": "rock", "pile": true},
 	"smashed_native_copper": {"name": "Smashed Native Copper", "desc": "Native copper beaten to grit and flakes. Wash the copper out of the grit in a washing pan at the water.", "stack": 20, "w": 0.4,
 		"color": Color(0.58, 0.48, 0.40), "shape": "salt", "pile": true},
@@ -538,64 +534,68 @@ const ITEMS := {
 		"color": Color(0.36, 0.56, 0.44), "shape": "salt", "pile": true},
 	"copper_grains": {"name": "Copper Grains", "desc": "Bright copper washed out of smashed native copper, ready to fill a mould.", "stack": 20, "w": 0.4,
 		"color": Color(0.80, 0.47, 0.24), "shape": "salt", "pile": true, "as": "copper"},
-	"sifted_copper_ore": {"name": "Sifted Copper Ore", "desc": "Heavy green ore washed clean of grit. Smelt it in the furnace with charcoal: two make one unrefined copper.", "stack": 20, "w": 0.5,
+	"sifted_copper_ore": {"name": "Sifted Copper Ore", "desc": "Heavy green ore washed clean of grit. Smelt it in the furnace with charcoal: two make one smelted copper.", "stack": 20, "w": 0.5,
 		"color": Color(0.20, 0.62, 0.42), "shape": "salt", "pile": true},
-	"unrefined_copper": {"name": "Unrefined Copper", "desc": "Drops of copper picked out of the slag. Ready to fill a mould.", "stack": 20, "w": 0.5,
-		"color": Color(0.70, 0.42, 0.24), "shape": "rock", "pile": true, "as": "copper"},
-	"charcoal": {"name": "Charcoal", "desc": "Light, black and brittle, from a charcoal clamp. Burns hot and long: the furnace needs it, and in a campfire it lasts far longer than wood.", "stack": 30, "w": 0.2,
+	"unrefined_copper": {"name": "Smelted Copper", "desc": "Drops of copper picked out of the slag. Ready to fill a mould.", "stack": 20, "w": 0.5,
+		"color": Color(0.86, 0.52, 0.26), "shape": "copper_drops", "pile": true, "as": "copper"},
+	"charcoal": {"name": "Charcoal", "desc": "Light, black and brittle. Burns hot and long: the furnace needs it.", "stack": 30, "w": 0.2,
 		"color": Color(0.12, 0.12, 0.13), "shape": "blob", "pile": true, "fuel": 900.0},
 	"stone_grit": {"name": "Stone Grit", "desc": "A river stone crushed to sharp grit. With water, it grinds an anvil's face smooth.", "stack": 20, "w": 0.3,
 		"color": Color(0.55, 0.54, 0.50), "shape": "salt", "pile": true},
-	"whetstone": {"name": "Whetstone", "desc": "A river stone ground flat and smooth. Hold it and press E at an anvil to seat it in the anvil's corner: then kneel at the anvil (C) to grind castings sharp and sharpen blunt metal tools.", "stack": 1, "w": 0.8,
+	"whetstone": {"name": "Whetstone", "desc": "A river stone ground flat. Seat it in an anvil to grind and sharpen metal.", "stack": 1, "w": 0.8,
 		"color": Color(0.62, 0.62, 0.58), "shape": "rock"},
-	"anvil_stone": {"name": "Anvil Stone", "desc": "A basalt boulder from the islands, lumpy until you shape it: kneel at it to peck its face flat with a river stone, grind it smooth with stone grit and water, and peck a seat for a whetstone. Too heavy for the bag: carry it and set it down where you want your anvil.", "stack": 1, "w": 30.0,
+	"anvil_stone": {"name": "Anvil Stone", "desc": "A heavy basalt boulder. Shape it into an anvil where you want it to stand.", "stack": 1, "w": 30.0,
 		"color": Color(0.28, 0.28, 0.30), "shape": "rock", "carry": true},
 	"meteorite": {"name": "Meteorite", "desc": "A dark, pitted, rusty lump of iron that fell from the sky. Kneel at it with a copper chisel and hammer to chip lumps off.", "stack": 1, "w": 15.0,
-		"color": Color(0.30, 0.24, 0.20), "shape": "rock", "carry": true},
+		"color": Color(0.13, 0.12, 0.115), "shape": "meteorite", "carry": true},
 	"washing_pan_unfired": {"name": "Unfired Washing Pan", "desc": "Fire it in a campfire before use.", "stack": 1, "w": 2.0,
 		"color": Color(0.58, 0.56, 0.52), "shape": "bowl", "cook": "washing_pan", "cook_time": 90.0},
-	"washing_pan": {"name": "Washing Pan", "desc": "A wide, shallow fired clay pan. Kneel (C) where you are looking at the water with it and smashed copper or crushed ore, and wash the light grit away until only the heavy copper is left.", "stack": 1, "w": 1.0,
+	"washing_pan": {"name": "Washing Pan", "desc": "A shallow fired clay pan for washing copper out of grit at the water.", "stack": 1, "w": 1.0,
 		"color": Color(0.70, 0.42, 0.28), "shape": "bowl"},
 	"tuyere_unfired": {"name": "Unfired Tuyere", "desc": "Fire it in a campfire before use.", "stack": 2, "w": 1.0,
 		"color": Color(0.58, 0.56, 0.52), "shape": "pencil_core", "cook": "tuyere", "cook_time": 60.0},
-	"tuyere": {"name": "Tuyere", "desc": "A fired clay nozzle: the furnace's blowpipes blow in through it.", "stack": 2, "w": 0.6,
+	"tuyere": {"name": "Tuyere", "desc": "A fired clay nozzle: the furnace's blowpipe blows in through it.", "stack": 2, "w": 0.6,
 		"color": Color(0.70, 0.42, 0.28), "shape": "pencil_core"},
 	"blowpipe_unfired": {"name": "Unfired Blowpipe", "desc": "A hollow Calamites shoot with a clay tip. Fire it in a campfire to harden the tip.", "stack": 4, "w": 0.4,
-		"color": Color(0.50, 0.60, 0.32), "shape": "rod", "cook": "blowpipe", "cook_time": 30.0},
-	"blowpipe": {"name": "Blowpipe", "desc": "A hollow Calamites shoot with a fired clay tip. Two of them blow the furnace.", "stack": 4, "w": 0.3,
-		"color": Color(0.62, 0.55, 0.32), "shape": "rod"},
+		"color": Color(0.60, 0.46, 0.34), "shape": "blowpipe", "cook": "blowpipe", "cook_time": 30.0},
+	"blowpipe": {"name": "Blowpipe", "desc": "A hollow Calamites shoot with a fired clay tip. It blows the furnace.", "stack": 4, "w": 0.3,
+		"color": Color(0.66, 0.40, 0.26), "shape": "blowpipe"},
 	"mould_axe_unfired": {"name": "Unfired Axe Mould", "desc": "Fire it in a campfire before use.", "stack": 2, "w": 1.6,
-		"color": Color(0.58, 0.56, 0.52), "shape": "platter", "cook": "mould_axe", "cook_time": 80.0},
-	"mould_axe": {"name": "Axe Mould", "desc": "An open mould of fired clay for an axe head. Lay it out at the furnace with copper and charcoal to cast. It cracks after 5 castings.", "stack": 2, "w": 1.0,
-		"color": Color(0.70, 0.42, 0.28), "shape": "platter", "uses": 5},
+		"color": Color(0.58, 0.56, 0.52), "shape": "mould", "cook": "mould_axe", "cook_time": 80.0},
+	"mould_axe": {"name": "Axe Mould", "desc": "A fired clay mould for an axe head. Cast copper in it at the furnace.", "stack": 2, "w": 1.0,
+		"color": Color(0.70, 0.42, 0.28), "shape": "mould", "uses": 5},
 	"mould_knife_unfired": {"name": "Unfired Knife Mould", "desc": "Fire it in a campfire before use.", "stack": 2, "w": 1.6,
-		"color": Color(0.58, 0.56, 0.52), "shape": "platter", "cook": "mould_knife", "cook_time": 80.0},
-	"mould_knife": {"name": "Knife Mould", "desc": "An open mould of fired clay for a knife blade. Lay it out at the furnace with copper and charcoal to cast. It cracks after 5 castings.", "stack": 2, "w": 1.0,
-		"color": Color(0.70, 0.42, 0.28), "shape": "platter", "uses": 5},
+		"color": Color(0.58, 0.56, 0.52), "shape": "mould", "cook": "mould_knife", "cook_time": 80.0},
+	"mould_knife": {"name": "Knife Mould", "desc": "A fired clay mould for a knife blade. Cast copper in it at the furnace.", "stack": 2, "w": 1.0,
+		"color": Color(0.70, 0.42, 0.28), "shape": "mould", "uses": 5},
 	"mould_spear_unfired": {"name": "Unfired Spear Mould", "desc": "Fire it in a campfire before use.", "stack": 2, "w": 1.6,
-		"color": Color(0.58, 0.56, 0.52), "shape": "platter", "cook": "mould_spear", "cook_time": 80.0},
-	"mould_spear": {"name": "Spear Mould", "desc": "An open mould of fired clay for a spear head. Lay it out at the furnace with copper and charcoal to cast. It cracks after 5 castings.", "stack": 2, "w": 1.0,
-		"color": Color(0.70, 0.42, 0.28), "shape": "platter", "uses": 5},
+		"color": Color(0.58, 0.56, 0.52), "shape": "mould", "cook": "mould_spear", "cook_time": 80.0},
+	"mould_spear": {"name": "Spear Mould", "desc": "A fired clay mould for a spear head. Cast copper in it at the furnace.", "stack": 2, "w": 1.0,
+		"color": Color(0.70, 0.42, 0.28), "shape": "mould", "uses": 5},
 	"mould_hammer_unfired": {"name": "Unfired Hammer Mould", "desc": "Fire it in a campfire before use.", "stack": 2, "w": 1.6,
-		"color": Color(0.58, 0.56, 0.52), "shape": "platter", "cook": "mould_hammer", "cook_time": 80.0},
-	"mould_hammer": {"name": "Hammer Mould", "desc": "An open mould of fired clay for a hammer head. Lay it out at the furnace with copper and charcoal to cast. It cracks after 5 castings.", "stack": 2, "w": 1.0,
-		"color": Color(0.70, 0.42, 0.28), "shape": "platter", "uses": 5},
+		"color": Color(0.58, 0.56, 0.52), "shape": "mould", "cook": "mould_hammer", "cook_time": 80.0},
+	"mould_hammer": {"name": "Hammer Mould", "desc": "A fired clay mould for a hammer head. Cast copper in it at the furnace.", "stack": 2, "w": 1.0,
+		"color": Color(0.70, 0.42, 0.28), "shape": "mould", "uses": 5},
 	"mould_saw_unfired": {"name": "Unfired Saw Mould", "desc": "Fire it in a campfire before use.", "stack": 2, "w": 1.6,
-		"color": Color(0.58, 0.56, 0.52), "shape": "platter", "cook": "mould_saw", "cook_time": 80.0},
-	"mould_saw": {"name": "Saw Mould", "desc": "An open mould of fired clay for a saw blade. Lay it out at the furnace with copper and charcoal to cast. It cracks after 5 castings.", "stack": 2, "w": 1.0,
-		"color": Color(0.70, 0.42, 0.28), "shape": "platter", "uses": 5},
+		"color": Color(0.58, 0.56, 0.52), "shape": "mould", "cook": "mould_saw", "cook_time": 80.0},
+	"mould_saw": {"name": "Saw Mould", "desc": "A fired clay mould for a saw blade. Cast copper in it at the furnace.", "stack": 2, "w": 1.0,
+		"color": Color(0.70, 0.42, 0.28), "shape": "mould", "uses": 5},
+	"mould_shovel_unfired": {"name": "Unfired Shovel Mould", "desc": "Fire it in a campfire before use.", "stack": 2, "w": 1.6,
+		"color": Color(0.58, 0.56, 0.52), "shape": "mould", "cook": "mould_shovel", "cook_time": 80.0},
+	"mould_shovel": {"name": "Shovel Mould", "desc": "A fired clay mould for a shovel blade. Cast copper in it at the furnace.", "stack": 2, "w": 1.0,
+		"color": Color(0.70, 0.42, 0.28), "shape": "mould", "uses": 5},
 	"mould_bar_unfired": {"name": "Unfired Bar Mould", "desc": "Fire it in a campfire before use.", "stack": 2, "w": 1.6,
-		"color": Color(0.58, 0.56, 0.52), "shape": "platter", "cook": "mould_bar", "cook_time": 80.0},
-	"mould_bar": {"name": "Bar Mould", "desc": "An open mould of fired clay for a bar (for a chisel or a pole shoe). Lay it out at the furnace with copper and charcoal to cast. It cracks after 5 castings.", "stack": 2, "w": 1.0,
-		"color": Color(0.70, 0.42, 0.28), "shape": "platter", "uses": 5},
+		"color": Color(0.58, 0.56, 0.52), "shape": "mould", "cook": "mould_bar", "cook_time": 80.0},
+	"mould_bar": {"name": "Bar Mould", "desc": "A fired clay mould for a copper bar. Cast copper in it at the furnace.", "stack": 2, "w": 1.0,
+		"color": Color(0.70, 0.42, 0.28), "shape": "mould", "uses": 5},
 	"mould_hook_unfired": {"name": "Unfired Hook Mould", "desc": "Fire it in a campfire before use.", "stack": 2, "w": 1.6,
-		"color": Color(0.58, 0.56, 0.52), "shape": "platter", "cook": "mould_hook", "cook_time": 80.0},
-	"mould_hook": {"name": "Hook Mould", "desc": "An open mould of fired clay for three fishhooks. Lay it out at the furnace with copper and charcoal to cast. It cracks after 5 castings.", "stack": 2, "w": 1.0,
-		"color": Color(0.70, 0.42, 0.28), "shape": "platter", "uses": 5},
+		"color": Color(0.58, 0.56, 0.52), "shape": "mould", "cook": "mould_hook", "cook_time": 80.0},
+	"mould_hook": {"name": "Hook Mould", "desc": "A fired clay mould for three fishhooks. Cast copper in it at the furnace.", "stack": 2, "w": 1.0,
+		"color": Color(0.70, 0.42, 0.28), "shape": "mould", "uses": 5},
 	"mould_beads_unfired": {"name": "Unfired Beads Mould", "desc": "Fire it in a campfire before use.", "stack": 2, "w": 1.6,
-		"color": Color(0.58, 0.56, 0.52), "shape": "platter", "cook": "mould_beads", "cook_time": 80.0},
-	"mould_beads": {"name": "Beads Mould", "desc": "An open mould of fired clay for a string of beads. Lay it out at the furnace with copper and charcoal to cast. It cracks after 5 castings.", "stack": 2, "w": 1.0,
-		"color": Color(0.70, 0.42, 0.28), "shape": "platter", "uses": 5},
+		"color": Color(0.58, 0.56, 0.52), "shape": "mould", "cook": "mould_beads", "cook_time": 80.0},
+	"mould_beads": {"name": "Beads Mould", "desc": "A fired clay mould for a string of beads. Cast copper in it at the furnace.", "stack": 2, "w": 1.0,
+		"color": Color(0.70, 0.42, 0.28), "shape": "mould", "uses": 5},
 	"rough_copper_axe_head": {"name": "Rough Copper Axe Head", "desc": "A fresh casting. Grind it sharp at the anvil's whetstone, then haft it.", "stack": 4, "w": 0.7,
 		"color": Color(0.55, 0.36, 0.22), "shape": "axe_head", "head": Color(0.55, 0.36, 0.22)},
 	"rough_copper_knife_blade": {"name": "Rough Copper Knife Blade", "desc": "A fresh casting. Grind it sharp at the anvil's whetstone, then haft it.", "stack": 4, "w": 0.4,
@@ -603,17 +603,21 @@ const ITEMS := {
 	"rough_copper_spear_head": {"name": "Rough Copper Spear Head", "desc": "A fresh casting. Grind it sharp at the anvil's whetstone, then haft it.", "stack": 4, "w": 0.4,
 		"color": Color(0.55, 0.36, 0.22), "shape": "spear_head", "head": Color(0.55, 0.36, 0.22)},
 	"rough_copper_saw_blade": {"name": "Rough Copper Saw Blade", "desc": "A fresh casting. Grind its teeth sharp at the anvil's whetstone, then haft it.", "stack": 4, "w": 0.7,
-		"color": Color(0.55, 0.36, 0.22), "shape": "plank"},
+		"color": Color(0.55, 0.36, 0.22), "shape": "saw_blade"},
+	"rough_copper_shovel_blade": {"name": "Rough Copper Shovel Blade", "desc": "A fresh casting. Grind its edge at the anvil's whetstone, then haft it.", "stack": 4, "w": 0.7,
+		"color": Color(0.55, 0.36, 0.22), "shape": "shovel_blade", "head": Color(0.55, 0.36, 0.22)},
 	"copper_bar": {"name": "Copper Bar", "desc": "A short cast bar. Grind it at the anvil's whetstone into a chisel or a pole shoe.", "stack": 4, "w": 0.4,
 		"color": Color(0.80, 0.47, 0.24), "shape": "pencil_core"},
-	"copper_axe_head": {"name": "Copper Axe Head", "desc": "Ground sharp. Haft it to make a copper axe, or crosswise to make a copper mattock.", "stack": 4, "w": 0.7,
+	"copper_axe_head": {"name": "Copper Axe Head", "desc": "Ground sharp. Haft it to make a copper axe.", "stack": 4, "w": 0.7,
 		"color": Color(0.80, 0.47, 0.24), "shape": "axe_head", "head": Color(0.80, 0.47, 0.24)},
 	"copper_knife_blade": {"name": "Copper Knife Blade", "desc": "Ground sharp. Haft it to make a copper knife.", "stack": 4, "w": 0.4,
 		"color": Color(0.80, 0.47, 0.24), "shape": "blade", "head": Color(0.80, 0.47, 0.24)},
 	"copper_spear_head": {"name": "Copper Spear Head", "desc": "Ground sharp. Haft it to make a copper spear.", "stack": 4, "w": 0.4,
 		"color": Color(0.80, 0.47, 0.24), "shape": "spear_head", "head": Color(0.80, 0.47, 0.24)},
 	"copper_saw_blade": {"name": "Copper Saw Blade", "desc": "Its teeth ground sharp. Haft it to make a copper saw.", "stack": 4, "w": 0.7,
-		"color": Color(0.80, 0.47, 0.24), "shape": "plank"},
+		"color": Color(0.80, 0.47, 0.24), "shape": "saw_blade"},
+	"copper_shovel_blade": {"name": "Copper Shovel Blade", "desc": "Ground sharp. Haft it to make a copper shovel.", "stack": 4, "w": 0.7,
+		"color": Color(0.80, 0.47, 0.24), "shape": "shovel_blade", "head": Color(0.80, 0.47, 0.24)},
 	"copper_hammer_head": {"name": "Copper Hammer Head", "desc": "A heavy cast head. Haft it to make a copper hammer.", "stack": 4, "w": 0.8,
 		"color": Color(0.80, 0.47, 0.24), "shape": "hammer_head", "head": Color(0.80, 0.47, 0.24)},
 	"copper_pole_shoe": {"name": "Copper Pole Shoe", "desc": "A pointed copper cap for the tip of a raft pole.", "stack": 4, "w": 0.3,
@@ -622,66 +626,66 @@ const ITEMS := {
 		"color": Color(0.80, 0.47, 0.24), "shape": "hook"},
 	"copper_beads": {"name": "Copper Beads", "desc": "A string of little cast copper beads. Good for nothing but looking at: a first trophy from the islands.", "stack": 5, "w": 0.1,
 		"color": Color(0.80, 0.47, 0.24), "shape": "cord"},
-	"copper_axe": {"name": "Copper Axe", "desc": "Fells every tree, the hard Lepidodendron and Sigillaria too (slowly). Goes blunt with use: sharpen it at the anvil's whetstone.", "stack": 1, "w": 1.5,
-		"color": Color(0.50, 0.40, 0.28), "shape": "axe", "damage": 14.0, "tier": "metal", "reach": 2.4, "tags": ["cut", "chop"], "edge": 30, "head": Color(0.80, 0.47, 0.24)},
+	"copper_axe": {"name": "Copper Axe", "desc": "Fells every tree (hardwoods slowly) and hacks out stumps. Goes blunt with use: sharpen it at the anvil's whetstone.", "stack": 1, "w": 1.5,
+		"color": Color(0.50, 0.40, 0.28), "shape": "axe", "damage": 14.0, "tier": "metal", "reach": 2.4, "tags": ["cut", "chop"], "edge": 60, "head": Color(0.80, 0.47, 0.24)},
 	"copper_knife": {"name": "Copper Knife", "desc": "A keen copper blade: butchers faster than chert. Goes blunt with use: sharpen it at the anvil's whetstone.", "stack": 1, "w": 0.4,
-		"color": Color(0.50, 0.40, 0.28), "shape": "blade", "damage": 9.0, "tier": "metal", "reach": 2.2, "tags": ["cut"], "edge": 30, "head": Color(0.80, 0.47, 0.24)},
+		"color": Color(0.50, 0.40, 0.28), "shape": "blade", "damage": 9.0, "tier": "metal", "reach": 2.2, "tags": ["cut"], "edge": 60, "head": Color(0.80, 0.47, 0.24)},
 	"copper_spear": {"name": "Copper Spear", "desc": "Long reach and a heavy copper point. Goes blunt with use: sharpen it at the anvil's whetstone.", "stack": 1, "w": 1.7,
-		"color": Color(0.50, 0.40, 0.28), "shape": "spear", "damage": 19.0, "tier": "metal", "reach": 3.4, "edge": 30, "head": Color(0.80, 0.47, 0.24)},
-	"copper_mattock": {"name": "Copper Mattock", "desc": "Digs faster than stone. Goes blunt with use: sharpen it at the anvil's whetstone.", "stack": 1, "w": 1.6,
-		"color": Color(0.50, 0.40, 0.28), "shape": "mattock", "damage": 11.0, "tier": "metal", "reach": 2.3, "tags": ["dig"], "edge": 30, "head": Color(0.80, 0.47, 0.24)},
-	"copper_saw": {"name": "Copper Saw", "desc": "Saws any log straight into boards, the hardwoods too: kneel at a log (C) with it. Goes blunt with use: sharpen it at the anvil's whetstone.", "stack": 1, "w": 0.8,
-		"color": Color(0.50, 0.40, 0.28), "shape": "chisel_saw", "damage": 5.0, "tier": "metal", "reach": 2.0, "tags": ["saw"], "edge": 30},
+		"color": Color(0.50, 0.40, 0.28), "shape": "spear", "damage": 19.0, "tier": "metal", "reach": 3.4, "edge": 60, "head": Color(0.80, 0.47, 0.24)},
+	"copper_shovel": {"name": "Copper Shovel", "desc": "Digs planting holes, and four times the clay from a clay bank. Goes blunt with use: sharpen it at the anvil's whetstone.", "stack": 1, "w": 1.6,
+		"color": Color(0.50, 0.40, 0.28), "shape": "shovel", "damage": 8.0, "tier": "metal", "reach": 2.3, "tags": ["dig"], "edge": 60, "head": Color(0.80, 0.47, 0.24)},
+	"copper_saw": {"name": "Copper Saw", "desc": "Saws any log into boards, hardwoods too. Sharpen it at the anvil's whetstone.", "stack": 1, "w": 0.8,
+		"color": Color(0.50, 0.40, 0.28), "shape": "metal_saw", "damage": 5.0, "tier": "metal", "reach": 2.0, "tags": ["saw"], "edge": 60, "head": Color(0.80, 0.47, 0.24)},
 	"copper_chisel": {"name": "Copper Chisel", "desc": "Hard enough to bite into meteoric iron. Goes blunt with use: sharpen it at the anvil's whetstone.", "stack": 1, "w": 0.4,
-		"color": Color(0.50, 0.40, 0.28), "shape": "pencil_core", "damage": 4.0, "tier": "metal", "reach": 1.8, "tags": ["chisel"], "edge": 30, "color2": Color(0.80, 0.47, 0.24)},
-	"copper_hammer": {"name": "Copper Hammer", "desc": "Breaks copper ore off the island outcrops and crushes it, and works meteoric iron cold. Its face mushrooms on iron: once worn out it is only good for melting down again.", "stack": 1, "w": 1.2,
+		"color": Color(0.50, 0.40, 0.28), "shape": "pencil_core", "damage": 4.0, "tier": "metal", "reach": 1.8, "tags": ["chisel"], "edge": 60, "color2": Color(0.80, 0.47, 0.24)},
+	"copper_hammer": {"name": "Copper Hammer", "desc": "Breaks and crushes copper ore, and works meteoric iron. Wears out on iron.", "stack": 1, "w": 1.2,
 		"color": Color(0.50, 0.40, 0.28), "shape": "hammer", "damage": 8.0, "tier": "metal", "reach": 2.2, "tags": ["hammer"], "head": Color(0.80, 0.47, 0.24), "uses": 60},
-	"iron_axe": {"name": "Iron Axe", "desc": "The real metal axe: fells every tree as fast as a soft one. Holds its edge longer than copper.", "stack": 1, "w": 1.6,
-		"color": Color(0.50, 0.40, 0.28), "shape": "axe", "damage": 18.0, "tier": "advanced", "reach": 2.4, "tags": ["cut", "chop"], "edge": 45, "head": Color(0.60, 0.61, 0.63)},
+	"iron_axe": {"name": "Iron Axe", "desc": "The real metal axe: fells every tree as fast as a soft one, and hacks out stumps. Holds its edge longer than copper.", "stack": 1, "w": 1.6,
+		"color": Color(0.50, 0.40, 0.28), "shape": "axe", "damage": 18.0, "tier": "advanced", "reach": 2.4, "tags": ["cut", "chop"], "edge": 90, "head": Color(0.60, 0.61, 0.63)},
 	"iron_knife": {"name": "Iron Knife", "desc": "The best blade there is.", "stack": 1, "w": 0.4,
-		"color": Color(0.50, 0.40, 0.28), "shape": "blade", "damage": 11.0, "tier": "advanced", "reach": 2.2, "tags": ["cut"], "edge": 45, "head": Color(0.60, 0.61, 0.63)},
+		"color": Color(0.50, 0.40, 0.28), "shape": "blade", "damage": 11.0, "tier": "advanced", "reach": 2.2, "tags": ["cut"], "edge": 90, "head": Color(0.60, 0.61, 0.63)},
 	"iron_spear": {"name": "Iron Spear", "desc": "A long spear with a sharp iron point: the best weapon there is.", "stack": 1, "w": 1.7,
-		"color": Color(0.50, 0.40, 0.28), "shape": "spear", "damage": 24.0, "tier": "advanced", "reach": 3.4, "edge": 45, "head": Color(0.60, 0.61, 0.63)},
-	"iron_mattock": {"name": "Iron Mattock", "desc": "Digs fastest of all.", "stack": 1, "w": 1.6,
-		"color": Color(0.50, 0.40, 0.28), "shape": "mattock", "damage": 13.0, "tier": "advanced", "reach": 2.3, "tags": ["dig"], "edge": 45, "head": Color(0.60, 0.61, 0.63)},
+		"color": Color(0.50, 0.40, 0.28), "shape": "spear", "damage": 24.0, "tier": "advanced", "reach": 3.4, "edge": 90, "head": Color(0.60, 0.61, 0.63)},
+	"iron_shovel": {"name": "Iron Shovel", "desc": "Digs like copper and holds its edge longer.", "stack": 1, "w": 1.7,
+		"color": Color(0.50, 0.40, 0.28), "shape": "shovel", "damage": 10.0, "tier": "advanced", "reach": 2.3, "tags": ["dig"], "edge": 90, "head": Color(0.60, 0.61, 0.63)},
 	"iron_chisel": {"name": "Iron Chisel", "desc": "Chips meteoric iron twice as fast as copper.", "stack": 1, "w": 0.4,
-		"color": Color(0.50, 0.40, 0.28), "shape": "pencil_core", "damage": 5.0, "tier": "advanced", "reach": 1.8, "tags": ["chisel"], "edge": 45},
+		"color": Color(0.50, 0.40, 0.28), "shape": "pencil_core", "damage": 5.0, "tier": "advanced", "reach": 1.8, "tags": ["chisel"], "edge": 90},
 	"iron_hammer": {"name": "Iron Hammer", "desc": "Breaks and crushes ore and works iron faster than copper, and never wears out.", "stack": 1, "w": 1.3,
-		"color": Color(0.50, 0.40, 0.28), "shape": "mattock", "damage": 10.0, "tier": "advanced", "reach": 2.2, "tags": ["hammer"], "head": Color(0.60, 0.61, 0.63)},
-	"fishing_rod_copper": {"name": "Fishing Rod (copper hook)", "desc": "A rod, a braided line and a barbed copper hook. Bait it by laying it out with bait, cast it (Use) and wait for a bite. Every bite is a fish, and the bait stays on the hook until you land one or one fights free: not even an amphibian tearing a fish off takes it.", "stack": 1, "w": 0.6,
+		"color": Color(0.50, 0.40, 0.28), "shape": "hammer", "damage": 10.0, "tier": "advanced", "reach": 2.2, "tags": ["hammer"], "head": Color(0.60, 0.61, 0.63)},
+	"fishing_rod_copper": {"name": "Fishing Rod (copper hook)", "desc": "A rod, line and barbed copper hook. The bait stays on until you land a fish.", "stack": 1, "w": 0.6,
 		"color": Color(0.56, 0.44, 0.27), "shape": "fishing_rod", "fishing": true, "copper_hook": true},
 	"meteoric_iron": {"name": "Meteoric Iron", "desc": "A small lump of rusty iron from a meteorite. Beat it clean on an anvil with a copper hammer into refined iron.", "stack": 10, "w": 0.5,
 		"color": Color(0.36, 0.28, 0.22), "shape": "rock", "pile": true},
-	"meteoric_iron_large": {"name": "Large Meteoric Iron", "desc": "A big lump of rusty iron from a meteorite, big enough for an axe or a spear. Beat it clean on an anvil with a copper hammer into a refined iron bar.", "stack": 10, "w": 1.0,
+	"meteoric_iron_large": {"name": "Large Meteoric Iron", "desc": "A big lump of rusty meteorite iron. Beat it into a refined iron bar on an anvil.", "stack": 10, "w": 1.0,
 		"color": Color(0.34, 0.27, 0.21), "shape": "rock", "pile": true},
 	"refined_iron": {"name": "Refined Iron", "desc": "Clean meteoric iron, beaten flat. Hammer it into a knife blade, a chisel or a pole shoe at the anvil.", "stack": 10, "w": 0.45,
 		"color": Color(0.60, 0.61, 0.63), "shape": "pencil_core"},
-	"refined_iron_bar": {"name": "Refined Iron Bar", "desc": "A bar of clean meteoric iron. Hammer it into an axe, spear, mattock or hammer head at the anvil.", "stack": 10, "w": 0.9,
-		"color": Color(0.60, 0.61, 0.63), "shape": "plank"},
+	"refined_iron_bar": {"name": "Refined Iron Bar", "desc": "A bar of clean meteoric iron. Hammer it into an axe, spear, shovel or hammer head at the anvil.", "stack": 10, "w": 0.9,
+		"color": Color(0.60, 0.61, 0.63), "shape": "metal_bar"},
 	"rough_iron_axe_head": {"name": "Rough Iron Axe Head", "desc": "Hammered to shape. Grind it sharp at the anvil's whetstone.", "stack": 4, "w": 0.8,
 		"color": Color(0.36, 0.35, 0.34), "shape": "axe_head", "head": Color(0.36, 0.35, 0.34)},
 	"rough_iron_knife_blade": {"name": "Rough Iron Knife Blade", "desc": "Hammered to shape. Grind it sharp at the anvil's whetstone.", "stack": 4, "w": 0.4,
 		"color": Color(0.36, 0.35, 0.34), "shape": "blade", "head": Color(0.36, 0.35, 0.34)},
 	"rough_iron_spear_head": {"name": "Rough Iron Spear Head", "desc": "Hammered to shape. Grind it sharp at the anvil's whetstone.", "stack": 4, "w": 0.5,
 		"color": Color(0.36, 0.35, 0.34), "shape": "spear_head", "head": Color(0.36, 0.35, 0.34)},
-	"rough_iron_mattock_head": {"name": "Rough Iron Mattock Head", "desc": "Hammered to shape. Grind it sharp at the anvil's whetstone.", "stack": 4, "w": 0.8,
-		"color": Color(0.36, 0.35, 0.34), "shape": "mattock_head", "head": Color(0.36, 0.35, 0.34)},
+	"rough_iron_shovel_blade": {"name": "Rough Iron Shovel Blade", "desc": "Hammered to shape. Grind it sharp at the anvil's whetstone.", "stack": 4, "w": 0.8,
+		"color": Color(0.36, 0.35, 0.34), "shape": "shovel_blade", "head": Color(0.36, 0.35, 0.34)},
 	"rough_iron_chisel": {"name": "Rough Iron Chisel", "desc": "Hammered to shape. Grind it sharp at the anvil's whetstone.", "stack": 4, "w": 0.4,
 		"color": Color(0.36, 0.35, 0.34), "shape": "pencil_core"},
 	"rough_iron_pole_shoe": {"name": "Rough Iron Pole Shoe", "desc": "Hammered to shape. Grind it sharp at the anvil's whetstone.", "stack": 4, "w": 0.4,
 		"color": Color(0.36, 0.35, 0.34), "shape": "pencil_core"},
-	"iron_axe_head": {"name": "Iron Axe Head", "desc": "Ground sharp. Haft it with a stick and cordage.", "stack": 4, "w": 0.8,
+	"iron_axe_head": {"name": "Iron Axe Head", "desc": "Ground sharp. Haft it with a stick and string.", "stack": 4, "w": 0.8,
 		"color": Color(0.60, 0.61, 0.63), "shape": "axe_head", "head": Color(0.60, 0.61, 0.63)},
-	"iron_knife_blade": {"name": "Iron Knife Blade", "desc": "Ground sharp. Haft it with a stick and cordage.", "stack": 4, "w": 0.4,
+	"iron_knife_blade": {"name": "Iron Knife Blade", "desc": "Ground sharp. Haft it with a stick and string.", "stack": 4, "w": 0.4,
 		"color": Color(0.60, 0.61, 0.63), "shape": "blade", "head": Color(0.60, 0.61, 0.63)},
-	"iron_spear_head": {"name": "Iron Spear Head", "desc": "Ground sharp. Haft it with a stick and cordage.", "stack": 4, "w": 0.5,
+	"iron_spear_head": {"name": "Iron Spear Head", "desc": "Ground sharp. Haft it with a stick and string.", "stack": 4, "w": 0.5,
 		"color": Color(0.60, 0.61, 0.63), "shape": "spear_head", "head": Color(0.60, 0.61, 0.63)},
-	"iron_mattock_head": {"name": "Iron Mattock Head", "desc": "Ground sharp. Haft it with a stick and cordage.", "stack": 4, "w": 0.8,
-		"color": Color(0.60, 0.61, 0.63), "shape": "mattock_head", "head": Color(0.60, 0.61, 0.63)},
-	"iron_pole_shoe": {"name": "Iron Pole Shoe", "desc": "Ground sharp. Haft it with a stick and cordage.", "stack": 4, "w": 0.4,
+	"iron_shovel_blade": {"name": "Iron Shovel Blade", "desc": "Ground sharp. Haft it with a stick and string.", "stack": 4, "w": 0.8,
+		"color": Color(0.60, 0.61, 0.63), "shape": "shovel_blade", "head": Color(0.60, 0.61, 0.63)},
+	"iron_pole_shoe": {"name": "Iron Pole Shoe", "desc": "Ground sharp. Fit it on a Calamites pole.", "stack": 4, "w": 0.4,
 		"color": Color(0.60, 0.61, 0.63), "shape": "pencil_core"},
 	"iron_hammer_head": {"name": "Iron Hammer Head", "desc": "A heavy iron head hammered cold. Haft it to make an iron hammer.", "stack": 4, "w": 0.9,
-		"color": Color(0.60, 0.61, 0.63), "shape": "mattock_head", "head": Color(0.60, 0.61, 0.63)},
+		"color": Color(0.60, 0.61, 0.63), "shape": "hammer_head", "head": Color(0.60, 0.61, 0.63)},
 }
 
 ## Crafting tiers. Each tier is a place to work: by hand anywhere on the
@@ -708,7 +712,7 @@ const BOOK_GROUPS := {
 ## rack, shown apart from their categories once you know the tool.
 const ADVANCED := "Rack tools"
 ## What a recipe's `tool_tag` asks for, in words.
-const TAG_TOOLS := {"cut": "blade", "chop": "axe", "dig": "digging tool", "saw": "saw", "hammer": "copper hammer", "chisel": "copper chisel", "pole": "raft pole"}
+const TAG_TOOLS := {"cut": "blade", "chop": "axe or mattock", "dig": "shovel or mattock", "saw": "saw", "hammer": "copper hammer", "chisel": "copper chisel", "pole": "raft pole"}
 
 ## Crafting recipes. `where` limits a recipe to the lab or the swamp, `tier`
 ## says where it is made, `cat` is its recipe book category, `act` the
@@ -736,9 +740,6 @@ const RECIPES := [
 	{"out": "flint_blade", "n": 1, "in": {"flint": 1}, "tools": {"stone": 1}, "where": "swamp", "tier": "hand",
 		"cat": "Stone tools", "act": "knap", "knap": "flint_blade", "verb": "Knap a blade",
 		"how": "Strike flakes off the nodule with a river stone until only the blade shape is left."},
-	{"out": "axe_head", "n": 1, "in": {"flint": 1}, "tools": {"stone": 1}, "where": "swamp", "tier": "hand",
-		"cat": "Stone tools", "act": "knap", "knap": "axe_head", "verb": "Knap an axe head",
-		"how": "Strike flakes off the nodule with a river stone until only the axe head is left."},
 	{"out": "spear_head", "n": 1, "in": {"flint": 1}, "tools": {"stone": 1}, "where": "swamp", "tier": "hand",
 		"cat": "Stone tools", "act": "knap", "knap": "spear_head", "verb": "Knap a spear point",
 		"how": "Strike flakes off the nodule with a river stone until only the point is left."},
@@ -748,9 +749,6 @@ const RECIPES := [
 	{"out": "mattock", "n": 1, "in": {"mattock_head": 1, "stick": 1, "cordage": 1}, "where": "swamp", "tier": "hand",
 		"cat": "Stone tools", "act": "steps", "verb": "Haft the mattock",
 		"how": "Click the binding again and again to lash the head crosswise to the handle."},
-	{"out": "stone_axe", "n": 1, "in": {"axe_head": 1, "stick": 1, "cordage": 1}, "where": "swamp", "tier": "hand",
-		"cat": "Weapons", "act": "steps", "verb": "Haft the axe",
-		"how": "Click the binding again and again to lash the head to the handle."},
 	{"out": "spear", "n": 1, "in": {"spear_head": 1, "stick": 2, "cordage": 1}, "where": "swamp", "tier": "hand",
 		"cat": "Weapons", "act": "steps", "verb": "Haft the spear",
 		"how": "Click the joints to lash the two shafts together and bind the point on."},
@@ -968,7 +966,7 @@ const RECIPES := [
 	{"out": "furnace", "n": 1, "in": {"stone": 8}, "tool_tag": "dig", "build": "furnace", "where": "swamp", "tier": "hand",
 		"cat": "Metal", "act": "steps", "steps": 4, "verb": "Lay a furnace's stone ring",
 		"label": "The stone ring of a clay furnace, built where you kneel",
-		"how": "Click the glowing spots to dig a shallow hole and set the river stones round it. Then build the rest of the furnace on it (E): its clay shaft, tuyere, first firing and blowpipes."},
+		"how": "Click the glowing spots to dig a shallow hole and set the river stones round it. Then build the rest of the furnace on it (E): its clay shaft, tuyere, first firing and blowpipe."},
 	{"out": "whetstone", "n": 1, "in": {"stone": 2, "pot_dirty": 1}, "give": {"stone": 1}, "where": "swamp", "tier": "hand",
 		"cat": "Metal", "act": "steps", "steps": 8, "verb": "Grind a whetstone",
 		"label": "Whetstone (one river stone is kept, the pot left empty)",
@@ -1047,7 +1045,15 @@ const RECIPES := [
 		"wear_how": "Click to fill the mould with copper (each casting wears it: it cracks after 5).",
 		"step_how": ["Click to fill the mould with copper.", "Click to bed the mould down in the charcoal.", "Click to blow the furnace up to heat.", "Blow: keep the furnace at full heat (orange) while the copper melts.", "Blow: keep it at full heat.", "Blow: keep it at full heat.", "Blow: keep it at full heat.", "Blow: keep it at full heat.", "Click to rake the mould out with a stick and let it cool.", "Click to break the casting out."],
 		"how": "Fill the mould with copper, bed it in the charcoal, blow the furnace up to full heat and hold it there until the copper melts into the shape, then rake it out and break the casting out."},
-	{"out": "mould_bar_unfired", "n": 1, "in": {"clay": 3, "ash": 1}, "tool_tag": "cut", "where": "swamp", "tier": "bench", "rack": "clay_platter",
+	{"out": "mould_shovel_unfired", "n": 1, "in": {"clay": 3, "ash": 1}, "tool_tag": "cut", "where": "swamp", "tier": "bench", "rack": "clay_platter",
+		"cat": "Metal", "act": "steps", "steps": 4, "verb": "Press a shovel mould",
+		"how": "Click to knead the ash into the clay, press it into a thick slab on the platter and cut the hollow for a shovel blade with your blade. Fire it in a campfire."},
+	{"out": "rough_copper_shovel_blade", "n": 1, "in": {"copper": 3, "charcoal": 1}, "tools": {"mould_shovel": 1}, "wear": "mould_shovel", "sharpen": [0], "cast": true, "melt": [3, 8], "at": "furnace",
+		"where": "swamp", "tier": "metal", "cat": "Metal", "act": "steps", "steps": 10, "verb": "Cast a shovel blade",
+		"wear_how": "Click to fill the mould with copper (each casting wears it: it cracks after 5).",
+		"step_how": ["Click to fill the mould with copper.", "Click to bed the mould down in the charcoal.", "Click to blow the furnace up to heat.", "Blow: keep the furnace at full heat (orange) while the copper melts.", "Blow: keep it at full heat.", "Blow: keep it at full heat.", "Blow: keep it at full heat.", "Blow: keep it at full heat.", "Click to rake the mould out with a stick and let it cool.", "Click to break the casting out."],
+		"how": "Fill the mould with copper, bed it in the charcoal, blow the furnace up to full heat and hold it there until the copper melts into the shape, then rake it out and break the casting out."},
+{"out": "mould_bar_unfired", "n": 1, "in": {"clay": 3, "ash": 1}, "tool_tag": "cut", "where": "swamp", "tier": "bench", "rack": "clay_platter",
 		"cat": "Metal", "act": "steps", "steps": 4, "verb": "Press a bar mould",
 		"how": "Click to knead the ash into the clay, press it into a thick slab on the platter and cut the hollow for a bar with your blade. Fire it in a campfire."},
 	{"out": "copper_bar", "n": 1, "in": {"copper": 1, "charcoal": 1}, "tools": {"mould_bar": 1}, "wear": "mould_bar", "sharpen": [0], "cast": true, "melt": [3, 8], "at": "furnace",
@@ -1091,6 +1097,10 @@ const RECIPES := [
 		"cat": "Metal", "act": "steps", "steps": 5, "verb": "Grind the saw's teeth",
 		"step_how": ["Click to wet the whetstone.", "Click to draw the edge along the stone.", "Click to draw it along again.", "Click to turn it and grind the other side.", "Click to hone the edge fine."],
 		"how": "Grind the saw's teeth sharp on the anvil's whetstone."},
+	{"out": "copper_shovel_blade", "n": 1, "in": {"rough_copper_shovel_blade": 1}, "at": "anvil", "whetstone": true, "where": "swamp", "tier": "metal",
+		"cat": "Metal", "act": "steps", "steps": 5, "verb": "Grind the shovel blade",
+		"step_how": ["Click to wet the whetstone.", "Click to draw the edge along the stone.", "Click to draw it along again.", "Click to turn it and grind the other side.", "Click to hone the edge fine."],
+		"how": "Grind the shovel blade's edge on the anvil's whetstone."},
 	{"out": "copper_chisel", "n": 1, "in": {"copper_bar": 1}, "at": "anvil", "whetstone": true, "where": "swamp", "tier": "metal",
 		"cat": "Metal", "act": "steps", "steps": 5, "verb": "Grind the bar into a chisel",
 		"step_how": ["Click to wet the whetstone.", "Click to draw the edge along the stone.", "Click to draw it along again.", "Click to turn it and grind the other side.", "Click to hone the edge fine."],
@@ -1118,10 +1128,10 @@ const RECIPES := [
 		"cat": "Metal", "act": "steps", "steps": 5, "verb": "Grind the spear head",
 		"step_how": ["Click to wet the whetstone.", "Click to draw the edge along the stone.", "Click to draw it along again.", "Click to turn it and grind the other side.", "Click to hone the edge fine."],
 		"how": "Grind the spear head sharp on the anvil's whetstone."},
-	{"out": "iron_mattock_head", "n": 1, "in": {"rough_iron_mattock_head": 1}, "at": "anvil", "whetstone": true, "where": "swamp", "tier": "metal",
-		"cat": "Metal", "act": "steps", "steps": 5, "verb": "Grind the mattock head",
+	{"out": "iron_shovel_blade", "n": 1, "in": {"rough_iron_shovel_blade": 1}, "at": "anvil", "whetstone": true, "where": "swamp", "tier": "metal",
+		"cat": "Metal", "act": "steps", "steps": 5, "verb": "Grind the shovel blade",
 		"step_how": ["Click to wet the whetstone.", "Click to draw the edge along the stone.", "Click to draw it along again.", "Click to turn it and grind the other side.", "Click to hone the edge fine."],
-		"how": "Grind the mattock head sharp on the anvil's whetstone."},
+		"how": "Grind the shovel blade's edge on the anvil's whetstone."},
 	{"out": "iron_chisel", "n": 1, "in": {"rough_iron_chisel": 1}, "at": "anvil", "whetstone": true, "where": "swamp", "tier": "metal",
 		"cat": "Metal", "act": "steps", "steps": 5, "verb": "Grind the chisel",
 		"step_how": ["Click to wet the whetstone.", "Click to draw the edge along the stone.", "Click to draw it along again.", "Click to turn it and grind the other side.", "Click to hone the edge fine."],
@@ -1130,37 +1140,37 @@ const RECIPES := [
 		"cat": "Metal", "act": "steps", "steps": 5, "verb": "Grind the pole shoe",
 		"step_how": ["Click to wet the whetstone.", "Click to draw the edge along the stone.", "Click to draw it along again.", "Click to turn it and grind the other side.", "Click to hone the edge fine."],
 		"how": "Grind the pole shoe sharp on the anvil's whetstone."},
-	{"out": "copper_axe", "n": 1, "in": {"copper_axe_head": 1, "stick": 1, "cordage": 1}, "where": "swamp", "tier": "hand",
+	{"out": "copper_axe", "n": 1, "in": {"copper_axe_head": 1, "stick": 1, "string": 1}, "where": "swamp", "tier": "hand",
 		"cat": "Metal", "act": "steps", "steps": 5, "verb": "Haft the copper axe",
 		"how": "Click the binding again and again to lash the head to the handle."},
-	{"out": "copper_mattock", "n": 1, "in": {"copper_axe_head": 1, "stick": 1, "cordage": 1}, "where": "swamp", "tier": "hand",
-		"cat": "Metal", "act": "steps", "steps": 5, "verb": "Haft a copper mattock",
-		"how": "Click the binding again and again to lash the head crosswise to the handle."},
-	{"out": "copper_knife", "n": 1, "in": {"copper_knife_blade": 1, "stick": 1, "cordage": 1}, "where": "swamp", "tier": "hand",
+	{"out": "copper_knife", "n": 1, "in": {"copper_knife_blade": 1, "stick": 1, "string": 1}, "where": "swamp", "tier": "hand",
 		"cat": "Metal", "act": "steps", "steps": 5, "verb": "Haft the copper knife",
 		"how": "Click the binding again and again to lash the blade into its handle."},
-	{"out": "copper_spear", "n": 1, "in": {"copper_spear_head": 1, "stick": 2, "cordage": 1}, "where": "swamp", "tier": "hand",
+	{"out": "copper_spear", "n": 1, "in": {"copper_spear_head": 1, "stick": 2, "string": 1}, "where": "swamp", "tier": "hand",
 		"cat": "Metal", "act": "steps", "steps": 5, "verb": "Haft the copper spear",
 		"how": "Click the binding again and again to lash the point to the shaft."},
-	{"out": "copper_saw", "n": 1, "in": {"copper_saw_blade": 1, "stick": 1, "cordage": 1}, "where": "swamp", "tier": "hand",
+	{"out": "copper_saw", "n": 1, "in": {"copper_saw_blade": 1, "stick": 1, "string": 1}, "where": "swamp", "tier": "hand",
 		"cat": "Metal", "act": "steps", "steps": 5, "verb": "Haft the copper saw",
 		"how": "Click the binding again and again to lash the blade into its handle."},
-	{"out": "copper_hammer", "n": 1, "in": {"copper_hammer_head": 1, "stick": 1, "cordage": 1}, "where": "swamp", "tier": "hand",
+	{"out": "copper_shovel", "n": 1, "in": {"copper_shovel_blade": 1, "stick": 1, "string": 1}, "where": "swamp", "tier": "hand",
+		"cat": "Metal", "act": "steps", "steps": 5, "verb": "Haft the copper shovel",
+		"how": "Click the binding again and again to lash the blade to the end of the handle."},
+	{"out": "copper_hammer", "n": 1, "in": {"copper_hammer_head": 1, "stick": 1, "string": 1}, "where": "swamp", "tier": "hand",
 		"cat": "Metal", "act": "steps", "steps": 5, "verb": "Haft the copper hammer",
 		"how": "Click the binding again and again to lash the head to the handle."},
-	{"out": "iron_axe", "n": 1, "in": {"iron_axe_head": 1, "stick": 1, "cordage": 1}, "where": "swamp", "tier": "hand",
+	{"out": "iron_axe", "n": 1, "in": {"iron_axe_head": 1, "stick": 1, "string": 1}, "where": "swamp", "tier": "hand",
 		"cat": "Metal", "act": "steps", "steps": 5, "verb": "Haft the iron axe",
 		"how": "Click the binding again and again to lash the head to the handle."},
-	{"out": "iron_knife", "n": 1, "in": {"iron_knife_blade": 1, "stick": 1, "cordage": 1}, "where": "swamp", "tier": "hand",
+	{"out": "iron_knife", "n": 1, "in": {"iron_knife_blade": 1, "stick": 1, "string": 1}, "where": "swamp", "tier": "hand",
 		"cat": "Metal", "act": "steps", "steps": 5, "verb": "Haft the iron knife",
 		"how": "Click the binding again and again to lash the blade into its handle."},
-	{"out": "iron_spear", "n": 1, "in": {"iron_spear_head": 1, "stick": 2, "cordage": 1}, "where": "swamp", "tier": "hand",
+	{"out": "iron_spear", "n": 1, "in": {"iron_spear_head": 1, "stick": 2, "string": 1}, "where": "swamp", "tier": "hand",
 		"cat": "Metal", "act": "steps", "steps": 5, "verb": "Haft the iron spear",
 		"how": "Click the binding again and again to lash the point to the shaft."},
-	{"out": "iron_mattock", "n": 1, "in": {"iron_mattock_head": 1, "stick": 1, "cordage": 1}, "where": "swamp", "tier": "hand",
-		"cat": "Metal", "act": "steps", "steps": 5, "verb": "Haft the iron mattock",
-		"how": "Click the binding again and again to lash the head crosswise to the handle."},
-	{"out": "iron_hammer", "n": 1, "in": {"iron_hammer_head": 1, "stick": 1, "cordage": 1}, "where": "swamp", "tier": "hand",
+	{"out": "iron_shovel", "n": 1, "in": {"iron_shovel_blade": 1, "stick": 1, "string": 1}, "where": "swamp", "tier": "hand",
+		"cat": "Metal", "act": "steps", "steps": 5, "verb": "Haft the iron shovel",
+		"how": "Click the binding again and again to lash the blade to the end of the handle."},
+	{"out": "iron_hammer", "n": 1, "in": {"iron_hammer_head": 1, "stick": 1, "string": 1}, "where": "swamp", "tier": "hand",
 		"cat": "Metal", "act": "steps", "steps": 5, "verb": "Haft the iron hammer",
 		"how": "Click the binding again and again to lash the head to the handle."},
 	{"out": "meteoric_iron", "n": 1, "in": {}, "tool_tags": ["chisel", "hammer"], "tool_why": "a copper chisel and a copper hammer (too hard to break with stone)", "fast_tool": "iron_chisel", "hammer_wear": true,
@@ -1190,8 +1200,8 @@ const RECIPES := [
 	{"out": "rough_iron_spear_head", "n": 1, "in": {"refined_iron_bar": 1}, "tool_tag": "hammer", "tool_why": "a copper hammer (stone just bounces off iron)", "fast_tool": "iron_hammer", "hammer_wear": true,
 		"at": "anvil", "where": "swamp", "tier": "metal", "cat": "Metal", "act": "steps", "steps": 24, "verb": "Hammer out a spear head",
 		"how": "Click the glowing spots to strike the cold iron, moving round the piece: drawing out the edge, spreading the blade. Cold iron moves slowly."},
-	{"out": "rough_iron_mattock_head", "n": 1, "in": {"refined_iron_bar": 1}, "tool_tag": "hammer", "tool_why": "a copper hammer (stone just bounces off iron)", "fast_tool": "iron_hammer", "hammer_wear": true,
-		"at": "anvil", "where": "swamp", "tier": "metal", "cat": "Metal", "act": "steps", "steps": 26, "verb": "Hammer out a mattock head",
+	{"out": "rough_iron_shovel_blade", "n": 1, "in": {"refined_iron_bar": 1}, "tool_tag": "hammer", "tool_why": "a copper hammer (stone just bounces off iron)", "fast_tool": "iron_hammer", "hammer_wear": true,
+		"at": "anvil", "where": "swamp", "tier": "metal", "cat": "Metal", "act": "steps", "steps": 26, "verb": "Hammer out a shovel blade",
 		"how": "Click the glowing spots to strike the cold iron, moving round the piece: drawing out the edge, spreading the blade. Cold iron moves slowly."},
 	{"out": "iron_hammer_head", "n": 1, "in": {"refined_iron_bar": 1}, "tool_tag": "hammer", "tool_why": "a copper hammer (stone just bounces off iron)", "fast_tool": "iron_hammer", "hammer_wear": true,
 		"at": "anvil", "where": "swamp", "tier": "metal", "cat": "Metal", "act": "steps", "steps": 24, "verb": "Hammer out a hammer head",
@@ -1323,6 +1333,60 @@ func def(id: String) -> Dictionary:
 	return _cured_def(id)
 
 
+## Items taken out of the game and what a save's copies become (the tool
+## rework: one stone mattock for both jobs, metal axes and shovels after it).
+const RENAMED := {
+	"stone_axe": "mattock", "axe_head": "mattock_head",
+	"copper_mattock": "copper_shovel", "iron_mattock": "iron_shovel",
+	"iron_mattock_head": "iron_shovel_blade", "rough_iron_mattock_head": "rough_iron_shovel_blade",
+}
+
+
+func migrate_save(v: Variant) -> Variant:
+	## A save with RENAMED items in it, every item id (value or key) swapped
+	## for its replacement; a slot's own name made again for the new item.
+	if v is String:
+		return RENAMED.get(v, v)
+	if v is Array:
+		return v.map(func(x): return migrate_save(x))
+	if v is Dictionary:
+		var out := {}
+		for k in v:
+			var nk = migrate_save(k) if k is String else k
+			var nv = migrate_save(v[k])
+			if out.has(nk) and (out[nk] is int or out[nk] is float) and (nv is int or nv is float):
+				nv += out[nk]  # an old id and its replacement both counted: add them up
+			out[nk] = nv
+		if v.get("id", "") is String and RENAMED.has(v.get("id", "")) and out.get("data") is Dictionary and out.data.has("name"):
+			out.data = edge_data(out.id, int(out.data.edge_left), out.data) if out.data.has("edge_left") else out.data
+			if not out.data.has("edge_left"):
+				out.data.erase("name")
+		return out
+	return v
+
+
+func tool_word(id: String) -> String:
+	## What to call a held chopping or digging tool in a prompt.
+	var shape: String = def(id).get("shape", "")
+	return shape if shape in ["mattock", "axe", "shovel"] else "tool"
+
+
+func works_on(id: String, by: Array) -> bool:
+	## Whether the tool `id` does a job `by` wants: any of its tags in it
+	## (["chop"] a stump, ["dig"] a meteorite, ["chop", "dig"] a plant).
+	return def(id).get("tags", []).any(func(t): return t in by)
+
+
+func slow_tool(id: String) -> bool:
+	## The stone mattock: an axe and a shovel in one, poor at both. Digging
+	## something out takes SLOW_DIG times the swings, a hole two swings and
+	## work with wood twice the clicks.
+	return def(id).get("tier", "") == "stone" and works_on(id, ["chop", "dig"])
+
+
+const SLOW_DIG := 1.5
+
+
 func exists(id: String) -> bool:
 	return ITEMS.has(id) or not _cured_def(id).is_empty()
 
@@ -1397,10 +1461,16 @@ func edge_data(id: String, left: int, keep := {}) -> Dictionary:
 	var d := keep.duplicate()
 	d.edge_left = left
 	if left <= 0:
-		d.name = "%s (blunt)" % ITEMS[id].name
+		d.name = "Blunt %s" % ITEMS[id].name
 	else:
 		d.erase("name")
 	return d
+
+
+func edge_line(def: Dictionary) -> String:
+	## A metal tool's wear, for its detail (`def` merged with its slot data).
+	var edge := int(def.edge)
+	return "Uses since last sharpening %d/%d" % [edge - clampi(int(def.get("edge_left", edge)), 0, edge), edge]
 
 
 func uses_data(id: String, left: int) -> Dictionary:
@@ -1489,7 +1559,7 @@ func recipe_steps(r: Dictionary) -> int:
 			return 2
 		"injector":
 			return 3
-		"stone_axe", "mattock":
+		"mattock":
 			return 5
 		"wax":
 			return 4

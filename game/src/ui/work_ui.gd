@@ -456,7 +456,7 @@ func _refresh() -> void:
 	if not spot.recipe.is_empty():
 		_hover_how = ""
 		var r: Dictionary = spot.recipe
-		_make_title.text = r.verb if r.has("butcher") or r.has("wood") or r.has("house") or r.has("trap") or r.has("plot") else "Making %s" % Items.item_name(r.out)
+		_make_title.text = r.verb if r.has("butcher") or r.has("wood") or r.has("house") or r.has("trap") or r.has("plot") or r.has("sharpen_tool") else "Making %s" % Items.item_name(r.out)
 		var how := Label.new()
 		how.text = Settings.hint(r.how)
 		how.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

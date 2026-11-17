@@ -426,14 +426,12 @@ func tick(delta: float) -> void:
 
 func durability(i: int) -> float:
 	## How much is left (0..1) of an item used a measure at a time (a canteen of
-	## alcohol: Items `measures`, with what is left in the slot's data), or of
-	## a metal tool's edge (`edge`), or -1 for anything else.
+	## alcohol: Items `measures`, with what is left in the slot's data), or -1
+	## for anything else. A metal tool's edge shows no bar: its detail says how
+	## many uses since it was sharpened, and a blunt one is named so.
 	var s = slots[i]
 	if s == null:
 		return -1.0
-	var edge := int(Items.def(s.id).get("edge", 0))
-	if edge > 0:
-		return clampf(float(edge_left(i)) / edge, 0.0, 1.0)
 	var total := int(Items.def(s.id).get("measures", 0))
 	if total <= 0:
 		return -1.0

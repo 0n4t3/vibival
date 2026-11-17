@@ -2,7 +2,7 @@ extends StaticBody3D
 ## A charcoal clamp (group "clamps", metals.md): a pit of firewood sealed
 ## under wet clay, built by hand (items.gd, `build` "clamp"). Lit with an
 ## ember or a lit torch (E), it smoulders under a thin smoke for BURN (a game
-## day), then a mattock breaks it open for 8-12 charcoal. Opened early, some
+## day), then a shovel breaks it open for 8-12 charcoal. Opened early, some
 ## of the wood is still only charred sticks. Broken up unlit, the firewood
 ## comes back.
 
@@ -77,14 +77,15 @@ func done() -> bool:
 func prompt(_player: Node) -> String:
 	var held: String = Game.inventory.held_id()
 	var mattock: bool = "dig" in Items.def(held).get("tags", [])
+	var tool := Items.tool_word(held)
 	if not lit():
 		if held in ["ember", "torch_lit"]:
 			return "Light the charcoal clamp [E]"
-		return "Charcoal clamp: light it with an ember or a lit torch%s" % ("   (swing the mattock to break it up)" if mattock else "")
+		return "Charcoal clamp: light it with an ember or a lit torch%s" % ("   (swing the %s to break it up)" % tool if mattock else "")
 	if done():
-		return "Charcoal clamp, burnt through: %s" % ("swing the mattock to break it open" if mattock else "break it open with a mattock")
+		return "Charcoal clamp, burnt through: %s" % ("swing the %s to break it open" % tool if mattock else "break it open with a shovel")
 	var left := BURN - (Game.time - lit_at)
-	return "Charcoal clamp, smouldering (about %d h left)%s" % [ceili(left / 60.0), "   (swing the mattock to open it early)" if mattock else ""]
+	return "Charcoal clamp, smouldering (about %d h left)%s" % [ceili(left / 60.0), "   (swing the %s to open it early)" % tool if mattock else ""]
 
 
 func interact(_player: Node) -> void:
@@ -99,11 +100,11 @@ func interact(_player: Node) -> void:
 	_smoke.emitting = true
 	Sfx.play_at("fire_light" if Sfx.has_method("has") and Sfx.call("has", "fire_light") else "rustle", global_position, -6.0)
 	Game.crafted.emit("clamp_lit")
-	Game.notify("The clamp catches and begins to smoulder. Leave it a day, then break it open with a mattock.")
+	Game.notify("The clamp catches and begins to smoulder. Leave it a day, then break it open with a shovel.")
 
 
 func break_apart() -> void:
-	## A mattock opens it: charcoal if it has burnt through, some charcoal and
+	## A shovel (or the stone mattock) opens it: charcoal if it has burnt through, some charcoal and
 	## charred sticks if opened early, the firewood back if never lit.
 	var got := {}
 	if not lit():

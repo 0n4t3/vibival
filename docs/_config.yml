@@ -10,7 +10,6 @@ plugins: []
 exclude:
   - client/README.md
   - game-doc.md
-  - game-doc-late-game.md
 sass:
   style: compressed
 

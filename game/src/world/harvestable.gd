@@ -4,11 +4,13 @@ extends StaticBody3D
 ## Plants take days to weeks to grow back, logs and clay a couple of days.
 ## A planted kind with `fed_regrow` grows back in that many days instead if
 ## compost is worked in round it within FED_WITHIN of it being picked.
-## A kind with `dig` can be dug up with a mattock (`dig_hits` swings): it is
+## A kind with `dig` can be dug up with a shovel or cut down with an axe (or
+## the stone mattock, slowly; `dig_hits` swings): either way it is
 ## gone for good (Game.taken, so its chunk never makes it again), giving `dig`
 ## and, if it is ripe (not picked clean), a roll of its `dig_ripe` yield and
 ## its `dig_ready` items too.
 
+const SHOVEL_BONUS := 4  # a clay bank dug with a shovel gives this many times the clay
 const FEED_CUT := 0.3  # compost worked in round a growing plant cuts this much off the time it has left (plot.gd, stump.gd)
 const FED_WITHIN := 1440.0  # a game day: compost this soon after picking a planted kind with `fed_regrow` gives that regrow time
 
@@ -39,7 +41,7 @@ const KINDS := {
 		"yield": {"grub": [1, 3], "tinder": [1, 2], "stick": [0, 2]}, "regrow": [1.5, 2.5],
 		"keep": true, "radius": 0.5, "height": 0.4, "length": 4.4},
 	"clay_bank": {"name": "Clay Bank", "verb": "Dig clay", "mesh": "clay_bank", "bare": "",
-		"yield": {"clay": [2, 4]}, "regrow": [1.5, 2.5], "keep": true, "radius": 1.0, "height": 0.2},
+		"yield": {"clay": [2, 4]}, "shovel_bonus": "clay", "regrow": [1.5, 2.5], "keep": true, "radius": 1.0, "height": 0.2},
 	# Green-stained copper ore in the islands' rock (outcrop.gd, metals.md):
 	# only a copper hammer breaks it out.
 	"copper_outcrop": {"name": "Copper Outcrop", "verb": "Break out ore", "mesh": "", "bare": "",
@@ -164,14 +166,25 @@ func regrow_time() -> float:
 
 func prompt(_player: Node) -> String:
 	var def: Dictionary = KINDS[kind]
-	if def.has("dig") and "dig" in Items.def(Game.inventory.held_id()).get("tags", []):
-		return "%s: swing the mattock to dig it up, roots and all%s" % [def.name, "" if is_ready() else " (picked clean)"]
+	var held: String = Game.inventory.held_id()
+	if def.has("dig") and Items.works_on(held, dug_by()):
+		return "%s: swing the %s to %s%s" % [def.name, Items.tool_word(held), "cut it down" if Items.tool_word(held) == "axe" else "dig it up, roots and all", "" if is_ready() else " (picked clean)"]
 	if not is_ready():
 		_refresh()
 		if Game.inventory.held_id() == "compost" and growing():
 			return "%s (picked clean)%s" % [def.name, feed_hint(_ready_time - Game.time)]
 		return "%s (picked clean)" % def.name
+	if def.has("shovel_bonus") and _shovel(held):
+		return "%s with the shovel [E]   (%d times as much)" % [def.verb, SHOVEL_BONUS]
+	if def.has("shovel_bonus") and Items.tool_word(held) == "shovel":
+		return "%s [E]   (the shovel is blunt: sharpen it to dig %d times as much)" % [def.verb, SHOVEL_BONUS]
 	return "%s [E]" % def.verb
+
+
+static func _shovel(held: String) -> bool:
+	## A sharp metal shovel in hand (not the stone mattock, not a blunt one),
+	## for a `shovel_bonus`.
+	return Items.tool_word(held) == "shovel" and not Game.inventory.blunt(Game.inventory.selected)
 
 
 func interact(_player: Node) -> void:
@@ -184,12 +197,16 @@ func interact(_player: Node) -> void:
 		var n := _rng.randi_range(r[0], r[1]) * (2 if Game.plantings.get(uid, {}).get("fed", false) else 1)
 		if def.get("cut_bonus", "") == id and Game.inventory.has_tag("cut"):
 			n += 2
+		if def.get("shovel_bonus", "") == id and _shovel(Game.inventory.held_id()):
+			n *= SHOVEL_BONUS
 		if n > 0:
 			var left: int = Game.inventory.add(id, n)
 			if left > 0 and _player.world and _player.world.has_method("spawn_pickup"):
 				_player.world.spawn_pickup(id, left, global_position + Vector3(0, 0.6, 0))
 			got.append("%s x%d" % [Items.item_name(id), n])
 			Game.picked.emit(id)
+	if def.has("shovel_bonus") and _shovel(Game.inventory.held_id()):
+		Game.inventory.use_tool(Game.inventory.selected)
 	Sfx.play("pickup", -8.0)
 	Game.notify("Gathered " + ", ".join(got) if not got.is_empty() else "Found nothing useful.")
 	_ready_time = Game.time + regrow_time()
@@ -201,16 +218,25 @@ func interact(_player: Node) -> void:
 	_refresh()
 
 
-func dig() -> void:
-	## A mattock swing into the roots. The last one digs the plant up for good:
-	## its roots, and its ripe yield if it hadn't been picked.
+func dug_by() -> Array:
+	## A plant is dug up with a shovel or cut down with an axe, alike.
+	return ["chop", "dig"]
+
+
+func dig(slow := false) -> void:
+	## A swing into the roots (`slow`: the stone mattock's). The last one
+	## digs the plant up for good: its roots, and its ripe yield if it hadn't
+	## been picked.
 	var def: Dictionary = KINDS[kind]
 	if not def.has("dig"):
 		return
 	_dug += 1
 	Sfx.play_at("chop", global_position, -4.0, 0.2)
-	if _dug < int(def.get("dig_hits", 1)):
-		Game.notify("You dig around the %s's roots (%d / %d)." % [def.name.to_lower(), _dug, def.dig_hits])
+	var need := int(def.get("dig_hits", 1))
+	if slow:
+		need = ceili(need * Items.SLOW_DIG)
+	if _dug < need:
+		Game.notify("You dig around the %s's roots (%d / %d)." % [def.name.to_lower(), _dug, need])
 		return
 	var got := {}
 	for id in def.dig:

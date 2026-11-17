@@ -62,8 +62,8 @@ Paths are relative to `game/` unless they start with `tools/` or `docs/`.
 | `src/world/harvestable.gd` | Plants, logs and clay banks you harvest with E |
 | `src/world/pickup.gd` | An item lying on the ground |
 | `src/world/guts.gd` | A guts pile: saved, lasts a day, draws scavengers |
-| `src/world/stump.gd` | A felled tree's stump: regrows into the tree, dug out with a mattock; a lightning-struck one burns, glows, stays charred; a planted young tree; shoots |
-| `src/world/plot.gd` | Farming: a hole dug with a mattock and a young seed fern growing in it |
+| `src/world/stump.gd` | A felled tree's stump: regrows into the tree, hacked out with an axe (the stone mattock slowly); a lightning-struck one burns, glows, stays charred; a planted young tree; shoots |
+| `src/world/plot.gd` | Farming: a hole dug with a shovel or the stone mattock and a young seed fern growing in it |
 | `src/world/compost.gd` | A compost basket: filled to 20, composts for 5–15 days, gives compost; meat draws pests |
 | `src/world/trap.gd` | A fish trap (carried, set in water) or a snare (set on land): baited, catches while you sleep, holds a live medium animal |
 | `src/world/intro.gd` | The arrival: the lightning strike and a white flash, lying on your back, the dragonfly flyover, getting up |
@@ -76,6 +76,15 @@ Paths are relative to `game/` unless they start with `tools/` or `docs/`.
 | `src/world/work_spot.gd` | Crafting by hand on the ground or on a workbench top |
 | `src/world/workbench.gd` | A built workbench and the tools hanging on its rack |
 | `src/world/soup_pot.gd` | A soup pot: carried, hangs over a fire, holds water or soup |
+| `src/world/site.gd` | Base for anything built in place part by part like a house: the outline of parts still to come, steps clicked on the thing itself (`work_spot` treats it as its `house`), `TEARDOWN_HITS` (3) axe or mattock blows tear an unfinished one down within `HIT_WINDOW` (4 s). Subclasses give `parts()`, `_pieces`, `_shapes`, and hook `_on_part` / `_on_complete` |
+| `src/world/dock.gd` | A dock (group "docks", `Game.docks`) from a Dock Blueprint |
+| `src/world/raft.gd` | A raft (group "rafts", `Game.rafts`) built on a finished dock's slipway |
+| `src/world/furnace.gd` | The clay furnace (group "furnaces"): casting and smelting, station "furnace" |
+| `src/world/clamp.gd` | The charcoal clamp (group "clamps") |
+| `src/world/heavy_stone.gd` | Things hauled like a log: anvil stones (group "anvils", station "boulder" while rough, then "anvil"; shaped in `stage`s) and meteorites (group "meteorites", station "meteorite") |
+| `src/world/crater.gd` | Where a meteorite came down (group "craters"), smoking for `LIFE` (a day) |
+| `src/world/outcrop.gd` | A copper outcrop on an island |
+| `src/core/chart.gd`, `src/ui/map_view.gd` | The charted map: one chart per world, drawn as you walk with a Map and an Ash Pencil |
 | `src/ui/hud.gd` | Bars, effects, hotbar, prompts, messages, waypoint marker |
 | `src/ui/inventory_ui.gd` | The Tab menu: Inventory, Health and Recipes tabs, stash view, rest |
 | `src/ui/work_ui.gd` | Overlay while crafting on the ground |
@@ -308,9 +317,12 @@ The important ones:
 - Fire: `fuel` (seconds of burn), `cook` (what the fire turns it into) and
   `cook_time`.
 - Tools: `damage`, `reach`, `tags` (`cut` is a blade: needed to butcher
-  medium and large carcasses, and strips more fiber, `chop` is an axe: fells
-  soft trees and works logs, `fire` lights fires, `dig` marks a mattock: breaks
-  campfires, digs out stumps and (Use) digs holes for planting, `sack` raises carrying
+  medium and large carcasses, and strips more fiber, `chop` is an axe (or the stone mattock): fells
+  trees and works logs, cuts plants down, hacks out stumps, `fire` lights fires, `dig` marks a shovel (or the stone mattock): breaks
+  campfires, digs up plants and meteorites and (Use) digs holes for planting;
+  a shovel digs four times the clay. The stone mattock has both and is slow at
+  both (`Items.slow_tool`: twice the woodwork strokes, `SLOW_DIG` × the swings,
+  2 for a hole). Old saves swap removed tools through `Items.migrate_save`, `sack` raises carrying
   capacity), `tier` (strike class for the escape roll).
 - `pile` (dropped on land it goes on a `stack.gd` pile of its kind), `carry`
   (too big for the bag: lives in the world and is carried in your arms; the
@@ -631,7 +643,10 @@ carcass are safe) and `lure` (Orthacanthus 2: `fishing._check_predators`
 multiplies the amphibians' range and chance). `pull` sets how hard it takes
 line (Megalichthys 1.0 against Ctenodus 0.6). The debug panel's **Next fish**
 sets `Fishing.next_fish` (a static), which the next `bite()` uses, skipping
-the nibble roll, then clears. `_think_fish`: in water the tail beats; on land
+the nibble roll, then clears. With the copper hook (`player.copper_hook()`,
+on `fishing_rod_copper`) every bite is a fish, never a nibble, and the bait
+stays on until a fish is landed or fights free, even when an amphibian tears
+one off. `_think_fish`: in water the tail beats; on land
 it lies on its side and flops in place, dying after `suffocate_time()`. Dead, it is an
 ordinary carcass (lying on its side at the floor or the surface), so
 scavengers eat it and it is saved like any other.
@@ -646,7 +661,7 @@ and the stash panel's title name it, and picking it up gives it back.
 1 string, 3 steps, bench, `known_by` spindle) replaced the hand recipe; the item itself is unchanged. `Assets.whorl()` draws the
 whorl (the items, the workpieces and the spindle on the rack).
 
-**Moving a bench.** `axe_hit` and `break_apart` (axe or mattock) call
+**Moving a bench.** `axe_hit` and `break_apart` (axe; a shovel or mattock breaks it apart) call
 `workbench._hit()`: `LOOSE_HITS` (3) blows within `HIT_WINDOW` (4 s) knock it
 loose. Its rack tools go to the bag (or `spawn_pickup` when it's full) and
 `player.start_haul(self)` picks it up. It has the hauling interface (`carry`,
@@ -658,7 +673,7 @@ carried, it is saved where it would be set down. `bench_ahead` skips a hauled
 bench.
 
 Two more recipe fields: `tool_tag` asks for any tool with that tag laid out
-or in the bag (the ash pencil's "cut": a chert blade or a stone axe), named
+or in the bag (the ash pencil's "cut": a chert blade or a metal axe), named
 by `Items.TAG_TOOLS` in `missing_for` and the book. An input whose item has
 `empty` is used up and its empty container given back in `_finish` (a Pot
 of Boiled Water has `as` "pot_dirty", so either pot will do where a recipe
@@ -730,7 +745,7 @@ for dev and tests.
   from jaws) comes to rest on it (`creature._floor_below`), so a dragonfly
   struck over a dock lies on the deck.
 - **Floor**: `swamp.floor_height(p)` is the max of the ground and any
-  house's `floor_top(p)` below p (only when p is up at the floor: from
+  house's, dock's or raft's `floor_top(p)` below p (only when p is up at the floor: from
   0.8 m under it to `WALL_H` + 1 above). Stashes, piles, drops, the bench,
   work spots, `add_log`, `add_soup_pot`, `add_vessel` and `add_guts` all use
   it, so a pos passed at floor level (a saved position, a bench's spot, a
@@ -1067,11 +1082,15 @@ It drops guts it was `drawn` to and any prey or blood scent. The ambusher's
 `home` (mode `hide`) or the lurker's `water_home` and `home` move to the box,
 and it enters state `"frenzy"` (surfaced, visible; 35% roar). It comes only
 through the water: `_water_path(from, to)` is a breadth-first search over a
-`PATH_CELL` (2 m) grid round the two (24 m margin) of cells whose ground is
-under `water_level()` (`_wet`), straightened where a straight line stays wet
-(`_water_line`, sampled every metre), and kept in `_frenzy_path`. One out of
-the water, or cut off from the box by land, gets an empty path and takes no
-notice. `_frenzy_goal` follows the waypoints, then the lunge spots, which
+`PATH_CELL` (2 m) grid round the two (`PATH_MARGIN` 24 m, then
+`PATH_MARGIN_WIDE` 64 m if that finds no way) of cells whose ground is
+under `water_level()` and outside any dock's keep-out water (`_wet`: it
+counts as dry, so the way goes round a dock), straightened where a straight
+line stays wet (`_water_line`, sampled every metre), and kept in
+`_frenzy_path`. A box inside a dock's keep-out water is gone for at the
+nearest point outside it (`_reach`, `dock.way_out`). One out of the water,
+or cut off from the box by land (or by a dock's keep-out water), gets an
+empty path and takes no notice. `_frenzy_goal` follows the waypoints, then the lunge spots, which
 are only picked in the water; in `"frenzy"`, `_steer` never steps from
 water onto land (it slides along the shore, trying turns of ±0.5, ±1 and
 ±1.5 rad). It races there (ambusher
@@ -1218,7 +1237,7 @@ axe (none yet). Trees stand `SINK` (0.2 m) into the ground.
 
 - **Felling**: C beside a standing tree (`swamp.tree_ahead`, 1.6 m) kneels
   with `work.tree` set; holding a `chop` tool there, `player._axe_prompt`
-  shows "Kneel to fell the ... [C]" (or that a stone axe can't fell a hard
+  shows "Kneel to fell the ... [C]" (or that a stone mattock can't fell a hard
   one). `work_spot.wood_options()` offers the
   `Items.WOODWORK` entries `on` "tree": steps `clamp(round(r * 20), 5, 10)`,
   needs a `chop` tool (laid out or in the bag) and a soft tree. The last
@@ -1532,7 +1551,7 @@ turn (`-_gape * 0.9`); a positive one swings it up through the skull.
 Stabbing builds up a grip break for Eogyrinus. Uranocentrodon instead rolls
 once it reaches deep water or after `ROLL_TIME`: `ESCAPE_BASE` 10% plus the
 best strike landed while held (`ESCAPE_BONUS`: bare +15%, stone +30%,
-advanced +60%).
+metal +45%, advanced +60%).
 
 ### Thrown stones (`thrown_rock.gd`)
 
@@ -1542,6 +1561,298 @@ the first creature, trunk, boulder, ground or water. Small animals are stunned 2
 amphibian hit directly comes for you; a splash lures amphibians within 12 m
 that aren't already after the player. The stone becomes a pickup that is not saved.
 A `frenzy` item (baitbox) is different: see "Baitbox".
+
+## Boats, the islands and metals
+
+Docks and rafts, the rocky islands, copper, tool wear, meteoric iron and the
+charted map. The player's side is in [boats-and-metals.md](boats-and-metals.md),
+and the design notes are [boats.md](../boats.md) and [metals.md](../metals.md).
+`terrain.gd` makes the islands; `swamp.gd` places and saves all of the
+above; `weather.gd` has the meteor changes; `inventory.gd` has tool wear;
+`work_spot.gd` has the stations, casting, sharpening and the paced steps.
+Metalwork at an anvil lies on it (`_on_anvil`, `_place_on_anvil`): grinding
+on the seated whetstone (`SEAT`), forging on the face, and `look_point` is
+the work there. At the furnace the bedded mould, the smelting ore and their
+charcoal are drawn in `_inside` at the mouth (`_furnace_mouth`, `TOP`);
+`_inside_mark(k)` says which steps are done there, and `_mark_local(k)`
+puts their marks there. Casting or smelting you stand (`eye_height` 1.55)
+and look into the mouth on those steps, the ground on the rest, and only
+the marks in the same place are framed.
+
+### Docks (`dock.gd`, `swamp.dock_spot`, `swamp.dock_blocker`)
+
+Local space: y = 0 is the deck top, the land end at z = 0, the dock runs
+out along −Z; the slipway and berth are on +X at the far end. `LEN` 9 m,
+`HALF_W` 0.9, `DECK_H` 0.5 over the water, `SPACING` 14 m between docks.
+
+- **Placement**: holding `blueprint_dock` (`blueprint` "dock"),
+  `dock_spot(from)` runs the dock out the way you face with its land end at
+  the water's edge just ahead. If that fails it slides the land end along
+  `DOCK_SLIDE` (1, 2, 0, 3, 4, −1, 5, 6, 8 m) and turns it by `DOCK_TURN`
+  (0, ±0.2, ±0.4 rad) until `dock_blocker` passes: land from −0.4 to +1.2 m
+  round the water line at the land end, the far end between `SHALLOW`
+  (0.2 m) and `DEEP` (4 m) of water, and the berth at least
+  `Raft.DRAFT` + 0.1 deep. Right-click marks out the site.
+- **Parts** (`PARTS`): `post` and `pile_0..3` (a Calamites log each,
+  carried, and a river stone; the piles while standing in the water, 5 steps
+  each), `spikes` (16 sticks, 8 cordage, a cut tool, 8), `stringers` (4
+  `board_calamites`, 4 cordage, 6), `deck` (12 `board_tree_fern`, 6 cordage,
+  9), `slipway` (2 branches, 4 `board_calamites`, 2 cordage, 6), `mooring`
+  (a branch, 2 cordage, 3).
+- **Safety**: `Game.dock_safe(pos)` is true on a finished dock and within
+  `GUARD` (7 m) past its end and to each side. `Game.safe(pos)` (a finished
+  house, a finished dock or an island) keeps water predators off you there.
+  Water predators (lurker and ambusher, `Creature.WATER_PREDATORS`) also keep
+  out of `Game.dock_keeps_out(pos)` (`dock.keeps_out`): the same water plus
+  `LAND_GUARD` (30 m) behind the dock up the bank. They never strike you
+  there, never move in (`creature._keep_off_docks`), and one caught inside
+  when the dock is finished swims out by `dock.way_out` and moves its homes
+  out. Stepped into the zone, one slides along its edge (keeping the move
+  along x or z that stays out) instead of stopping dead. Going home (an
+  ambusher with its kill, or back to hide; a lurker retreating) it follows
+  `_home_route`: a `_water_path` to `_reach(goal)`, so it swims round a dock
+  rather than into it. If it gets no nearer its next waypoint for
+  `STALL_TIME` (5 s, `_stalled`), it gives up: that spot becomes its home
+  (an ambusher eats its kill there). Lurkers are not spawned there either.
+- Saved as `"docks"`.
+
+### Rafts (`raft.gd`, `player._physics_riding`)
+
+Local space: y = 0 is `RIDE` (0.1 m) above the waterline, the bow −Z.
+`LOGS` 6, `HALF` (0.96, 1.0), `TOP` 0.24.
+
+- **Parts**: `log_0..5` (a Calamites log each, 3 steps), `cross` (3
+  `board_calamites`, 4), `lashing` (8 cordage, 4 string, 8), `line` (2
+  cordage, 2), `launch` (3). Built at the dock's `BERTH`.
+- **Riding**: E boards. With a `pole`-tagged item held, the move keys set
+  `push`: `SPEED` 3 m/s, `ACCEL` 2, `DRAG` 0.5, `TURN` 0.9, `WIND_PUSH`
+  0.035. It grounds where the water is shallower than `draft()` =
+  `DRAFT` (0.1) + load / 2500. Stepping off within `TIE_REACH` (7 m) of a
+  finished dock's berth ties it up there. It can't pass under a dock
+  (`_hits_dock`: a move that would put a corner inside `dock.covers` is
+  refused and it bounces back a little).
+- **Poling animation** (`player._pole_pose`): while poling, `player.poling`
+  is set and `pole_phase` runs at `POLE_RATE`; the pole is drawn `POLE_DRAW`
+  (2.5x) longer, gripped at its top, planted ahead and pushed back, then
+  lifted forward again, with a soft splash at each plant.
+- **Cargo**: sacks set down on it (Use) go to the four `SPOTS`; one hauled
+  thing from `CARGO_GROUPS` (logs, workbenches, soup pots, vessels, traps,
+  anvils, meteorites) rides at `CARGO_AT`. `LOAD_REF` (150 kg) of cargo
+  halves its acceleration; uneven loads list it.
+- **Bites** (`creature.start_raft_bite`, state "raft_bite"): over water at
+  least `BITE_DEPTH` (0.9 m) deep, outside `Game.safe`, never sooner than
+  `BITE_GAP` (20 s) after the last, a chance a second of `BITE_RATE` (2% by
+  day, 3.5% by night). `BITE_WARN` (2.5 s) of ripples, then the corner dips;
+  `BITE_WINDOW` (3.5 s) to strike the biter, and `BITE_SECOND` (2 s) once
+  the corner is under. Past `TIP` (0.5 rad) of tilt you are tipped in. Bites
+  never damage the raft.
+- Poles: `calamites_pole` (2 split from a `log_stripped` Calamites log, 4
+  steps), `hardened_pole` (cooked in a campfire), `copper_shod_pole` and
+  `iron_shod_pole` (a pole and a pole shoe, by hand).
+- Saved as `"rafts"`, with their cargo.
+
+### Islands (`terrain.gd`, `swamp._spawn_islands`)
+
+`ISLANDS` (5) at `ISLAND_RING` 600–740 m from the centre (the marsh shore is
+about 460 m out), radius
+`ISLAND_R` 26–44 m, `ISLAND_TOP` 3–7 m high, their shelf meeting the floor
+at `ISLAND_FOOT` (−3 m). `terrain.island_at(x, z, margin)` finds one.
+`Game.island_safe(pos)`: within `ISLAND_SAFE` (25 m) of the shelf no water
+predator comes. Each island's outcrops and anvil stones come from its seed;
+an anvil stone stays where it was made until first picked up (then it is in
+`Game.taken` and saved with the rest). On an island's shore `_shore_kind`
+washes up gravel: stones, and `native_copper` (`SHORE_COPPER` 55%).
+Every island also always has its own batch (`swamp._island_copper`, run from
+`_update_shore`): within `SHORE_RANGE` of an island whose batch has expired
+(or was never laid), `ISLAND_COPPER` (4) lumps go down at its waterline
+(`island_shore_spot`: walking in from the foot of the shelf to ground
+between −0.25 m and `SHORE_ITEM_TOP`), all with the same `SHORE_LIFE` expiry,
+tagged `isle` in `_shore`. `_isle_copper[i]` holds that expiry, so picked
+lumps aren't replaced until it passes. A lump dropped for distance before it
+expires clears the island's entry, so the batch is laid again on return. The
+copper hammer and its head use the `hammer` / `hammer_head` shapes
+(`Assets`): a short handle and a square cast head.
+
+### Copper
+
+- **Clamp** (`charcoal_clamp`, `build` "clamp": 10 firewood, 4 clay, a `dig`
+  tool): lit with an ember or a lit torch, it burns `BURN` (1440 s), then a
+  mattock opens it for 8–12 charcoal (early: some charred sticks; unlit: the
+  firewood back). Saved as `"clamps"`.
+- **Furnace** (`furnace`, `build` "furnace": the 8-stone ring, a `dig`
+  tool), then parts `shaft` (12 clay, 2 ash), `tuyere`, `firing` (4
+  firewood), `blowpipes` (one blowpipe; the id is plural from when it took two). `heat` 0..1; each click while casting or
+  smelting is a breath (`BLOW` 0.17); a step only counts at `HOT` (0.75) or
+  more while the copper melts (`melt` [steps, …] on the recipe); it loses
+  `COOL` (0.05) a second, `WET` (1.6×) faster in rain, where a breath also
+  does less. The first finished furnace opens the `metal` tier. Saved as
+  `"furnaces"`.
+- **Recipes** (`at`: "furnace", "anvil", "water", "meteorite"):
+  `work_spot.station_options` lists what can be made at the station you
+  kneel at. `anvil_steps` overrides the steps at an anvil; `at` "water" is a
+  washing pan knelt at the water. Moulds (`mould_*`, `uses` 5) are `wear`
+  tools of `cast` recipes. `whetstone: true` recipes need the anvil's seated
+  whetstone. Moulds have shape `mould`: a clay slab (`Assets.mould`) with a
+  hollow of its own per kind (`Assets.mould_hollow`: axe, knife, spear,
+  hammer, saw, bar, three hooks, a string of beads), shared by the item
+  mesh, the icon and the pressing animation.
+- **Work visuals at the stations** (`work_spot`): `cast` recipes
+  (`_cast_work`) show the mould filled with grains, bedded in charcoal that
+  glows with the furnace's `heat`, the copper melting into the hollow
+  (`Assets.mould_fill`) over the `melt` steps, then raked out and cooling.
+  Other `melt` recipes (smelting, `_smelt_work`) show the ore and charcoal
+  heaped by the furnace, then slag running into a tap pit, glowing with the
+  heat, raked out and broken up for its copper.
+  `_anvil_work_kind` sorts the rest of the anvil and meteorite work:
+  "grind" (on a wet whetstone, turned for the last steps, the edge
+  brightening), "forge" (`hammer_wear` or `tool_tag` "hammer": the lump
+  beaten into `_metal_piece`'s shape under the hammer) and "chip" (iron
+  piling up at a meteorite, the hammer striking a chisel held upright). Copper and iron tools are hafted by hand with
+  a stick and string (`_haft_work`: laid out as the finished tool, a turn
+  of string per click). The blowpipe has shape `blowpipe`: the pole's wood
+  with a clay tip in the item's colour, as the furnace draws its two.
+- **Shaping an anvil** (`heavy_stone.stage`): `ROUGH` (station "boulder",
+  `ROUGH_KG` 42 kg), `PECKED` (a rough anvil: station "anvil", so
+  `anvil_steps` apply, but `at` "anvil" recipes say they need a dressed
+  anvil), `GROUND` (dressed: every `at` "anvil" recipe), `SEATED` (a
+  whetstone can be seated). `work_spot.shape_option()` makes the next stage
+  as a recipe with `shape_anvil` (river stone as a tool): `act` "peck"
+  for `ROUGH`, a 5x5 grid of levels 0–3 (`heavy_stone.heights()`, from the
+  uid's seed, kept in `peck` and saved) knocked down a level per click
+  (`peck_cell`, a blow on a flat cell is wasted); "steps" with 2
+  `stone_grit` and a `pot_dirty` (pot back) to grind; "steps" to peck the
+  seat, marks on the stone (`shape_mark`). `_finish_shape` calls
+  `advance()`. Stones saved before stages existed load as `SEATED`. Dev:
+  `--anvil=STAGE` drops one in front of you and kneels at it (4: seated,
+  with its whetstone); `--work-make=shape` starts its next stage.
+  `--furnace` puts a finished furnace ahead of you and kneels at it.
+- **Outcrops**: a `hammer` tool breaks out 3–5 `copper_ore` (wearing the
+  hammer), then `_ready_time` days before more; kept in `Game.harvested` by
+  uid.
+- **Copper flask** (`flask`, `flask_<kind>_<1..4>` for kinds `dirty`,
+  `clean`, `soup`, `soup_spoiled`, and `flask_alcohol`; shape `flask`,
+  `Assets.flask`). Raised at the anvil (`tool_tag` "hammer"). It works like
+  the canteen, item by item:
+  - Weight: 1.4 kg, plus 1.5 kg per serving. `flask_alcohol` is a fixed
+    4.4 kg.
+  - `hold` fills it to `flask_dirty_4`.
+  - `SoupPot.SCOOPS` chains it a serving at a time. `SoupPot.mix(a, b,
+    had)` weights the new serving by `servings_in(held)`.
+  - Soup `decay` is 4320 (twice the canteen's).
+  - `FermentVessel.POURS` lists its water items.
+  - `FermentVessel.DRAWS` and `_drawn_into` add `DRAW` (10) measures up to
+    the container's `measures` (20 for the flask, 10 for the canteen). A
+    full container is refused.
+  - `measures`: player `_use_measure` drains to `def.drained` (default
+    "canteen").
+- **Copper soup pot** (`soup_pot_copper`, `carry`, never fired). `SoupPot`:
+  - `COPPER_ID`.
+  - `capacity()` is `SERVINGS` × `COPPER_SIZE` (1.25) = 20.
+  - `max_food()` is 15.
+  - `heat_time()` is `HEAT_TIME` / `COPPER_HEAT` (1.5) = 40 s.
+  - `life()` is `LIFE` × `COPPER_LIFE` (1.2).
+  - The constants are the clay pot's.
+  - `scoop()` rescales soup's age to clay-pot terms (age × `LIFE` /
+    `life()`), so a canteen or flask counts its keeping from what is left.
+  - The pot's panel (`tooltip`) uses the item's own name.
+
+### Tool wear (`inventory.gd`)
+
+- `breaks` (spear, mattock): a hidden `used` count in the slot's
+  data; the first `STONE_SAFE` (50) uses are safe, then each has
+  `STONE_BREAK` (2%) to snap the head off, leaving the haft.
+- `edge` (copper 60, iron 90): `edge_left(i)` drops a use at a time; at 0
+  the tool is `blunt` (half damage, `_paced` doubles the steps; named
+  "Blunt X" by `Items.edge_data`) until `sharpen(i)` at the anvil's
+  whetstone (`_finish_sharpen`: the most worn of its kind). Edged tools show
+  no wear bar (`durability` is -1): the bag's detail reads "Uses since last
+  sharpening x/y" (`Items.edge_line`). On the whetstone only the metal
+  working end is drawn (`work_spot._edge_piece`: the head, the saw's
+  toothed blade, the chisel's bit), dull at first and brightening.
+  Dev: `--anvil=4 --give=TOOL:1 --work-make=sharpen` wears it a use and
+  starts sharpening it.
+- `use_tool(i)` returns "broke", "blunt" or ""; `tool_slot(tag)` picks the
+  held tool if it will do, else the best carried (iron, copper, stone; sharp
+  over blunt); `use_tag(tag)` wears the one a job used. A use is a landed hit
+  (`player.used_tool`), a finished job (`work_spot._use_tools`, not tools
+  laid on the ground) or a dig.
+- The copper hammer has `uses` 60, worn a strike at a time on iron
+  (`hammer_wear` recipes, `work_spot._hammer_wear`); worn out it gives 2
+  `copper_grains`. An iron hammer never wears. `fast_tool` (an iron chisel or
+  hammer) halves the steps.
+- Worn tools carry data, so each keeps its own slot (main's unlimited
+  stacks never merge them). Wear goes through `_wear_one(i, data)`: on a
+  stack of fresh tools the one in use keeps the slot (in your hand) and the
+  rest move to another, so the next use wears the same tool.
+
+### Meteoric iron (`weather.gd`, `swamp.meteor_fall`)
+
+- `SHOWERS` (`meteors`, `day_meteors`): `FALL_CHANCE` (50%) of a shower
+  bringing a meteorite down, always the first after you have cast copper.
+  `_fall` shows a fireball heading that way if you are awake and says how
+  far off (`how_far`) and which way it hit; then, delayed by distance, the
+  `impact` sound with a camera `shake` (stronger the nearer). Asleep, you
+  just get the message. `meteor_fall(dir)` puts it on dry land 60–300 m off
+  roughly along `dir`, never within `METEOR_CLEAR` (60 m) of anything in
+  `PLAYER_MADE` (houses, docks, piles, stashes, kept drops, fires, benches
+  and so on; `player_made_spots`, `clear_of`), with a `crater.gd` round it.
+- The crater's smoke column (`COLUMN`, 34 × 120 m) is a camera-facing quad
+  with a noise shader, thinning to nothing over `LIFE` (`column_strength`).
+  Craters are usually past the camera's far plane, so beyond 0.8 ×
+  `view_distance` it is pulled in along the line of sight and scaled down
+  to match, shrinking a little less than true (`pow(d / reach, 0.4)`) so a
+  far one still reads over the trees.
+- `day_meteors` (`DAY_KINDS`) joins the daily pool from `DAY_METEORS_FROM`
+  (index 9, day 10): `FIREBALL_EVERY` 12–35 s, each `FIREBALL_LIFE` 3–5 s.
+  These burn up high: each is followed by a distant double boom (`sonic`,
+  −12 to −6 dB, no shake). A real fall is the louder `impact` with a camera
+  shake and a smoke column, so it can't be mistaken. `--meteor-fall=S`
+  starts one that brings a meteorite down after S seconds; `--crater=M`
+  puts a fresh crater M m ahead; `--dock=N` marks out a dock on the nearest
+  shore with N parts built (`--dock-work` kneels at the next part,
+  `--dock-steps=K` begins it and does K steps, `--dock-deep` picks a shore where the spikes
+  are worked swimming).
+- A meteorite (`heavy_stone.gd`) is `buried` until `DIG_HITS` (3) shovel
+  swings; then it can be hauled, or knelt at with `chisel` and `hammer` tools
+  to chip `meteoric_iron` / `meteoric_iron_large`, wearing its `mass` down.
+  Saved as `"stones"` (with anvil stones) and `"craters"`. It is drawn by
+  `Assets.meteorite` (also the item's shape "meteorite"): a lopsided lump
+  sized by `radius()`, with thumbprint hollows, a small flat broken face of
+  bare iron, and dark fusion crust patched with rust, in the "meteorite"
+  material (a little metallic, finely dimpled). Seeded by its uid, so each
+  keeps its shape.
+
+### The charted map (`core/chart.gd`, `ui/map_view.gd`)
+
+- **Data**: one chart per world, `Game.chart` (a `PackedByteArray`,
+  `GRID` × `GRID` = 200 × 200 cells of `CELL` 8 m from −`HALF` to `HALF`
+  (800 m) in x and z; 1 = drawn) and `Game.map_marks` [{x, z}] (up to
+  `MAX_MARKS`, 40). Saved by `Game.save_game` through `Chart.to_save()`
+  (the chart deflated and base64'd) and restored in `apply_save`
+  (`from_save`); a new run clears both.
+- **Item and recipe**: `chart_map` ("Map", `"chart": true`), bench tier,
+  "Writing": a `paper_sheet`, `ash_pencil` as a tool, `tool_tag` cut,
+  `wear` ash_pencil, `sharpen` [0], 4 steps (work_spot draws the border and
+  the compass rose).
+- **Charting**: `swamp._chart` (each second, with the inventory tick) calls
+  `Chart.chart_round(inv, pos)`. With a `chart_map` in the bag, the cells
+  within `REACH` (32 m) not yet drawn are marked, using the first ash pencil
+  whose slot data `drawn` is under `SHARP` (400), and adding to it. With new
+  ground and no usable pencil it returns "pencil" or "blunt", and `_chart`
+  notifies at most every `CHART_NAG` (20 s).
+- **Sharpening**: Use with an `ash_pencil` held calls `Chart.sharpen`: it
+  needs a `cut` tool in the bag and a pencil with `drawn` > 0, and wears one
+  use (`uses_data`, which drops `drawn`).
+- **View**: Use with a `chart` item held calls `swamp.open_map()`, which
+  makes the `MapView` once (on the UI layer) and sets `ui_open`. It paints
+  newly charted cells into a `GRID` image (`cell_color`: terrain height and
+  island rock) and draws the visible part of it on a square sheet
+  (`zoom` 1–10, `center` world x, z), ruled lines every 100 m, the markers,
+  and an arrow at the player along `-basis.z` (or a dot at the sheet's edge
+  when off it). North is up (−z). Left click (no drag) adds a marker,
+  right-click removes the nearest within 14 px, wheel zooms about the mouse,
+  drag pans; "pause" or "inventory" closes it.
+- Dev: `--chart=METRES` charts round the start, `--open-map` opens it.
 
 ## Sleep, weather and saving
 
@@ -1553,9 +1864,9 @@ A `frenzy` item (baitbox) is different: see "Baitbox".
   each roof side only once built), so rain doesn't fall indoors or on the
   porch.
 - **Rare weather** (`src/world/weather.gd`, `swamp.weather`): from
-  `FIRST_DAY` (index 2, day three) `roll_day` gives each day a `CHANCE` (20%;
-  33% in the late game, which adds `day_meteors` from day 10: see
-  [game-doc-late-game.md](game-doc-late-game.md)) of one event from `KINDS`. Night kinds (`aurora`, `bright_moon`, `meteors`)
+  `FIRST_DAY` (index 2, day three) `roll_day` gives each day a `CHANCE` (33%)
+  of one event from `KINDS`; `day_meteors` joins them from day 10
+  (`ALL_KINDS`: see [Meteoric iron](#meteoric-iron-weathergd-swampmeteor_fall)). Night kinds (`aurora`, `bright_moon`, `meteors`)
   last the night, from clock 1260 to 180. The others (`fog`, `wind`, `smoke`,
   `thunderstorm`) last `LENGTH` 6–12 min, starting at a random time of the day. Events
   fade in and out over `FADE` (30 s). `apply_sky` runs at the end of
@@ -1613,6 +1924,8 @@ A `frenzy` item (baitbox) is different: see "Baitbox".
   (`FLY_TAP` 0.35 s). `player.apply_cheats` sets `vitals.god` and
   `vitals.no_needs`. F1 (`debug_panel` action) or the pause menu opens
   `src/ui/debug_panel.gd` through `swamp.open_debug`; it pauses the tree.
+  Its Item button opens a PopupPanel: a search box (name or id, any case;
+  Enter takes the first match) over an ItemList of every item.
   Its Health row lists `Survival.DEBUG_CONDITIONS` ([id, name]) and gives
   one with `vitals.give_condition(id)`, which sets the fields directly (not
   through `add_wound` or `poison`), so it works with damage off; `god` then
@@ -1782,7 +2095,9 @@ listed at the top of `game.gd` and in the README: `--start`, `--seed`,
 `--time`, `--give`, `--god`, `--spawn`, `--wound`,
 `--open-inventory[=health|recipes]`, `--work`, `--weather`, `--debug`,
 `--open-debug`, `--soup-pot`, `--house`, `--shot` and more. `--only=group,...` runs just those test
-groups (the first word of each printed group name).
+groups (the first word of each printed group name). Boats, the islands and metals are
+`test_boats`, `test_tool_wear`, `test_metals`, `test_meteor_weather`,
+`test_copper_vessels` and `test_map` (`--only=boats,metals,map`).
 
 Web and Android builds: `tools/export.sh web|android` exports with the
 official editor in `.tools/godot/`, using `game/export_presets.cfg`, from a
@@ -1810,6 +2125,16 @@ xvfb-run -a -s "-screen 0 1280x720x24" tools/dev-run.sh -- --start=swamp --time=
   If its `shape` is new, add a case in `Assets._item_mesh`. For a steps
   recipe, add its workpiece to `WorkSpot._rebuild_work`, its marker to
   `_target`, and its step count to `Items.recipe_steps`.
+- **A metal head or tool**: copper and iron heads are smooth, not knapped.
+  `Assets.metal_kind(id)` picks the look from the id and shape ("axe",
+  "knife", "spear", "chisel", "shoe", "bar"), and `Assets.metal_head` draws
+  it as a bevelled `metal_plate` (`metal_axe`, `metal_knife`, `metal_spear`
+  for the hafted tools). The work spot draws the same heads on the anvil,
+  the whetstone and while hafting.
+- **Finished stone heads** are drawn by `Assets.stone_head` (a flaked chert
+  blade, spear point or mattock head, thick down the middle and thin at a
+  wavy edge); only the knapping work shows the 5×5 grid (`Assets.knapped`).
+  Fishhooks, chitin or copper, are `Assets.fish_hook`.
 - **A knapped head**: add its pattern to `KNAPPING`, make sure it doesn't
   match another pattern, add it to `Assets.HEAD_SHAPES` and the knap case in
   `_rebuild_work`. One knapped from something other than chert (the chitin
@@ -1825,9 +2150,3 @@ xvfb-run -a -s "-screen 0 1280x720x24" tools/dev-run.sh -- --start=swamp --time=
 - **Anything saved**: add it to `swamp._world_state` and `_apply_restore`
   (or to `Game.take_save` for run-wide state), and add a save test.
 - Then update the player's guide in `docs/`, this page, and the README.
-
-## Late game
-
-Boats, the rocky islands, copper, tool wear and meteoric iron are on the
-`late-game` branch, documented separately in
-[game-doc-late-game.md](game-doc-late-game.md) until it is merged.

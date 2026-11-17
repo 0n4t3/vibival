@@ -15,6 +15,9 @@ const SCENT_RADIUS := 45.0 # blood in the water (meaty soup tipped out) draws am
 const APPROACH_TIME := 120.0  # seconds one drawn by blood keeps coming before it gives up
 const FRENZY_RADIUS := 65.0   # a baitbox in the water draws big amphibians this far (frenzy)
 const PATH_CELL := 2.0        # metres per cell of the grid a water path is searched on
+const PATH_MARGIN := 24.0     # how far round a baitbox and the one going for it the way there is looked for
+const PATH_MARGIN_WIDE := 64.0  # and then, failing that, for a long way round
+const STALL_TIME := 5.0       # seconds a water predator heading home gets nowhere before it gives up
 const SUFFOCATE := 90.0    # seconds a fish lives out of the water
 const AIR_MULT := 5.0      # a lungfish, which breathes air, lasts this many times as long
 
@@ -285,6 +288,12 @@ var _frenzy := 0.0               # amphibians: seconds left tearing at a baitbox
 var _frenzy_at := Vector3.ZERO   # where the baitbox is
 var _frenzy_spot := Vector3.ZERO # where it is thrashing toward next, round the box
 var _frenzy_path: Array = []     # waypoints through the water to the baitbox (see _water_path)
+var _home_path: Array = []       # waypoints through the water on the way home (see _home_route)
+var _home_path_to := Vector3.INF # where _home_path leads
+var _home_path_state := ""       # and in which state it was found
+var _stall_to := Vector3.INF     # the waypoint it is heading for on the way home
+var _stall_best := INF           # the nearest it has got to it
+var _stall_t := 0.0              # how long since it last got a metre nearer (see _stalled)
 var _stun := 0.0                 # small animals: seconds left dazed by a thrown rock
 var blown := 0.0                 # flyers: seconds left tumbling helplessly in a gale
 var carried_by: Node3D = null    # a lizard: the Meganeura flying off with it
@@ -859,7 +868,17 @@ func _keep_off_docks(was: Vector3, delta: float) -> void:
 			heading = atan2(to.x, to.z)
 			rotation.y = heading + PI
 	else:
-		global_position = Vector3(was.x, global_position.y, was.z)
+		# Moving in: slide along the edge (keep the part of the move that
+		# stays out), so clipping a corner of it never stops one dead.
+		var y := global_position.y
+		var along_x := Vector3(global_position.x, y, was.z)
+		var along_z := Vector3(was.x, y, global_position.z)
+		if not dock.keeps_out(along_x):
+			global_position = along_x
+		elif not dock.keeps_out(along_z):
+			global_position = along_z
+		else:
+			global_position = Vector3(was.x, y, was.z)
 	for k in ["home", "water_home", "_target"]:
 		var h: Vector3 = get(k)
 		if h.is_finite() and dock.keeps_out(h):
@@ -1360,11 +1379,19 @@ func _think_lurker(player: Node3D, dist: float, delta: float) -> void:
 				_body.rotation.z = sin(Time.get_ticks_msec() * 0.014) * 0.1
 				_gape = lerpf(_gape, 0.12, minf(delta * 10.0, 1.0))
 		"retreat":
-			goal = home if mode == "land" else water_home
+			var back_to: Vector3 = home if mode == "land" else water_home
+			goal = _home_route(back_to)
 			spd = 3.2
+			if _stalled(goal, delta):
+				# No way back: it lives here now.
+				back_to = Vector3(global_position.x, back_to.y, global_position.z)
+				if mode == "land":
+					home = back_to
+				else:
+					water_home = back_to
 			if _frenzy > 0.0:
 				state = "frenzy"  # back to the baitbox, if it is still there
-			elif Vector2(global_position.x - goal.x, global_position.z - goal.z).length() < 1.5:
+			elif Vector2(global_position.x - back_to.x, global_position.z - back_to.z).length() < 1.5:
 				state = "wander" if mode == "land" else "lurk"
 		"lunge":
 			# Snapping at a splash, then lurking there.
@@ -1677,10 +1704,14 @@ func _think_ambusher(player: Node3D, dist: float, delta: float) -> void:
 				_prey = null
 				state = "return"
 			else:
-				goal = water_home
+				goal = _home_route(water_home)
 				spd = 2.4
 				_prey.global_position = grab_anchor()
-				if Vector2(global_position.x - goal.x, global_position.z - goal.z).length() < 1.5:
+				if _stalled(goal, delta):
+					# Wedged with no way through: it takes the kill under here.
+					water_home = Vector3(global_position.x, water_home.y, global_position.z)
+					goal = water_home
+				if Vector2(global_position.x - water_home.x, global_position.z - water_home.z).length() < 1.5:
 					_prey.queue_free()
 					_prey = null
 					mode = "hide"
@@ -1701,11 +1732,14 @@ func _think_ambusher(player: Node3D, dist: float, delta: float) -> void:
 				spd = 3.6
 		_:  # "retreat", "return": go back to its spot
 			state = "return"
-			goal = home
+			goal = _home_route(home)
 			spd = 2.2
+			if _stalled(goal, delta):
+				# No way back to it: its spot is here now.
+				home = Vector3(global_position.x, _ground(global_position.x, global_position.z), global_position.z)
 			if _frenzy > 0.0:
 				state = "frenzy"  # back to the baitbox, if it is still there
-			elif Vector2(global_position.x - goal.x, global_position.z - goal.z).length() < 1.2:
+			elif Vector2(global_position.x - home.x, global_position.z - home.z).length() < 1.2:
 				state = "bask" if mode == "bask" else "hide"
 				mode = state
 	if state == "frenzy":
@@ -1805,7 +1839,7 @@ func frenzy(at: Vector3, secs: float) -> bool:
 		return false
 	# It comes only through the water: one out on land, or cut off from the
 	# box by land, takes no notice.
-	var path := _water_path(global_position, at)
+	var path := _water_path(global_position, _reach(at))
 	if path.is_empty():
 		return false
 	_frenzy_path = path
@@ -1837,7 +1871,7 @@ func frenzy(at: Vector3, secs: float) -> bool:
 
 func _pick_frenzy_spot() -> void:
 	## Somewhere close round the baitbox, in the water, to lunge at next.
-	_frenzy_spot = _frenzy_at
+	_frenzy_spot = _reach(_frenzy_at)
 	for i in 8:
 		var a := _rng.randf() * TAU
 		var r := _rng.randf_range(float(def.radius) * 0.5, float(def.radius) + 3.0)
@@ -1865,9 +1899,58 @@ func _frenzy_goal() -> Vector3:
 	return _frenzy_spot
 
 
+func _home_route(goal: Vector3) -> Vector3:
+	## The next waypoint on the way home to `goal` through the water, round
+	## any dock's keep-out water (as on the way to a baitbox): without it, a
+	## dock between it and home would stop it dead at the keep-out's edge.
+	## `goal` itself on land, or when no way through the water reaches it.
+	if state != _home_path_state or not _home_path_to.is_finite() \
+			or Vector2(goal.x - _home_path_to.x, goal.z - _home_path_to.z).length() > 1.0:
+		_home_path_state = state
+		_home_path_to = goal
+		_home_path = [] if mode == "land" else _water_path(global_position, _reach(goal))
+		_stall_to = Vector3.INF
+	while not _home_path.is_empty():
+		var w: Vector3 = _home_path[0]
+		if Vector2(global_position.x - w.x, global_position.z - w.z).length() > PATH_CELL:
+			return w
+		_home_path.pop_front()
+	return goal
+
+
+func _stalled(toward: Vector3, delta: float) -> bool:
+	## True once it has been heading home for STALL_TIME without getting a
+	## metre nearer the waypoint `toward`: wedged against something, or
+	## sliding along a shore it can't find a way round.
+	var d := Vector2(global_position.x - toward.x, global_position.z - toward.z).length()
+	if not _stall_to.is_finite() or Vector2(toward.x - _stall_to.x, toward.z - _stall_to.z).length() > 0.5 or d < _stall_best - 1.0:
+		_stall_to = toward
+		_stall_best = d
+		_stall_t = 0.0
+	_stall_t += delta
+	if _stall_t <= STALL_TIME:
+		return false
+	_stall_t = 0.0
+	return true
+
+
 func _wet(x: float, z: float) -> bool:
-	## Ground under the water: where one going for a baitbox may swim.
-	return _ground(x, z) < (world.water_level() if world and world.has_method("water_level") else 0.0)
+	## Ground under the water: where one going for a baitbox may swim. A
+	## dock's keep-out water (dock.gd keeps_out) counts as dry, so the way
+	## to a baitbox goes round a dock rather than into it.
+	if _ground(x, z) >= (world.water_level() if world and world.has_method("water_level") else 0.0):
+		return false
+	return Game.docks.is_empty() or Game.dock_keeps_out(Vector3(x, 0.0, z)) == null
+
+
+func _reach(at: Vector3) -> Vector3:
+	## Where to go for something at `at`: just outside a dock's keep-out
+	## zone if it is in one.
+	var dock: Node3D = Game.dock_keeps_out(at)
+	if dock == null:
+		return at
+	var o: Vector3 = dock.way_out(at)
+	return Vector3(o.x, at.y, o.z)
 
 
 func _water_line(a: Vector3, b: Vector3) -> bool:
@@ -1884,13 +1967,20 @@ func _water_path(from: Vector3, to: Vector3) -> Array:
 	## Waypoints from `from` to `to` that stay in the water the whole way
 	## (a breadth-first search on a PATH_CELL grid round the two, then
 	## straightened where the water allows). Empty when `from` is out of the
-	## water or no way through it reaches `to`.
+	## water or no way through it reaches `to`. It looks PATH_MARGIN round the
+	## two first, then wider (PATH_MARGIN_WIDE) for a long way round, such as
+	## past a dock whose keep-out water reaches an islet.
 	if not _wet(from.x, from.z):
 		return []
 	if _water_line(from, to):
 		return [to]
-	var lo := Vector2(minf(from.x, to.x), minf(from.z, to.z)) - Vector2.ONE * 24.0
-	var hi := Vector2(maxf(from.x, to.x), maxf(from.z, to.z)) + Vector2.ONE * 24.0
+	var path := _water_search(from, to, PATH_MARGIN)
+	return path if not path.is_empty() else _water_search(from, to, PATH_MARGIN_WIDE)
+
+
+func _water_search(from: Vector3, to: Vector3, margin: float) -> Array:
+	var lo := Vector2(minf(from.x, to.x), minf(from.z, to.z)) - Vector2.ONE * margin
+	var hi := Vector2(maxf(from.x, to.x), maxf(from.z, to.z)) + Vector2.ONE * margin
 	var w := ceili((hi.x - lo.x) / PATH_CELL) + 1
 	var h := ceili((hi.y - lo.y) / PATH_CELL) + 1
 	var cell := func(p: Vector3) -> Vector2i:

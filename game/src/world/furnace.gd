@@ -3,11 +3,11 @@ extends "res://src/world/site.gd"
 ## smelting ore and casting it in moulds, is done kneeling at it (C, work_spot
 ## station "furnace"). Its stone ring is laid by hand (items.gd, `build`
 ## "furnace"); the rest goes up part by part like a house: a coiled clay
-## shaft, the tuyere, a first firing to harden it and two blowpipes.
+## shaft, the tuyere, a first firing to harden it and a blowpipe.
 ##
 ## Finished, it has a `heat` from 0 to 1, shown by its glow (dull red, cherry,
 ## orange). Every click while casting or smelting is a breath down the
-## blowpipes (blow): it raises the heat, and while the copper melts a step
+## blowpipe (blow): it raises the heat, and while the copper melts a step
 ## only counts at full heat (HOT). Left alone the heat falls, faster in rain.
 ## The first finished furnace opens the "metal" recipes in the book.
 ##
@@ -29,8 +29,9 @@ const PARTS := [
 		"how": "Click to cut a hole low in the shaft and seal the fired tuyere into it."},
 	{"id": "firing", "verb": "Give it a first firing", "in": {"firewood": 4}, "steps": 3, "face": Vector3(0, TOP, 0),
 		"how": "Click to drop firewood down the shaft and light it, drying and hardening the clay."},
-	{"id": "blowpipes", "verb": "Fit the blowpipes", "in": {"blowpipe": 2}, "steps": 2, "face": Vector3(RING_R + 0.3, 0.2, 0),
-		"how": "Click to seat each blowpipe in the mouth of the tuyere."},
+	# (Its id stays "blowpipes": saves key built parts by id.)
+	{"id": "blowpipes", "verb": "Fit the blowpipe", "in": {"blowpipe": 1}, "steps": 1, "face": Vector3(RING_R + 0.3, 0.2, 0),
+		"how": "Click to seat the blowpipe in the mouth of the tuyere."},
 ]
 
 var heat := 0.0
@@ -99,7 +100,7 @@ static func _glow(h: float) -> Color:
 
 
 func blow(player: Node) -> bool:
-	## A breath down the blowpipes: hotter, at a little cost to you. Whether it
+	## A breath down the blowpipe: hotter, at a little cost to you. Whether it
 	## is at full heat now.
 	if not complete():
 		return false
@@ -182,9 +183,13 @@ func _pieces(id: String, _k: int) -> Array:
 				var p := _blob(i, Vector3(0.05 * (i - 1), TOP - 0.02, 0.04 * i), Vector3(0.12, 0.03, 0.12), Color(0.12, 0.1, 0.09), "wood")
 				out.append(p)
 		"blowpipes":
-			for i in 2:
-				var side := (i * 2 - 1) * 0.1
-				out.append(_cyl(i, Vector3(RING_R + 0.1, 0.22, side * 0.3), Vector3(RING_R + 0.9, 0.5, side * 3.0), 0.025, Color(0.62, 0.55, 0.32), "wood"))
+			# The same Calamites wood as the pole (Assets "rod" and
+			# "blowpipe"), its fired clay tip seated in the tuyere's mouth.
+			var mouth := Vector3(RING_R + 0.1, 0.22, 0)
+			var butt := Vector3(RING_R + 0.9, 0.5, 0.06)
+			var tip := mouth.lerp(butt, 0.12)
+			out.append(_cyl(0, mouth, tip, 0.016, fired, "clay", 0.024))
+			out.append(_cyl(0, tip, butt, 0.022, Assets.WOOD, "wood", 0.025))
 	return out
 
 

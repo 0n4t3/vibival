@@ -83,7 +83,7 @@ func setup_common(spawn: Vector3, vitals: bool) -> void:
 		_dev_chart.call_deferred(float(Game.dev["chart"]))
 	if Game.dev.has("open-map") and has_method("open_map"):
 		call_deferred("open_map")
-	if Game.dev.has("work") or Game.dev.has("anvil"):
+	if Game.dev.has("work") or Game.dev.has("anvil") or Game.dev.has("furnace"):
 		_dev_work.call_deferred()
 
 
@@ -149,7 +149,7 @@ func _dev_work() -> void:
 	## --work=id:n,... kneels and lays those items out; --work-make=out starts
 	## that recipe and --work-steps=N does N steps of it (strikes, for knapping).
 	## With --trap, you kneel at the trap to bait it. --anvil=STAGE (0 rough
-	## to 3 seated) puts an anvil stone down in front of you and kneels at it;
+	## to 3 seated, 4 with its whetstone) puts an anvil stone down in front of you and kneels at it;
 	## --work-make=shape then starts its next stage of shaping.
 	var traps := get_tree().get_nodes_in_group("traps")
 	if Game.dev.has("anvil") and has_method("add_heavy_stone"):
@@ -157,7 +157,16 @@ func _dev_work() -> void:
 		var st: Node3D = call("add_heavy_stone", "anvil_stone", player.global_position + f * 1.3, atan2(f.x, f.z) + 0.4)
 		for k in clampi(int(Game.dev["anvil"]), 0, 3):
 			st.advance()
+		if int(Game.dev["anvil"]) >= 4:
+			st.whetstone = true  # --anvil=4: seated, with its whetstone
+			st._rebuild()
 		_kneel_beside(st, "station", {"station_kind": st.station_kind()})
+	elif Game.dev.has("furnace") and has_method("add_furnace"):
+		# --furnace: a finished furnace in front of you, and you kneeling at it.
+		var f := fwd_flat()
+		var fu: Node3D = call("add_furnace", player.global_position + f * 1.8, atan2(f.x, f.z))
+		fu.build_to(fu.PARTS.size())
+		_kneel_beside(fu, "station", {"station_kind": fu.station_kind()})
 	elif Game.dev.has("trap") and not traps.is_empty():
 		start_trap_work(traps[0])
 	else:
@@ -171,7 +180,28 @@ func _dev_work() -> void:
 			work.lay(i, int(kv[1]) if kv.size() > 1 else 1)
 	if not Game.dev.has("work-make"):
 		return
-	work.begin(work.shape_option() if Game.dev["work-make"] == "shape" else Items.recipe_for(Game.dev["work-make"], where))
+	if Items.recipe_for(Game.dev["work-make"], where).get("at", "") == "water":
+		work.station_kind = "water"  # a washing recipe: as if looking at the water
+	if Game.dev["work-make"] == "sharpen":
+		# --work-make=sharpen (with --anvil=4): the first edged tool carried,
+		# worn a use, drawn along the whetstone.
+		for i in Game.inventory.SIZE:
+			var sl = Game.inventory.slots[i]
+			if sl != null and int(Items.def(sl.id).get("edge", 0)) > 0:
+				Game.inventory.use_tool(i)
+				break
+		for o in work.options():
+			if o.recipe.has("sharpen_tool"):
+				work.begin(o.recipe)
+				break
+	elif Game.dev["work-make"] == "bait":
+		# --work-make=bait: bait the laid-out rod with the bait beside it.
+		for o in work.options():
+			if o.recipe.get("bait", false) is String:
+				work.begin(o.recipe)
+				break
+	else:
+		work.begin(work.shape_option() if Game.dev["work-make"] == "shape" else Items.recipe_for(Game.dev["work-make"], where))
 	var n := int(Game.dev.get("work-steps", "0"))
 	for k in n:
 		match work.recipe.get("act", ""):

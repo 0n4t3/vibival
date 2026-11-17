@@ -237,7 +237,7 @@ func prompt(player: Node) -> String:
 		return ""
 	var p := next_part()
 	var tags: Array = Items.def(Game.inventory.held_id()).get("tags", [])
-	var tear := "   (hit it %d times with an axe or mattock to tear it down)" % TEARDOWN_HITS if "chop" in tags or "dig" in tags else ""
+	var tear := "   (hit it %d times with an axe or a shovel to tear it down)" % TEARDOWN_HITS if "chop" in tags or "dig" in tags else ""
 	return "%s: %s [E]   %d of %d parts built%s" % [site_name().capitalize(), p.verb.to_lower(), built.size(), parts().size(), tear]
 
 

@@ -545,7 +545,7 @@ const FERN_REACH := 0.8   # how near where a mattock strikes a decorative fern m
 
 
 func clear_fern(p: Vector3) -> bool:
-	## A mattock swung at the ground: tears out the decorative fern there, if
+	## An axe or shovel swung at the ground: takes out the decorative fern there, if
 	## any (chunk.clear_fern), its own chunk first, then the ones around it.
 	## Only where it strikes the ground (not a trunk or a wall above one).
 	if absf(p.y - ground_height(p.x, p.z)) > 0.6:
@@ -569,9 +569,10 @@ func trunks_near(pos: Vector3) -> PackedVector3Array:
 	return c.trunks if c else PackedVector3Array()
 
 
-func dig_hole(pos: Vector3) -> bool:
-	## A mattock's right-click: a hole in the open ground at pos, for planting
-	## (plot.gd). It fills itself in again a game day later.
+func dig_hole(pos: Vector3, check_only := false) -> bool:
+	## A shovel's right-click: a hole in the open ground at pos, for planting
+	## (plot.gd). It fills itself in again a game day later. `check_only`:
+	## only whether one can go there (saying why not), digging nothing.
 	var h := ground_height(pos.x, pos.z)
 	if absf(pos.y - h) > 0.25:
 		Game.notify("Aim at open ground to dig a hole.")
@@ -594,6 +595,8 @@ func dig_hole(pos: Vector3) -> bool:
 		if v.z > 0.0 and Vector2(v.x, v.y).distance_to(Vector2(pos.x, pos.z)) < v.z + 0.4:
 			Game.notify("Too close to a tree: its roots are in the way.")
 			return false
+	if check_only:
+		return true
 	var uid := "pl%d_%d_%d" % [roundi(pos.x * 10.0), roundi(pos.z * 10.0), roundi(Game.time)]
 	Game.plantings[uid] = {"x": pos.x, "y": h, "z": pos.z, "dug": Game.time}
 	var c: Node = chunks.get(Vector2i(floori(pos.x / Chunk.SIZE), floori(pos.z / Chunk.SIZE)))

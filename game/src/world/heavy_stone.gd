@@ -18,7 +18,7 @@ extends StaticBody3D
 ##           to grind castings sharp and sharpen blunt metal tools.
 ## Without a whetstone in it, E picks it up to carry.
 ##
-## A meteorite lies half buried in its crater until a mattock digs it out
+## A meteorite lies half buried in its crater until a shovel digs it out
 ## (`buried`). Then it can be carried home, or knelt at with a copper chisel
 ## and hammer to chip lumps of iron off it (station "meteorite"), which wears
 ## its `mass` down until it is gone.
@@ -34,7 +34,7 @@ const ROUGH_KG := 42.0                      # a boulder before its face is pecke
 const PECK_CELL := Vector2(0.15, 0.1)       # the face's 5x5 grid, x and z
 const BUMP := 0.028                         # height of each level of a high spot
 const SEAT := Vector3(ANVIL.x * 0.3, 0.0, ANVIL.z * 0.22)   # the whetstone's corner
-const DIG_HITS := 3                         # mattock swings to dig a meteorite out
+const DIG_HITS := 3                         # shovel swings to dig a meteorite out
 
 var item_id := "anvil_stone"
 var uid := ""
@@ -106,7 +106,7 @@ func _rebuild() -> void:
 	else:
 		var r := radius()
 		var sink := r * 0.6 if buried else 0.0
-		b.blob(Vector3(0, r * 0.8 - sink, 0), Vector3(r * 1.15, r * 0.8, r), 2, 6, Color(0.27, 0.21, 0.17), rng, 0.3, "stone")
+		Assets.meteorite(b, rng, r, Vector3(0, -sink, 0))
 		box.size = Vector3(r * 2.3, r * 1.6, r * 2.0)
 		_shape.position.y = r * 0.8 - sink
 	_mesh.mesh = b.commit(Assets.materials)
@@ -206,14 +206,21 @@ func chip(kg: float) -> bool:
 	return false
 
 
-func dig() -> void:
-	## A mattock swing round a buried meteorite: the last one frees it.
+func dug_by() -> Array:
+	## A buried meteorite is dug out with a shovel.
+	return ["dig"]
+
+
+func dig(slow := false) -> void:
+	## A shovel swing round a buried meteorite (`slow`: the stone mattock's):
+	## the last one frees it.
 	if not buried:
 		return
 	_dug += 1
 	Sfx.play_at("chop", global_position, -4.0, 0.2)
-	if _dug < DIG_HITS:
-		Game.notify("You dig round the meteorite (%d / %d)." % [_dug, DIG_HITS])
+	var need := ceili(DIG_HITS * Items.SLOW_DIG) if slow else DIG_HITS
+	if _dug < need:
+		Game.notify("You dig round the meteorite (%d / %d)." % [_dug, need])
 		return
 	buried = false
 	_rebuild()
@@ -273,9 +280,9 @@ func prompt(_player: Node) -> String:
 		return ""
 	if item_id == "meteorite":
 		if buried:
-			if "dig" in Items.def(Game.inventory.held_id()).get("tags", []):
-				return "A meteorite, half buried: swing the mattock to dig it out"
-			return "A meteorite, half buried in the crater (dig it out with a mattock)"
+			if Items.works_on(Game.inventory.held_id(), dug_by()):
+				return "A meteorite, half buried: swing the %s to dig it out" % Items.tool_word(Game.inventory.held_id())
+			return "A meteorite, half buried in the crater (dig it out with a shovel)"
 		return "Pick up the meteorite (%d kg) [E]   or kneel to chip it [C]" % roundi(mass)
 	var held: String = Game.inventory.held_id()
 	if whetstone:

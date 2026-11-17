@@ -1,3 +1,8 @@
+---
+title: Game guide
+permalink: /guide/
+---
+
 # Vibival game guide
 
 A field guide to surviving the Late Carboniferous coal swamps, 307 million
@@ -21,19 +26,12 @@ does.
   camp saves, save and quit, named worlds, and debug worlds.
 - [Stashes and waypoints](stashes-and-waypoints.md): leaving a sack of
   supplies on the ground, and marking a spot to find your way back.
+- [Boats and metals](boats-and-metals.md): docks, rafts, the rocky
+  islands, copper, tool wear and meteoric iron.
 
 For developers (and AI agents) working on the game, the
-[game doc](https://github.com/0n4t3/vibival-game/blob/main/docs/game-doc.md) describes every mechanic, its numbers and where it
+[game doc](https://github.com/0n4t3/vibival/blob/main/docs/game-doc.md) describes every mechanic, its numbers and where it
 lives in the code.
-
-## Late game
-
-Late-game content is built on the `late-game` branch and is not in the main
-game until that branch is merged:
-
-- [Late game: boats and metals](late-game.md): docks, rafts, the rocky
-  islands, copper, tool wear and meteoric iron.
-- For developers: [game doc: late game](https://github.com/0n4t3/vibival-game/blob/main/docs/game-doc-late-game.md).
 
 ## Quick tips
 

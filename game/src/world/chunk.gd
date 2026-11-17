@@ -10,7 +10,7 @@ const Plot := preload("res://src/world/plot.gd")
 
 ## Tree kinds: trunk radius for collision/avoidance, and where they grow.
 ## `height` is the trunk's height at scale 1, and `soft` trees can be felled
-## with a stone axe (the scale trees need a metal one).
+## with the stone mattock (the scale trees need a metal axe).
 const TREES := {
 	"lepidodendron": {"name": "Lepidodendron", "r": 0.55, "tries": 6, "min_h": -0.6, "max_h": 99.0, "scale": [0.8, 1.35], "height": 20.0, "soft": false},
 	"sigillaria": {"name": "Sigillaria", "r": 0.75, "tries": 2, "min_h": 0.5, "max_h": 99.0, "scale": [0.8, 1.2], "height": 14.0, "soft": false},
@@ -39,7 +39,7 @@ var trunks := PackedVector3Array()   # (x, z, radius) in world space: trunks and
 ## (index in trunks), crown (a tree fern's harvestable crown), stump}.
 var trees: Array = []
 ## Decorative ferns (DECOR "fern", ground cover only): {key, i (instance in
-## _fern_mm), x, z (world)}. A mattock clears one for good (clear_fern):
+## _fern_mm), x, z (world)}. An axe or a shovel clears one for good (clear_fern):
 ## Game.taken gets its key, which goes by where it stands, so it stays gone
 ## at any graphics quality.
 var decor_ferns: Array = []
@@ -332,7 +332,7 @@ static func fern_key(x: float, z: float) -> String:
 
 
 func clear_fern(p: Vector3, r: float) -> bool:
-	## A mattock tears out the decorative fern nearest p (within r, on the
+	## An axe or shovel takes out the decorative fern nearest p (within r, on the
 	## ground's plane), for good. Nothing comes of it. False if none is there.
 	var best := -1
 	var best_d := r
@@ -433,7 +433,7 @@ func regrow(t: Dictionary) -> void:
 
 
 func clear_stump(t: Dictionary) -> void:
-	## Dug out with a mattock, roots and all.
+	## Hacked out with an axe, roots and all.
 	if Game.plantings.has(t.uid):
 		# A planted one is gone altogether, leaving the spot free.
 		Game.plantings.erase(t.uid)

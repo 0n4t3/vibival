@@ -183,6 +183,12 @@ func _build_materials() -> void:
 	metal.metallic = 0.7
 	materials["metal"] = metal
 
+	# A meteorite's fusion crust: dark, a little glossy, finely dimpled.
+	var crust := solid.duplicate()
+	crust.roughness = 0.55
+	crust.metallic = 0.4
+	materials["meteorite"] = _textured(crust, "meteorite", 6.0)
+
 	# Textured surfaces: [kind, tiles per metre]
 	for t in [["stone", 5.0], ["wood", 6.0], ["fiber", 9.0], ["clay", 4.0], ["organic", 5.0]]:
 		materials[t[0]] = _textured(solid, t[0], t[1])
@@ -250,6 +256,13 @@ func detail_textures(kind: String) -> Array:
 		"bark_tree_fern":
 			noise.frequency = 0.05
 			fine.frequency = 0.35
+		"meteorite":
+			# Thumbprint dimples (each cell a shallow pit), over fine grit.
+			noise.noise_type = FastNoiseLite.TYPE_CELLULAR
+			noise.cellular_return_type = FastNoiseLite.RETURN_DISTANCE
+			noise.frequency = 0.05
+			noise.fractal_type = FastNoiseLite.FRACTAL_NONE
+			fine.frequency = 0.3
 		_:
 			noise.frequency = 0.03
 			fine.frequency = 0.15
@@ -289,6 +302,11 @@ func detail_textures(kind: String) -> Array:
 					if f > 0.85:
 						v -= 0.12
 					h = a * 0.5 + f * 0.5
+				"meteorite":
+					# Pits darker at the bottom, rims catching the light.
+					var pit := clampf((a + 1.0) * 0.5 * 1.6, 0.0, 1.0)
+					v = 0.5 + pit * 0.38 + f * 0.12
+					h = pit * 0.85 + f * 0.15
 				# Bark, for logs: texture X runs along the log, Y round it.
 				"bark_lepidodendron":
 					# Scale tree: a lattice of diamond leaf cushions, drawn out
@@ -1118,14 +1136,20 @@ func _item_mesh(b, rng: RandomNumberGenerator, id: String) -> void:
 			# A long tapered pole (lying along x like the spear).
 			stick(b, rng, Vector3(-0.65, 0.02, 0), Vector3(0.3, 0.02, 0), 0.017)
 			b.cylinder(Vector3(0.3, 0.02, 0), Vector3(0.7, 0.02, 0), 0.017, 0.008, 6, CUT_WOOD, Color(-1, 0, 0), "wood")
+		"blowpipe":
+			# A length of the pole's Calamites wood (as "rod"), bored hollow,
+			# with a clay tip (the item's colour: raw, or fired) on one end.
+			stick(b, rng, Vector3(-0.35, 0.02, 0), Vector3(0.28, 0.02, 0), 0.017)
+			b.cylinder(Vector3(0.27, 0.02, 0), Vector3(0.36, 0.02, 0), 0.019, 0.011, 6, col, Color(-1, 0, 0), "clay")
+			b.cylinder(Vector3(-0.356, 0.02, 0), Vector3(-0.35, 0.02, 0), 0.009, 0.009, 6, Color(0.12, 0.09, 0.06), Color(-1, 0, 0), "wood")
 		"fishing_rod":
 			stick(b, rng, Vector3(-0.65, 0.02, 0), Vector3(0.3, 0.02, 0), 0.017)
 			b.cylinder(Vector3(0.3, 0.02, 0), Vector3(0.7, 0.02, 0), 0.017, 0.008, 6, CUT_WOOD, Color(-1, 0, 0), "wood")
 			var line: Color = Items.def("fishing_line").color
 			b.cylinder(Vector3(0.7, 0.02, 0), Vector3(-0.35, 0.026, 0.015), 0.002, 0.002, 3, line, Color(-1, 0, 0), "fiber")
 			b.cylinder(Vector3(-0.42, 0.018, 0.0), Vector3(-0.42, 0.036, 0.0), 0.022, 0.022, 8, line, Color(-1, 0, 0), "fiber")
-			knapped(b, Items.knap_grid("chitin_hook"), 0.008, 0.004, Items.def("chitin_hook").color, rng,
-					Transform3D(Basis(), Vector3(-0.36, 0.005, 0.045)), "organic")
+			var hook_id := "copper_fishhook" if id.contains("copper") else "chitin_hook"
+			fish_hook(b, Items.def(hook_id).color, Transform3D(Basis(), Vector3(-0.36, 0.002, 0.045)), 0.7, "metal" if hook_id == "copper_fishhook" else "organic")
 		"root":
 			# A knobbly root with a few thin rootlets trailing off it.
 			b.blob(Vector3(0, 0.025, 0), Vector3(0.06, 0.025, 0.035), 2, 6, col, rng, 0.3, "organic")
@@ -1141,7 +1165,7 @@ func _item_mesh(b, rng: RandomNumberGenerator, id: String) -> void:
 			b.leaf(Vector3(0.12, 0.035, 0), Vector3(1, 0, 0.5).normalized(), 0.07, 0.04, 0.0, 2, col.darkened(0.2))
 			b.leaf(Vector3(0.12, 0.035, 0), Vector3(1, 0, -0.5).normalized(), 0.07, 0.04, 0.0, 2, col.darkened(0.2))
 		"hook":
-			knapped(b, Items.knap_grid("chitin_hook"), 0.014, 0.006, col, rng, Transform3D(Basis(), Vector3(0, 0.004, 0)), "organic")
+			fish_hook(b, col, Transform3D.IDENTITY, 1.6, "metal" if id.contains("copper") else "organic")
 		"spindle":
 			stick(b, rng, Vector3(-0.22, 0.016, 0), Vector3(0.22, 0.016, 0), 0.012)
 			whorl(b, Items.def("spindle_whorl").color, Vector3(-0.13, 0.036, 0), Vector3.RIGHT)
@@ -1163,8 +1187,18 @@ func _item_mesh(b, rng: RandomNumberGenerator, id: String) -> void:
 		"guts":
 			for i in 2:
 				gut_coil(b, rng, Vector3((i - 0.5) * 0.08, 0, rng.randf_range(-0.03, 0.03)), col * rng.randf_range(0.9, 1.1))
+		"blade", "axe_head", "spear_head", "mattock_head" when metal_kind(id) != "":
+			if id.ends_with("_knife"):
+				metal_knife(b, rng, def.get("head", col))
+			else:
+				metal_head(b, metal_kind(id), def.get("head", col), Transform3D(Basis(), Vector3(-0.08, 0.0, 0)), id.begins_with("rough_"))
+		"blade", "spear_head", "mattock_head" when not id.contains("chitin"):
+			var off := Vector3(-0.11, 0, 0) if shape == "spear_head" else Vector3.ZERO
+			stone_head(b, STONE_HEADS[shape], def.get("head", CHERT), rng, Transform3D(Basis(), off))
 		"blade", "axe_head", "spear_head", "mattock_head":
 			knapped(b, Items.knap_grid(HEAD_SHAPES[shape]), 0.036, 0.03, def.get("head", CHERT), rng, Transform3D(Basis(), Vector3(0, 0.016, 0)))
+		"axe" when metal_kind(id) == "axe":
+			metal_axe(b, rng, def.get("head", col))
 		"axe":
 			stick(b, rng, Vector3(-0.3, 0.03, 0), Vector3(0.26, 0.03, 0), 0.022)
 			knapped(b, Items.knap_grid("axe_head"), 0.036, 0.034, def.get("head", CHERT), rng, Transform3D(Basis(), Vector3(0.24, 0.03, -0.075)))
@@ -1172,8 +1206,12 @@ func _item_mesh(b, rng: RandomNumberGenerator, id: String) -> void:
 		"mattock":
 			# The head crosses the end of the handle like a T.
 			stick(b, rng, Vector3(-0.32, 0.03, 0), Vector3(0.28, 0.03, 0), 0.022)
-			knapped(b, Items.knap_grid("mattock_head"), 0.04, 0.034, def.get("head", CHERT), rng, Transform3D(Basis(), Vector3(0.27, 0.03, 0.0)))
+			stone_tool_head(b, "mattock", rng, Vector3(0.27, 0.03, 0.0), def.get("head", CHERT))
 			lashing(b, Vector3(0.2, 0.03, 0), Vector3(0.31, 0.03, 0), 0.03, 5)
+		"shovel_blade":
+			shovel_blade(b, def.get("head", CHERT), Transform3D.IDENTITY, id.begins_with("rough_"))
+		"shovel":
+			shovel(b, rng, def.get("head", CHERT))
 		"hammer_head":
 			# The square cast head lying on its cheek, the eye showing.
 			var hh: Color = def.get("head", CHERT)
@@ -1213,11 +1251,13 @@ func _item_mesh(b, rng: RandomNumberGenerator, id: String) -> void:
 			for i in 3:
 				var c := Vector3((i - 1) * 0.06, 0.022, rng.randf_range(-0.03, 0.03))
 				b.blob(c, Vector3(0.04, 0.022, 0.03), 2, 6, col * rng.randf_range(0.85, 1.05), rng, 0.25, "organic")
+		"spear" when metal_kind(id) == "spear":
+			metal_spear(b, rng, def.get("head", col))
 		"spear":
 			stick(b, rng, Vector3(-0.8, 0.026, 0), Vector3(0.0, 0.026, 0), 0.022)
 			stick(b, rng, Vector3(-0.06, 0.026, 0), Vector3(0.62, 0.026, 0), 0.02)
 			lashing(b, Vector3(-0.09, 0.026, 0), Vector3(0.03, 0.026, 0), 0.027, 4)
-			knapped(b, Items.knap_grid("spear_head"), 0.036, 0.03, def.get("head", CHERT), rng, Transform3D(Basis(Vector3.UP, -PI * 0.5), Vector3(0.7, 0.026, 0)))
+			stone_tool_head(b, "spear", rng, Vector3(0.6, 0.026, 0), def.get("head", CHERT))
 			lashing(b, Vector3(0.57, 0.026, 0), Vector3(0.65, 0.026, 0), 0.025, 4)
 		"drill":
 			# Bow, string and spindle.
@@ -1275,6 +1315,18 @@ func _item_mesh(b, rng: RandomNumberGenerator, id: String) -> void:
 			b.blob(Vector3(0, 0.05, 0), Vector3(0.2, 0.05, 0.16), 2, 8, col, rng, 0.15, "fiber")
 			b.cylinder(Vector3(0.17, 0.05, 0), Vector3(0.27, 0.04, 0), 0.05, 0.03, 6, col * 0.9, Color(-1, 0, 0), "fiber")
 			lashing(b, Vector3(0.2, 0.048, 0), Vector3(0.23, 0.046, 0), 0.05, 2)
+		"copper_drops":
+			# A small heap of rounded copper beads picked out of the slag, a
+			# few dark crumbs of slag still among them.
+			for i in 9:
+				var a := i * 2.4
+				var r := 0.018 + 0.016 * sqrt(i)
+				var size := rng.randf_range(0.018, 0.03)
+				b.blob(Vector3(cos(a) * r, size * 0.8 + (0.02 if i < 2 else 0.0), sin(a) * r), Vector3(size, size * 0.8, size * 0.9), 2, 8,
+						col * rng.randf_range(0.9, 1.12), rng, 0.25, "metal")
+			for i in 3:
+				var a := i * 2.1 + 0.7
+				b.blob(Vector3(cos(a) * 0.065, 0.008, sin(a) * 0.06), Vector3(0.014, 0.008, 0.012), 1, 5, Color(0.2, 0.17, 0.15), rng, 0.4, "stone")
 		"salt":
 			# A thin, cracked white crust broken off the bank.
 			b.blob(Vector3(0, 0.012, 0), Vector3(0.13, 0.014, 0.1), 2, 8, col, rng, 0.2, "stone")
@@ -1290,12 +1342,29 @@ func _item_mesh(b, rng: RandomNumberGenerator, id: String) -> void:
 			vessel(b, col, id.begins_with("vessel_sealed"))
 		"platter":
 			platter(b, col)
+		"mould":
+			mould(b, col, mould_kind(id))
 		"bowl":
 			bowl(b, col)
 		"chisel_saw":
 			chisel_saw(b, rng)
+		"saw_blade":
+			saw_blade(b, col, Transform3D.IDENTITY, id.begins_with("rough_"))
+		"metal_saw":
+			metal_saw(b, rng, def.get("head", Items.def("copper").color))
+		"meteorite":
+			meteorite(b, rng, 0.12)
+		"metal_bar":
+			# A forged bar, near square in section.
+			b.box(Vector3(0, 0.012, 0), Vector3(0.2, 0.024, 0.03), col, Basis(), "metal")
 		"paper":
 			paper(b, rng, col)
+		"pencil_core" when metal_kind(id) == "chisel":
+			metal_head(b, "chisel", metal_col(id), Transform3D(Basis(), Vector3(-0.1, 0.0, 0)), id.begins_with("rough_"))
+		"pencil_core" when metal_kind(id) == "shoe":
+			pole_shoe(b, metal_col(id))
+		"pencil_core" when metal_kind(id) == "bar":
+			b.box(Vector3(0, 0.009, 0), Vector3(0.16, 0.018, 0.02), metal_col(id), Basis(), "metal")
 		"pencil_core":
 			b.cylinder(Vector3(-0.09, 0.006, 0), Vector3(0.09, 0.006, 0), 0.006, 0.006, 6, col, Color(-1, 0, 0), "clay")
 		"pencil":
@@ -1684,6 +1753,156 @@ func platter(b, col: Color, height := 1.0, at := Vector3.ZERO) -> void:
 			Vector2(0.166, lip), Vector2(0.15, 0.012), Vector2(0.0, 0.012)], 12, col, "clay", at)
 
 
+const MOULD_SIZE := Vector3(0.28, 0.05, 0.19)
+
+
+static func mould_kind(id: String) -> String:
+	## "mould_axe_unfired" -> "axe".
+	return id.trim_suffix("_unfired").trim_prefix("mould_")
+
+
+func mould(b, col: Color, kind: String, cut := 1.0, height := 1.0, at := Vector3.ZERO) -> void:
+	## A thick slab of clay with the hollow for what it casts cut into its top
+	## (mould_hollow). `cut` < 1 is still being cut (smaller and shallower),
+	## `height` < 1 still being pressed out.
+	var top := MOULD_SIZE.y * height
+	b.box(at + Vector3(0, top * 0.5, 0), Vector3(MOULD_SIZE.x, top, MOULD_SIZE.z), col, Basis(), "clay")
+	if cut <= 0.0:
+		return
+	var deep := col.lerp(col.darkened(0.55), cut)
+	var polys := mould_hollow(kind)
+	var mid := Vector2.ZERO
+	var count := 0
+	for poly in polys:
+		for p in poly:
+			mid += p
+			count += 1
+	mid /= maxf(count, 1)
+	for poly in polys:
+		var c := Vector2.ZERO
+		for p in poly:
+			c += p
+		c /= poly.size()
+		var cv := mid + (c - mid) * cut
+		var o := at + Vector3(cv.x, top + 0.0008, cv.y)
+		var area := 0.0
+		for i in poly.size():
+			area += poly[i].cross(poly[(i + 1) % poly.size()])
+		var turn := -1 if area > 0.0 else 1   # wound either way: keep each facing up
+		for i in poly.size():
+			var p0: Vector2 = mid + (poly[i] - mid) * cut
+			var p1: Vector2 = mid + (poly[posmod(i + turn, poly.size())] - mid) * cut
+			b.tri(o, at + Vector3(p1.x, top + 0.0008, p1.y), at + Vector3(p0.x, top + 0.0008, p0.y), deep, "clay")
+
+
+func mould_fill(b, col: Color, kind: String, f := 1.0, at := Vector3.ZERO, lift := 0.0016, thick := 0.0) -> void:
+	## What fills a mould's hollow (molten or cast copper), `f` of the way
+	## (spreading out from the middle as it melts in). With `thick` > 0 it is
+	## a solid casting standing that high (broken out, beside the mould).
+	if f <= 0.0:
+		return
+	var polys := mould_hollow(kind)
+	var mid := Vector2.ZERO
+	var count := 0
+	for poly in polys:
+		for p in poly:
+			mid += p
+			count += 1
+	mid /= maxf(count, 1)
+	var y := at.y + (lift if thick <= 0.0 else thick)
+	for poly in polys:
+		var pts := []
+		var area := 0.0
+		for i in poly.size():
+			pts.append(mid + (poly[i] - mid) * f)
+			area += poly[i].cross(poly[(i + 1) % poly.size()])
+		var turn := -1 if area > 0.0 else 1
+		var c := Vector2.ZERO
+		for p in pts:
+			c += p
+		c /= pts.size()
+		for i in pts.size():
+			var p0: Vector2 = pts[i]
+			var p1: Vector2 = pts[posmod(i + turn, pts.size())]
+			b.tri(Vector3(at.x + c.x, y, at.z + c.y), Vector3(at.x + p1.x, y, at.z + p1.y), Vector3(at.x + p0.x, y, at.z + p0.y), col, "metal")
+			if thick > 0.0:
+				# Its sides, down to the ground.
+				b.quad(Vector3(at.x + p0.x, y, at.z + p0.y), Vector3(at.x + p1.x, y, at.z + p1.y),
+						Vector3(at.x + p1.x, at.y, at.z + p1.y), Vector3(at.x + p0.x, at.y, at.z + p0.y), col.darkened(0.25), "metal")
+
+
+static func mould_hollow(kind: String) -> Array:
+	## The hollow a mould casts, as convex outlines (Vector2(x, z)) on the top
+	## of its slab: each kind its own shape, so they tell apart at a glance
+	## (here, on the icons and while one is being cut at the bench).
+	var out := []
+	match kind:
+		"axe":
+			# A flared head: narrow butt, wide curved edge.
+			out.append([Vector2(-0.085, -0.022), Vector2(0.03, -0.05), Vector2(0.075, -0.045), Vector2(0.095, -0.015),
+					Vector2(0.095, 0.015), Vector2(0.075, 0.045), Vector2(0.03, 0.05), Vector2(-0.085, 0.022)])
+		"knife":
+			# A single-edged blade and its tang.
+			out.append([Vector2(-0.05, -0.016), Vector2(0.07, -0.016), Vector2(0.105, 0.004), Vector2(0.06, 0.022), Vector2(-0.05, 0.022)])
+			out.append([Vector2(-0.105, -0.006), Vector2(-0.05, -0.006), Vector2(-0.05, 0.012), Vector2(-0.105, 0.012)])
+		"spear":
+			# A leaf-shaped head on its socket.
+			out.append([Vector2(-0.035, 0), Vector2(-0.005, -0.032), Vector2(0.045, -0.026), Vector2(0.11, 0), Vector2(0.045, 0.026), Vector2(-0.005, 0.032)])
+			out.append([Vector2(-0.11, -0.011), Vector2(-0.03, -0.011), Vector2(-0.03, 0.011), Vector2(-0.11, 0.011)])
+		"hammer":
+			# A blocky head, swelling to a round face at each end.
+			out.append([Vector2(-0.055, -0.026), Vector2(0.055, -0.026), Vector2(0.055, 0.026), Vector2(-0.055, 0.026)])
+			for x in [-0.07, 0.07]:
+				var face := []
+				for i in 8:
+					var a := TAU * i / 8.0
+					face.append(Vector2(x + cos(a) * 0.022, sin(a) * 0.036))
+				out.append(face)
+		"saw":
+			# A long, thin blade with a row of teeth along one edge.
+			out.append([Vector2(-0.115, -0.008), Vector2(0.105, -0.008), Vector2(0.105, 0.024), Vector2(-0.115, 0.03)])
+			for i in 10:
+				var x := -0.11 + i * 0.021
+				out.append([Vector2(x, -0.008), Vector2(x + 0.021, -0.008), Vector2(x + 0.006, -0.026)])
+		"shovel":
+			# A spade blade and the socket for its handle.
+			out.append([Vector2(-0.06, -0.05), Vector2(0.04, -0.05), Vector2(0.085, -0.026), Vector2(0.1, 0), Vector2(0.085, 0.026), Vector2(0.04, 0.05), Vector2(-0.06, 0.05)])
+			out.append([Vector2(-0.115, -0.012), Vector2(-0.06, -0.012), Vector2(-0.06, 0.012), Vector2(-0.115, 0.012)])
+		"bar":
+			# A plain straight bar.
+			out.append([Vector2(-0.1, -0.015), Vector2(0.1, -0.015), Vector2(0.1, 0.015), Vector2(-0.1, 0.015)])
+		"hook":
+			# Three J-shaped hooks fed from one channel.
+			_stroke(out, [Vector2(-0.1, -0.055), Vector2(0.075, -0.055)], 0.006)
+			for cx in [-0.075, -0.015, 0.045]:
+				var pts := [Vector2(cx, -0.055), Vector2(cx, 0.02)]
+				for i in range(1, 7):
+					var a := PI - PI * i / 6.0
+					pts.append(Vector2(cx + 0.016 + cos(a) * 0.016, 0.02 + sin(a) * 0.016))
+				pts.append(Vector2(cx + 0.032, 0.0))
+				_stroke(out, pts, 0.008)
+				out.append([Vector2(cx + 0.026, 0.004), Vector2(cx + 0.032, -0.008), Vector2(cx + 0.04, 0.006)])
+		"beads":
+			# A row of round beads strung on one channel.
+			_stroke(out, [Vector2(-0.11, 0), Vector2(0.11, 0)], 0.006)
+			for i in 6:
+				var bead := []
+				for j in 8:
+					var a := TAU * j / 8.0
+					bead.append(Vector2(-0.075 + i * 0.03 + cos(a) * 0.013, sin(a) * 0.013))
+				out.append(bead)
+	return out
+
+
+static func _stroke(out: Array, pts: Array, w: float) -> void:
+	## A line of width w through pts, as one quad per segment.
+	for i in pts.size() - 1:
+		var a: Vector2 = pts[i]
+		var c: Vector2 = pts[i + 1]
+		var n := (c - a).orthogonal().normalized() * w * 0.5
+		out.append([a - n, c - n, c + n, a + n])
+
+
 func bowl(b, col: Color, at := Vector3.ZERO, scale := 1.0, height := 1.0) -> void:
 	## A wide, shallow bowl. `height` < 1 is not yet pinched up all the way.
 	var top := 0.08 * height
@@ -1693,6 +1912,442 @@ func bowl(b, col: Color, at := Vector3.ZERO, scale := 1.0, height := 1.0) -> voi
 	for p in outer + inner:
 		prof.append(Vector2(p.x, minf(p.y, top)) * scale)
 	b.lathe(prof, 12, col, "clay", at)
+
+
+func saw_blade(b, col: Color, xf := Transform3D.IDENTITY, rough := false, slot := "metal") -> void:
+	## A metal saw blade lying flat: a thin strip with a tang at one end and
+	## teeth along one edge (short and blunt on a fresh casting).
+	var t := 0.006
+	b.box(xf * Vector3(0.02, t * 0.5, 0), Vector3(0.26, t, 0.05), col, xf.basis, slot)
+	b.box(xf * Vector3(-0.14, t * 0.5, 0), Vector3(0.06, t, 0.022), col * 0.92, xf.basis, slot)
+	var deep := 0.007 if rough else 0.014
+	var tooth := col.darkened(0.1) if rough else col.lightened(0.15)
+	for i in 12:
+		var x := -0.105 + i * 0.0208
+		var a := xf * Vector3(x, t, 0.025)
+		var tip := xf * Vector3(x + 0.0208, t, 0.025 + deep)
+		var c := xf * Vector3(x + 0.0208, t, 0.025)
+		var a0 := xf * Vector3(x, 0.0, 0.025)
+		var tip0 := xf * Vector3(x + 0.0208, 0.0, 0.025 + deep)
+		var c0 := xf * Vector3(x + 0.0208, 0.0, 0.025)
+		# Raked teeth, faced both ways so they show from above and below.
+		b.tri(a, tip, c, tooth, slot)
+		b.tri(a, c, tip, tooth, slot)
+		b.tri(a0, tip0, c0, tooth, slot)
+		b.tri(a0, c0, tip0, tooth, slot)
+		b.tri(tip, tip0, c, tooth.darkened(0.2), slot)
+		b.tri(tip, c, tip0, tooth.darkened(0.2), slot)
+
+
+func metal_saw(b, rng: RandomNumberGenerator, head: Color, string := true) -> void:
+	## A metal saw: its blade's tang bound with string into a short handle.
+	stick(b, rng, Vector3(-0.26, 0.025, 0), Vector3(0.04, 0.025, 0), 0.02)
+	saw_blade(b, head, Transform3D(Basis(), Vector3(0.15, 0.022, 0)))
+	if string:
+		lashing(b, Vector3(-0.02, 0.025, 0), Vector3(0.035, 0.025, 0), 0.024, 4)
+
+
+func shovel_blade(b, col: Color, xf := Transform3D.IDENTITY, rough := false, slot := "metal") -> void:
+	## A metal shovel blade lying flat, its tip toward +X: a dished spade
+	## plate with square shoulders tapering to a rounded point, and a socket
+	## for the handle at its back (a fresh casting's edge left thick and dull).
+	# Square shoulders at the back, straight sides, a rounded point at +X.
+	var outline: Array = [Vector2(-0.075, -0.066)]
+	for i in 13:
+		var a := lerpf(-PI * 0.5, PI * 0.5, i / 12.0)
+		outline.append(Vector2(0.03 + 0.08 * cos(a), 0.066 * sin(a)))
+	outline.append(Vector2(-0.075, 0.066))
+	var t := 0.009 if rough else 0.006
+	var dish := 0.01
+	var mid := Vector2(-0.01, 0.0)
+	var edge_col := col.darkened(0.1) if rough else col.lightened(0.12)
+	var n := outline.size()
+	for i in n:
+		var p0: Vector2 = outline[i]
+		var p1: Vector2 = outline[(i + 1) % n]
+		var top_c := xf * Vector3(mid.x, t, mid.y)
+		var bot_c := xf * Vector3(mid.x, 0.0, mid.y)
+		var a_t := xf * Vector3(p0.x, t + dish, p0.y)
+		var b_t := xf * Vector3(p1.x, t + dish, p1.y)
+		var a_b := xf * Vector3(p0.x, dish, p0.y)
+		var b_b := xf * Vector3(p1.x, dish, p1.y)
+		# Faced both ways, so it shows from above and below.
+		b.tri(top_c, a_t, b_t, col, slot)
+		b.tri(top_c, b_t, a_t, col, slot)
+		b.tri(bot_c, a_b, b_b, col * 0.9, slot)
+		b.tri(bot_c, b_b, a_b, col * 0.9, slot)
+		b.quad(a_t, b_t, b_b, a_b, edge_col, slot)
+		b.quad(a_t, a_b, b_b, b_t, edge_col, slot)
+	# The socket the handle goes into, and its strap down the back.
+	b.cylinder(xf * Vector3(-0.13, 0.016, 0), xf * Vector3(-0.07, 0.014, 0), 0.017, 0.014, 7, col * 0.92, Color(-1, 0, 0), slot)
+	b.box(xf * Vector3(-0.045, t + dish * 0.6, 0), Vector3(0.06, 0.006, 0.026), col * 0.95, xf.basis, slot)
+
+
+func shovel(b, rng: RandomNumberGenerator, head: Color, string := true) -> void:
+	## A metal shovel: a long handle in its blade's socket, bound with string.
+	stick(b, rng, Vector3(-0.34, 0.03, 0), Vector3(0.12, 0.022, 0), 0.02)
+	shovel_blade(b, head, Transform3D(Basis(), Vector3(0.23, 0.006, 0)))
+	if string:
+		lashing(b, Vector3(0.08, 0.024, 0), Vector3(0.15, 0.022, 0), 0.022, 4)
+
+
+func metal_plate(b, outline: Array, t: float, edge_t: float, col: Color, xf := Transform3D.IDENTITY, slot := "metal", inner := 0.55) -> void:
+	## A flat metal blade from a convex outline (Vector2 x, z, lying flat):
+	## full thickness `t` over its middle (the outline drawn in by `inner`)
+	## and ground down to `edge_t` at the rim, so it reads as a forged,
+	## bevelled blade. Faced both ways.
+	var c := Vector2.ZERO
+	for q in outline:
+		c += q
+	c /= outline.size()
+	var n := outline.size()
+	var edge_col := col.lightened(0.14)
+	for i in n:
+		var o0: Vector2 = outline[i]
+		var o1: Vector2 = outline[(i + 1) % n]
+		var i0 := c.lerp(o0, inner)
+		var i1 := c.lerp(o1, inner)
+		for side: float in [1.0, -1.0]:
+			var h := t * 0.5 * side
+			var e := edge_t * 0.5 * side
+			var mid := xf * Vector3(c.x, t * 0.5 + h, c.y)
+			var a := xf * Vector3(i0.x, t * 0.5 + h, i0.y)
+			var bb := xf * Vector3(i1.x, t * 0.5 + h, i1.y)
+			var ra := xf * Vector3(o0.x, t * 0.5 + e, o0.y)
+			var rb := xf * Vector3(o1.x, t * 0.5 + e, o1.y)
+			var shade := col if side > 0.0 else col * 0.9
+			b.tri(mid, a, bb, shade, slot)
+			b.tri(mid, bb, a, shade, slot)
+			b.quad(a, ra, rb, bb, edge_col if side > 0.0 else edge_col * 0.9, slot)
+			b.quad(a, bb, rb, ra, edge_col if side > 0.0 else edge_col * 0.9, slot)
+		var ta := xf * Vector3(o0.x, t * 0.5 + edge_t * 0.5, o0.y)
+		var tb := xf * Vector3(o1.x, t * 0.5 + edge_t * 0.5, o1.y)
+		var ba := xf * Vector3(o0.x, t * 0.5 - edge_t * 0.5, o0.y)
+		var bt := xf * Vector3(o1.x, t * 0.5 - edge_t * 0.5, o1.y)
+		b.quad(ta, tb, bt, ba, edge_col, slot)
+		b.quad(ta, ba, bt, tb, edge_col, slot)
+
+
+static func _arc(out: Array, centre: Vector2, rx: float, rz: float, a0: float, a1: float, steps: int) -> void:
+	for i in steps + 1:
+		var a := lerpf(a0, a1, i / float(steps))
+		out.append(centre + Vector2(cos(a) * rx, sin(a) * rz))
+
+
+func metal_head(b, kind: String, col: Color, xf := Transform3D.IDENTITY, rough := false, slot := "metal") -> void:
+	## A forged or cast copper or iron head, smooth where chert is knapped:
+	## "axe" (poll at the origin, edge toward +X), "knife" (tang at the
+	## origin, point toward +X), "spear" (socket at the origin, point toward
+	## +X) or "chisel" (striking end at the origin, bit toward +X). A rough
+	## casting keeps a thick, dull edge.
+	var t := 0.016
+	var edge_t := 0.009 if rough else 0.002
+	var pts: Array = []
+	match kind:
+		"axe":
+			# The eye block at the poll, the cheeks flaring to a curved edge.
+			pts = [Vector2(0.036, -0.024), Vector2(0.08, -0.042)]
+			_arc(pts, Vector2(0.13, 0.0), 0.045, 0.078, -PI * 0.5, PI * 0.5, 12)
+			pts.append(Vector2(0.08, 0.042))
+			pts.append(Vector2(0.036, 0.024))
+			metal_plate(b, pts, 0.02, edge_t, col, xf, slot, 0.5)
+			var eye := 0.036
+			b.box(xf * Vector3(0.018, eye * 0.5, 0), Vector3(0.042, eye, 0.05), col * 0.95, xf.basis, slot)
+			b.cylinder(xf * Vector3(0.018, eye + 0.0005, 0), xf * Vector3(0.018, eye + 0.001, 0), 0.013, 0.013, 10, Color(0.12, 0.08, 0.05), Color(-1, 0, 0), "solid")
+		"knife":
+			# A straight spine, the edge sweeping up to the point.
+			pts = [Vector2(0.0, -0.017), Vector2(0.0, 0.015), Vector2(0.11, 0.015), Vector2(0.15, 0.008), Vector2(0.17, 0.0)]
+			_arc(pts, Vector2(0.06, 0.0), 0.11, 0.017, 0.0, -PI * 0.5, 7)
+			pts.pop_back()
+			metal_plate(b, pts, 0.008, edge_t * 0.7, col, xf, slot, 0.45)
+			b.box(xf * Vector3(-0.025, 0.004, 0), Vector3(0.05, 0.005, 0.012), col * 0.9, xf.basis, slot)
+		"spear":
+			# A leaf-shaped blade with a raised midrib, on a round socket.
+			for i in 15:
+				var f := i / 14.0
+				var x := lerpf(0.04, 0.21, f)
+				pts.append(Vector2(x, -_leaf_w(f)))
+			for i in range(13, 0, -1):
+				var f := i / 14.0
+				pts.append(Vector2(lerpf(0.04, 0.21, f), _leaf_w(f)))
+			metal_plate(b, pts, 0.014, edge_t, col, xf * Transform3D(Basis(), Vector3(0, 0.012, 0)), slot, 0.35)
+			b.cylinder(xf * Vector3(-0.005, 0.019, 0), xf * Vector3(0.07, 0.019, 0), 0.018, 0.008, 12, col * 0.92, Color(-1, 0, 0), slot)
+		"chisel":
+			# An eight-sided bar, its striking end a little spread, ground
+			# down to a flat bevelled bit.
+			var r := 0.011
+			b.cylinder(xf * Vector3(0.0, r, 0), xf * Vector3(0.012, r, 0), r * 1.25, r * 1.1, 8, col * 0.88, Color(-1, 0, 0), slot)
+			b.cylinder(xf * Vector3(0.012, r, 0), xf * Vector3(0.15, r, 0), r, r, 8, col, Color(-1, 0, 0), slot, false, PI / 8.0)
+			var e := r * (0.35 if rough else 0.08)
+			var back := [xf * Vector3(0.15, r * 2.0, -r), xf * Vector3(0.15, r * 2.0, r), xf * Vector3(0.15, 0.0, r), xf * Vector3(0.15, 0.0, -r)]
+			var tip := [xf * Vector3(0.19, r + e, -r * 1.25), xf * Vector3(0.19, r + e, r * 1.25), xf * Vector3(0.19, r - e, r * 1.25), xf * Vector3(0.19, r - e, -r * 1.25)]
+			var bright := col.lightened(0.18)
+			for i in 4:
+				var j := (i + 1) % 4
+				b.quad(back[i], back[j], tip[j], tip[i], bright if i % 2 == 0 else col, slot)
+				b.quad(back[i], tip[i], tip[j], back[j], bright if i % 2 == 0 else col, slot)
+			b.quad(tip[0], tip[1], tip[2], tip[3], bright, slot)
+			b.quad(tip[0], tip[3], tip[2], tip[1], bright, slot)
+
+
+static func _leaf_w(f: float) -> float:
+	## Half-width of a leaf spear blade along its length (0 at the socket,
+	## 1 at the point): widest a third of the way up, drawn to a point.
+	return 0.032 * pow(sin(PI * pow(f, 0.62)), 0.8) + 0.004 * (1.0 - f)
+
+
+func metal_axe(b, rng: RandomNumberGenerator, head: Color, string := true) -> void:
+	## A copper or iron axe lying flat: the handle through the head's eye,
+	## the blade out to one side, bound just below the head.
+	stick(b, rng, Vector3(-0.3, 0.03, 0), Vector3(0.27, 0.03, 0), 0.02)
+	metal_head(b, "axe", head, Transform3D(Basis(Vector3.UP, PI * 0.5), Vector3(0.245, 0.012, 0.0)))
+	if string:
+		lashing(b, Vector3(0.17, 0.03, 0), Vector3(0.22, 0.03, 0), 0.026, 3)
+
+
+func metal_knife(b, rng: RandomNumberGenerator, head: Color, string := true) -> void:
+	## A copper or iron knife: the blade's tang bound into a short handle.
+	stick(b, rng, Vector3(-0.15, 0.022, 0), Vector3(0.02, 0.022, 0), 0.018)
+	metal_head(b, "knife", head, Transform3D(Basis(), Vector3(0.02, 0.018, 0)))
+	if string:
+		lashing(b, Vector3(-0.03, 0.022, 0), Vector3(0.025, 0.022, 0), 0.022, 3)
+
+
+func metal_spear(b, rng: RandomNumberGenerator, head: Color, string := true) -> void:
+	## A copper or iron spear: two sticks joined, the socketed head on the end.
+	stick(b, rng, Vector3(-0.8, 0.026, 0), Vector3(0.0, 0.026, 0), 0.022)
+	stick(b, rng, Vector3(-0.06, 0.026, 0), Vector3(0.62, 0.026, 0), 0.02)
+	if string:
+		lashing(b, Vector3(-0.09, 0.026, 0), Vector3(0.03, 0.026, 0), 0.027, 4)
+	metal_head(b, "spear", head, Transform3D(Basis(), Vector3(0.6, 0.007, 0)))
+	if string:
+		lashing(b, Vector3(0.57, 0.026, 0), Vector3(0.63, 0.026, 0), 0.024, 3)
+
+
+func pole_shoe(b, col: Color, xf := Transform3D.IDENTITY, slot := "metal") -> void:
+	## A metal shoe for a pole's foot: a tapering sleeve, closed in a blunt point.
+	b.cylinder(xf * Vector3(-0.06, 0.02, 0), xf * Vector3(0.05, 0.02, 0), 0.02, 0.014, 12, col, Color(-1, 0, 0), slot, false)
+	b.cylinder(xf * Vector3(0.05, 0.02, 0), xf * Vector3(0.08, 0.02, 0), 0.014, 0.003, 12, col.lightened(0.1), Color(-1, 0, 0), slot)
+	b.cylinder(xf * Vector3(-0.06, 0.02, 0), xf * Vector3(-0.059, 0.02, 0), 0.016, 0.016, 12, Color(0.12, 0.08, 0.05), Color(-1, 0, 0), "solid")
+
+
+func stone_head(b, kind: String, col: Color, rng: RandomNumberGenerator, xf := Transform3D.IDENTITY, slot := "stone") -> void:
+	## A finished chert head as it really looks, where the knapping work is
+	## drawn as its grid: "blade" (a long pointed flake, point toward +X),
+	## "spear" (a leaf point, toward +X, its base at the origin) or "mattock"
+	## (a long wedge across the origin along Z, its broad bit toward -Z).
+	## Thick down a ridged middle, flaked thin to a slightly wavy edge, each
+	## flake scar shaded a little differently.
+	var pts: Array = []
+	var t := 0.026
+	match kind:
+		"blade":
+			for i in 11:
+				var f := i / 10.0
+				pts.append(Vector2(lerpf(-0.08, 0.1, f), -(0.024 * pow(sin(PI * lerpf(0.12, 1.0, f)), 0.75))))
+			for i in range(9, 0, -1):
+				var f := i / 10.0
+				pts.append(Vector2(lerpf(-0.08, 0.1, f), 0.02 * pow(sin(PI * lerpf(0.12, 1.0, f)), 0.6)))
+			t = 0.018
+		"spear":
+			for i in 13:
+				var f := i / 12.0
+				pts.append(Vector2(lerpf(0.0, 0.22, f), -_leaf_w(f) * 1.15 - 0.004 * (1.0 - f)))
+			for i in range(11, 0, -1):
+				var f := i / 12.0
+				pts.append(Vector2(lerpf(0.0, 0.22, f), _leaf_w(f) * 1.15 + 0.004 * (1.0 - f)))
+			t = 0.022
+		"mattock":
+			# Broad, gently curved bit at -Z, tapering to a narrow butt at +Z.
+			_arc(pts, Vector2(0.0, -0.08), 0.034, 0.022, 0.0, -PI, 8)
+			pts.append(Vector2(-0.022, 0.08))
+			pts.append(Vector2(-0.008, 0.1))
+			pts.append(Vector2(0.008, 0.1))
+			pts.append(Vector2(0.022, 0.08))
+			pts.reverse()
+			t = 0.034
+	# A slightly wavy rim, where each flake came off.
+	for i in pts.size():
+		pts[i] = pts[i] * (1.0 + rng.randf_range(-0.05, 0.05))
+	var c := Vector2.ZERO
+	for q in pts:
+		c += q
+	c /= pts.size()
+	var n := pts.size()
+	var mid_h := []
+	for i in n:
+		mid_h.append(rng.randf_range(0.62, 1.0))
+	for i in n:
+		var j := (i + 1) % n
+		var o0: Vector2 = pts[i]
+		var o1: Vector2 = pts[j]
+		var i0 := c.lerp(o0, 0.5)
+		var i1 := c.lerp(o1, 0.5)
+		var scar := col * rng.randf_range(0.84, 1.12)
+		for side: float in [1.0, -1.0]:
+			var y0 := t * 0.5
+			var mid := xf * Vector3(c.x, y0 + side * t * 0.5, c.y)
+			var a := xf * Vector3(i0.x, y0 + side * t * 0.5 * float(mid_h[i]), i0.y)
+			var bb := xf * Vector3(i1.x, y0 + side * t * 0.5 * float(mid_h[j]), i1.y)
+			var ra := xf * Vector3(o0.x, y0 + side * 0.0015, o0.y)
+			var rb := xf * Vector3(o1.x, y0 + side * 0.0015, o1.y)
+			var sh: Color = scar if side > 0.0 else scar * 0.88
+			b.tri(mid, a, bb, sh, slot)
+			b.tri(mid, bb, a, sh, slot)
+			var lip := sh.lightened(0.06)
+			b.quad(a, ra, rb, bb, lip, slot)
+			b.quad(a, bb, rb, ra, lip, slot)
+
+
+func stone_tool_head(b, kind: String, rng: RandomNumberGenerator, at: Vector3, col := CHERT) -> void:
+	## A chert head where the hafted tool has it: a mattock's across the end of
+	## its handle, a spear's on the tip of its shaft.
+	match kind:
+		"mattock":
+			stone_head(b, "mattock", col, rng, Transform3D(Basis(), at - Vector3(0, 0.017, 0)))
+		"spear":
+			stone_head(b, "spear", col, rng, Transform3D(Basis(), at - Vector3(0, 0.011, 0)))
+
+
+func fish_hook(b, col: Color, xf := Transform3D.IDENTITY, size := 1.0, slot := "metal") -> void:
+	## A J-shaped fishhook lying flat: an eye at the top of the shank, the
+	## bend, and the point turned back up with a barb. `size` 1 is about 6 cm.
+	var pts: Array = []
+	var radii: Array = []
+	var r := 0.0035 * size
+	for i in 4:
+		pts.append(Vector3(lerpf(-0.03, 0.012, i / 3.0) * size, r, 0.0))
+	for i in range(1, 10):
+		var a := lerpf(-PI * 0.5, PI * 0.5, i / 9.0)
+		pts.append(Vector3((0.012 + cos(a) * 0.016) * size, r, (0.016 + sin(a) * 0.016) * size))
+	pts.append(Vector3(0.0, r, 0.034 * size))
+	pts.append(Vector3(-0.008 * size, r, 0.03 * size))
+	for i in pts.size():
+		radii.append(r * lerpf(1.0, 0.45, maxf(i - 10.0, 0.0) / 3.0))
+	var world: Array = []
+	for q in pts:
+		world.append(xf * q)
+	b.tube(world, radii, 6, [col], slot)
+	# The barb, back from the point, and the eye at the head of the shank.
+	b.cylinder(xf * Vector3(-0.004 * size, r, 0.031 * size), xf * Vector3(0.0, r, 0.024 * size), r * 0.6, 0.0005, 5, col, Color(-1, 0, 0), slot)
+	b.cylinder(xf * Vector3(-0.034 * size, r, 0.0), xf * Vector3(-0.034 * size, r * 1.3, 0.0), r * 1.6, r * 1.6, 8, col * 0.9, Color(-1, 0, 0), slot)
+
+
+const STONE_HEADS := {"blade": "blade", "spear_head": "spear", "mattock_head": "mattock"}
+
+
+const METAL_HEADS := {"axe_head": "axe", "blade": "knife", "spear_head": "spear"}
+
+
+static func metal_col(id: String) -> Color:
+	## The colour of a copper or iron item's metal.
+	var def := Items.def(id)
+	if def.has("head"):
+		return def.head
+	return Items.def("copper").color if id.contains("copper") else Color(0.60, 0.61, 0.63)
+
+
+static func metal_kind(id: String) -> String:
+	## How a copper or iron item is drawn by metal_head etc.: "axe", "knife",
+	## "spear", "chisel", "shoe" or "bar"; "" for anything else (chert heads).
+	if not (id.contains("copper") or id.contains("iron")):
+		return ""
+	if id.ends_with("chisel"):
+		return "chisel"
+	if id.ends_with("pole_shoe"):
+		return "shoe"
+	var shape: String = Items.def(id).get("shape", "")
+	if METAL_HEADS.has(shape):
+		return METAL_HEADS[shape]
+	match shape:
+		"axe":
+			return "axe"
+		"spear":
+			return "spear"
+		"pencil_core":
+			return "bar"
+	return ""
+
+
+const METEOR_CRUST := Color(0.16, 0.15, 0.14)
+const METEOR_RUST := Color(0.34, 0.19, 0.10)
+const METEOR_IRON := Color(0.30, 0.29, 0.28)
+
+
+func meteorite(b, rng: RandomNumberGenerator, r: float, at := Vector3.ZERO) -> void:
+	## An iron meteorite about `r` across its middle, resting on `at`: an
+	## irregular, lopsided lump with broad thumbprint hollows, dark fusion
+	## crust patched with rust, and a small flat broken face of bare iron.
+	const RINGS := 12
+	const SIDES := 22
+	var size := Vector3(rng.randf_range(1.2, 1.4), rng.randf_range(0.62, 0.75), rng.randf_range(0.85, 1.0)) * r
+	var turn := Basis(Vector3.UP, rng.randf() * TAU) * Basis(Vector3.RIGHT, rng.randf_range(-0.25, 0.25))
+	var bumps := []
+	for i in 5:
+		bumps.append([_rand_dir(rng), rng.randf_range(-0.15, 0.28)])
+	var dimples := []
+	for i in 14:
+		dimples.append([_rand_dir(rng), rng.randf_range(0.35, 0.6), rng.randf_range(0.09, 0.16)])
+	var cut_n := _rand_dir(rng)
+	cut_n.y = absf(cut_n.y) * 0.5
+	cut_n = cut_n.normalized()
+	var cut_off := rng.randf_range(0.88, 0.96)
+	var rusts := []
+	for i in 3:
+		rusts.append(_rand_dir(rng))
+	var grid := []
+	var cut_at := []
+	for ring in RINGS + 1:
+		var lat := PI * ring / RINGS - PI * 0.5
+		var row := []
+		var cut_row := []
+		for s in SIDES:
+			var lon := TAU * s / SIDES
+			var d := Vector3(cos(lat) * cos(lon), sin(lat), cos(lat) * sin(lon))
+			var k := 1.0
+			for bump in bumps:
+				k += float(bump[1]) * pow(maxf(d.dot(bump[0]), 0.0), 3.0)
+			for dim in dimples:
+				var w: float = 1.0 - acos(clampf(d.dot(dim[0]), -1.0, 1.0)) / dim[1]
+				if w > 0.0:
+					k -= float(dim[2]) * sin(w * PI * 0.5)
+			var p := turn * (d * size * maxf(k, 0.78))
+			var over := p.dot(cut_n) - cut_off * r
+			if over > 0.0:
+				p -= cut_n * over
+			row.append(p)
+			cut_row.append(over > 0.0)
+		grid.append(row)
+		cut_at.append(cut_row)
+	# Resting on its lowest point.
+	var low := INF
+	for row in grid:
+		for p in row:
+			low = minf(low, p.y)
+	for ring in RINGS:
+		for s in SIDES:
+			var t := (s + 1) % SIDES
+			var q: Array = [grid[ring][s], grid[ring][t], grid[ring + 1][t], grid[ring + 1][s]]
+			var dir: Vector3 = ((q[0] + q[1] + q[2] + q[3]) * 0.25).normalized()
+			var col := METEOR_CRUST * rng.randf_range(0.94, 1.06)
+			if cut_at[ring][s] and cut_at[ring][t] and cut_at[ring + 1][t] and cut_at[ring + 1][s]:
+				col = METEOR_IRON * rng.randf_range(0.96, 1.04)  # the broken face: bare iron
+			else:
+				# Rust gathers in a few soft patches.
+				var rust := 0.0
+				for rd in rusts:
+					rust = maxf(rust, dir.dot(rd))
+				col = col.lerp(METEOR_RUST, clampf((rust - 0.6) * 1.5, 0.0, 0.45))
+			for i in 4:
+				q[i] = at + q[i] - Vector3(0, low, 0)
+			b.quad(q[0], q[1], q[2], q[3], col, "meteorite")
+
+
+static func _rand_dir(rng: RandomNumberGenerator) -> Vector3:
+	var z := rng.randf_range(-1.0, 1.0)
+	var a := rng.randf() * TAU
+	var h := sqrt(1.0 - z * z)
+	return Vector3(h * cos(a), z, h * sin(a))
 
 
 func chisel_saw(b, rng: RandomNumberGenerator, done := 99) -> void:
@@ -1785,8 +2440,38 @@ const BLUEPRINT := [
 ]
 
 
-func blueprint_lines(g: int) -> Array:
-	return BLUEPRINT[clampi(g, 0, BLUEPRINT.size() - 1)]
+## The dock blueprint's drawing: the dock from the side on the left of the
+## sheet, from above on the right.
+const DOCK_BLUEPRINT := [
+	# The bank, the river bed and the land post.
+	[[Vector2(-0.22, 0.0), Vector2(-0.17, 0.0)], [Vector2(-0.17, 0.0), Vector2(-0.13, -0.11)], [Vector2(-0.13, -0.11), Vector2(-0.01, -0.11)],
+		[Vector2(-0.185, 0.0), Vector2(-0.185, 0.04)]],
+	# The water and the piles.
+	[[Vector2(-0.15, -0.045), Vector2(-0.01, -0.045)], [Vector2(-0.12, -0.11), Vector2(-0.12, 0.03)], [Vector2(-0.085, -0.11), Vector2(-0.085, 0.03)],
+		[Vector2(-0.05, -0.11), Vector2(-0.05, 0.03)]],
+	# The spikes round the piles.
+	[[Vector2(-0.132, -0.02), Vector2(-0.12, -0.035)], [Vector2(-0.108, -0.02), Vector2(-0.12, -0.035)], [Vector2(-0.097, -0.02), Vector2(-0.085, -0.035)],
+		[Vector2(-0.073, -0.02), Vector2(-0.085, -0.035)], [Vector2(-0.062, -0.02), Vector2(-0.05, -0.035)], [Vector2(-0.038, -0.02), Vector2(-0.05, -0.035)]],
+	# The stringers and the deck.
+	[[Vector2(-0.19, 0.03), Vector2(-0.035, 0.03)], [Vector2(-0.19, 0.038), Vector2(-0.035, 0.038)], [Vector2(-0.19, 0.045), Vector2(-0.035, 0.045)]],
+	# The deck from above, the piles under it.
+	[[Vector2(0.04, 0.12), Vector2(0.14, 0.12)], [Vector2(0.14, 0.12), Vector2(0.14, -0.04)], [Vector2(0.14, -0.04), Vector2(0.04, -0.04)],
+		[Vector2(0.04, -0.04), Vector2(0.04, 0.12)], [Vector2(0.05, 0.07), Vector2(0.13, 0.07)], [Vector2(0.05, 0.02), Vector2(0.13, 0.02)]],
+	# The planks across the deck.
+	[[Vector2(0.04, 0.1), Vector2(0.14, 0.1)], [Vector2(0.04, 0.08), Vector2(0.14, 0.08)], [Vector2(0.04, 0.05), Vector2(0.14, 0.05)],
+		[Vector2(0.04, 0.03), Vector2(0.14, 0.03)], [Vector2(0.04, 0.0), Vector2(0.14, 0.0)], [Vector2(0.04, -0.02), Vector2(0.14, -0.02)]],
+	# The slipway down into the water beside it.
+	[[Vector2(0.15, 0.12), Vector2(0.15, -0.1)], [Vector2(0.2, 0.12), Vector2(0.2, -0.1)], [Vector2(0.15, 0.08), Vector2(0.2, 0.08)],
+		[Vector2(0.15, 0.03), Vector2(0.2, 0.03)], [Vector2(0.15, -0.02), Vector2(0.2, -0.02)], [Vector2(0.15, -0.07), Vector2(0.2, -0.07)]],
+	# The mooring post at the end, from the side and from above.
+	[[Vector2(-0.04, 0.045), Vector2(-0.04, 0.075)], [Vector2(-0.046, 0.075), Vector2(-0.034, 0.075)], [Vector2(0.125, -0.025), Vector2(0.135, -0.025)],
+		[Vector2(0.135, -0.025), Vector2(0.135, -0.035)], [Vector2(0.135, -0.035), Vector2(0.125, -0.035)], [Vector2(0.125, -0.035), Vector2(0.125, -0.025)]],
+]
+
+
+func blueprint_lines(g: int, out := "blueprint_softwood_house") -> Array:
+	var plan: Array = DOCK_BLUEPRINT if out == "blueprint_dock" else BLUEPRINT
+	return plan[clampi(g, 0, plan.size() - 1)]
 
 
 func on_sheet(at: Vector3, p: Vector2) -> Vector3:

@@ -47,7 +47,10 @@ const FALL_RISK := 4.0          # the chance of an injury rises from 25% over th
 const CLIMB := 1.6              # m/s up or down a rope ladder
 const FRACTURE_FROM := 15.0     # a hit at least this hard may break an arm or a leg
 const TRAUMA := 0.4             # blood lost at once per point of a hit
+const HOLE_WITHIN := 4.0  # how long (Game.time) broken ground waits for the next swing
 
+var _hole_at := Vector3.INF  # where the stone mattock broke the ground for a hole
+var _hole_t := -INF  # when (Game.time)
 var world: Node = null          # scene root; may provide water_level()/place()/spawn_pickup()
 var vitals := Survival.new()
 var vitals_enabled := true
@@ -573,14 +576,14 @@ func _update_held_mesh() -> void:
 	held_mesh.position = Vector3.ZERO
 	held_mesh.scale = Vector3.ONE
 	match shape:
-		"axe", "drill", "stick", "mattock", "hammer", "torch", "torch_lit":
+		"axe", "drill", "stick", "mattock", "shovel", "hammer", "torch", "torch_lit":
 			# Long items lie along +X: stand them up, leaning away, gripped low.
 			held_mesh.rotation = Vector3(-0.5, 0, PI * 0.5)
 			held_mesh.position = held_mesh.basis * Vector3(0.18, 0, 0)
 		"spear":
 			held_mesh.rotation = Vector3(-1.15, 0, PI * 0.5)
 			held_mesh.position = held_mesh.basis * Vector3(0.25, 0, 0)
-		"rod", "fishing_rod":
+		"rod", "fishing_rod", "blowpipe":
 			# Held by the butt, the tip out ahead and up.
 			held_mesh.rotation = Vector3(-1.0, 0, PI * 0.5)
 			held_mesh.position = held_mesh.basis * Vector3(0.5, 0, 0)
@@ -663,7 +666,7 @@ func _axe_prompt() -> bool:
 	if def.get("soft", true) or Items.def(held).get("tier", "") != "stone":
 		prompt = "Kneel to fell the %s [C]" % def.get("name", "tree")
 	else:
-		prompt = "The %s is too hard to fell with a stone axe" % def.get("name", "tree")
+		prompt = "The %s is too hard to fell with a stone %s" % [def.get("name", "tree"), Items.tool_word(held)]
 	return true
 
 
@@ -784,6 +787,20 @@ func dig_hole() -> void:
 		return
 	_attack_cd = THROW_COOLDOWN
 	_swing = 0.0
+	if Items.slow_tool(Game.inventory.held_id()):
+		# The stone mattock breaks the ground first, then digs the hole: only
+		# where a hole can go, and the next swing soon after (game time,
+		# so a pause doesn't lose it).
+		if _hole_at.distance_to(at) > 0.6 or Game.time - _hole_t > HOLE_WITHIN:
+			if not world.dig_hole(at, true):
+				return
+			_hole_at = at
+			_hole_t = Game.time
+			vitals.stamina = maxf(vitals.stamina - 3.0, 0.0)
+			Sfx.play_at("chop", at, -6.0, 0.2)
+			Game.notify("You break the ground (1 / 2).")
+			return
+		_hole_at = Vector3.INF
 	if world.dig_hole(at):
 		vitals.stamina = maxf(vitals.stamina - 6.0, 0.0)
 		used_tool(false)
@@ -1089,35 +1106,36 @@ func _attack() -> void:
 			# Punching a live acanthodian bare-fisted: its fin spines jab back.
 			hurt(SPINE_PRICK, best.global_position, 0.2, "spines")
 			Game.notify("The %s's fin spines jab your hand." % best.def.name)
-	elif "dig" in def.get("tags", []):
-		# A mattock knocks a campfire apart (or a workbench loose), digs out a
-		# stump or a plant (a harvestable fern: its spores), or, struck into
-		# the ground, tears out a decorative fern there for nothing.
+	elif Items.works_on(Game.inventory.held_id(), ["chop", "dig"]):
+		# A shovel knocks a campfire apart and digs a meteorite out; an axe
+		# hacks out a stump and hacks at a house site to tear it down; either
+		# knocks a workbench loose, takes a plant out (a harvestable fern: its
+		# spores, the same whichever) or, struck into the ground, clears a
+		# decorative fern there for nothing. The stone mattock does it all,
+		# slowly (Items.slow_tool).
+		var held: String = Game.inventory.held_id()
+		var digs: bool = "dig" in def.get("tags", [])
 		var hit := _ray(reach, 1 | 2)
 		if hit:
 			var c: Node = hit.collider
 			var done := false
 			for n in [c, c.get_parent()]:
-				if n and n.has_method("break_apart"):
+				if n and digs and n.has_method("break_apart"):
 					n.break_apart()
 					done = true
 					break
-				if n and n.has_method("dig"):
-					n.dig()
+				if n and not digs and n.has_method("axe_hit"):
+					n.axe_hit()
 					done = true
-					used_tool(false)
+					break
+				if n and n.has_method("dig") and n.has_method("dug_by"):
+					if Items.works_on(held, n.dug_by()):
+						n.dig(Items.slow_tool(held))
+						used_tool(false)
+					done = true
 					break
 			if not done and world and world.has_method("clear_fern"):
 				world.clear_fern(hit.position)
-	elif "chop" in def.get("tags", []):
-		# An axe hacks at a house site to tear it down, or knocks a workbench loose.
-		var hit := _ray(reach, 1 | 2)
-		if hit:
-			var c: Node = hit.collider
-			for n in [c, c.get_parent()]:
-				if n and n.has_method("axe_hit"):
-					n.axe_hit()
-					break
 
 
 func used_tool(_hit := true) -> void:

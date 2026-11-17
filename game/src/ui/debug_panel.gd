@@ -17,7 +17,11 @@ var _day: SpinBox
 var _hour: HSlider
 var _hour_label: Label
 var _weather: OptionButton
-var _item: OptionButton
+var _item: Button           # shows the chosen item; opens _item_pop
+var _item_pop: PopupPanel   # a search box over the list of every item
+var _item_search: LineEdit
+var _item_list: ItemList
+var _item_id := ""
 var _count: SpinBox
 var _creature: OptionButton
 var _condition: OptionButton
@@ -88,13 +92,16 @@ func _ready() -> void:
 	_button(w, "Stop all", _stop_weather)
 
 	var it := _row(vb, "Item")
-	_item = OptionButton.new()
 	_items = Items.ITEMS.keys()
 	_items.sort_custom(func(a, b): return Items.item_name(a) < Items.item_name(b))
-	for id in _items:
-		_item.add_item(Items.item_name(id))
+	_item = Button.new()
+	_item.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_item.clip_text = true
 	_item.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_item.pressed.connect(_open_item_pop)
 	it.add_child(_item)
+	_build_item_pop()
+	_pick_item(_items[0])
 	_count = SpinBox.new()
 	_count.min_value = 1
 	_count.max_value = 99
@@ -231,7 +238,7 @@ func _stop_weather() -> void:
 
 
 func _give() -> void:
-	var id: String = _items[_item.selected]
+	var id := _item_id
 	var n := int(_count.value)
 	if Items.def(id).get("carry", false) and world.has_method("add_carried"):
 		# Too big for the bag (a soup pot, a fermentation vessel, a log): stood
@@ -248,6 +255,63 @@ func _give() -> void:
 	if left > 0:
 		world.spawn_pickup(id, left, world.player.global_position + Vector3(0, 0.5, 0))
 	_say("Gave %d %s%s." % [n, Items.item_name(id), " (some on the ground)" if left > 0 else ""])
+
+
+func _build_item_pop() -> void:
+	## The item picker: type to narrow the list, Enter or a click to choose.
+	_item_pop = PopupPanel.new()
+	var vb := VBoxContainer.new()
+	vb.custom_minimum_size = Vector2(320, 360)
+	_item_pop.add_child(vb)
+	_item_search = LineEdit.new()
+	_item_search.placeholder_text = "Search items…"
+	_item_search.clear_button_enabled = true
+	_item_search.text_changed.connect(func(_t): _filter_items())
+	_item_search.text_submitted.connect(func(_t):
+		if _item_list.item_count > 0:
+			_pick_item(_item_list.get_item_metadata(0))
+			_item_pop.hide())
+	vb.add_child(_item_search)
+	_item_list = ItemList.new()
+	_item_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_item_list.item_activated.connect(_item_chosen)
+	_item_list.item_clicked.connect(func(i, _at, _b): _item_chosen(i))
+	vb.add_child(_item_list)
+	add_child(_item_pop)
+
+
+func _filter_items() -> void:
+	## Items whose name (or id) holds the search text, in name order.
+	var q := _item_search.text.strip_edges().to_lower()
+	_item_list.clear()
+	for id: String in _items:
+		var nm := Items.item_name(id)
+		if q == "" or nm.to_lower().contains(q) or id.contains(q.replace(" ", "_")):
+			var i := _item_list.add_item(nm)
+			_item_list.set_item_metadata(i, id)
+			if id == _item_id:
+				_item_list.select(i)
+
+
+func _open_item_pop() -> void:
+	_item_search.text = ""
+	_filter_items()
+	var r := _item.get_global_rect()
+	_item_pop.popup(Rect2i(Vector2i(r.position + Vector2(0, r.size.y)), Vector2i(maxi(int(r.size.x), 320), 360)))
+	_item_search.grab_focus()
+	var sel := _item_list.get_selected_items()
+	if not sel.is_empty():
+		_item_list.ensure_current_is_visible()
+
+
+func _item_chosen(i: int) -> void:
+	_pick_item(_item_list.get_item_metadata(i))
+	_item_pop.hide()
+
+
+func _pick_item(id: String) -> void:
+	_item_id = id
+	_item.text = Items.item_name(id) + "  ▾"
 
 
 func _spawn() -> void:

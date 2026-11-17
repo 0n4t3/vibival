@@ -1,5 +1,5 @@
 ---
-layout: default
+layout: home
 title: Vibival
 description: A slow, grounded survival game in a Carboniferous coal swamp.
 ---
@@ -9,9 +9,9 @@ description: A slow, grounded survival game in a Carboniferous coal swamp.
 ## About
 Vibival is a survival game, set in a vaguely carboniferous coal swamp. It’s a slow and grounded game, if that makes any sense. There’ll be no epic boss battles or megastructures to construct, you’ll probably be too busy cleaning a bite to keep it from getting infected because that stupid bug just bit you again, or digging up fern tree roots because you’re still low on greens.
 
-If you'd like to try it, [playing the web version](https://vibival.dns7.top/client) is probably your best bet. Linux and Android are working now, expect their builds in the releases at some point (Windows likely to follow). See the guide above for more information on how to play the game.
+If you'd like to try it, [playing the web version](/client/) is probably your best bet. Linux and Android are working now, expect their builds in the releases at some point (Windows likely to follow). See the guide above for more information on how to play the game.
 
-#### Progression
+### Progression
 Progression isn’t entirely linear, and from the first time you play it to when you delete the world because *that stupid bug just bit you three times in a row*, you’ll still be spending time gathering food and trying to fetch water without being eaten by a swamp predator. Crafting is done in a 3D environment, and most items are stored in physical piles in the world instead of in containers.
 
 Though there’s something of progression:
@@ -27,6 +27,6 @@ As time goes on you’ll be able to do a bit more. Make a mattok to start replan
 * A pre-fab softwood structure
 * Composting, which greatly speeds up farming
 
-**3: End game** Build yourself a raft, and go sailing to find island copper deposits. Copper unlocks axes (can cut hardwood), and allows cold working of meteoric iron. Metal also unlocks tools like shovels (better at digging then the mattock) and saws (better at cutting wood than axes or mattocks). There's also some additional end game content, such as:
+**3: End game.** Build yourself a raft, and go sailing to find island copper deposits. Copper unlocks axes (can cut hardwood), and allows cold working of meteoric iron. Metal also unlocks tools like shovels (better at digging then the mattock) and saws (better at cutting wood than axes or mattocks). There's also some additional end game content, such as:
 * more and larger structures
 * more building materials

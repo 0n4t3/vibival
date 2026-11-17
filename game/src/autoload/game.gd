@@ -14,8 +14,8 @@ extends Node
 ## --wound, --condition=id,... (health conditions, see Survival.DEBUG_CONDITIONS),
 ## --open-inventory[=health|recipes], --open-pause, --open-debug (with --debug), --open-map, --chart=METRES (charted round you), --tired (able to sleep at once),
 ## --raft (with a finished --dock: board its raft holding a pole), --raft-pole (and pole it ahead),
-## --work=item:n,... (kneel to craft with these laid out), --work-make=item,
-## --work-steps=N, --spawn-felled=tree_kind, --spawn-log=log,short_log,..., --stack=item:n,...
+## --work=item:n,... (kneel to craft with these laid out), --work-make=item (a washing recipe as if at the water; "sharpen" with --anvil=4: the first edged tool carried; "bait": bait the laid-out rod),
+## --work-steps=N, --furnace (a finished furnace ahead, kneeling at it), --spawn-felled=tree_kind, --spawn-log=log,short_log,..., --stack=item:n,...
 ## (lay wood or piles out in front of you; --carry picks up the first log,
 ## --woodwork=fell|buck|strip|shorten|hew|split kneels at the first piece and begins it),
 ## --bench=tool,tool puts a workbench in front of you with those tools on its rack
@@ -449,7 +449,7 @@ func read_save(suspended := false) -> Dictionary:
 	var data = JSON.parse_string(f.get_as_text())
 	if typeof(data) != TYPE_DICTIONARY or int(data.get("version", 0)) != SAVE_VERSION:
 		return {}
-	return data
+	return Items.migrate_save(data)
 
 
 func save_game(world_state: Dictionary, suspended := false) -> bool:
