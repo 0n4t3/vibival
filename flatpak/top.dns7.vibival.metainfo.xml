@@ -32,9 +32,14 @@
     <category>AdventureGame</category>
   </categories>
   <releases>
-    <release version="0.1.0" date="2026-10-31">
+    <release version="0.1" date="2026-11-19">
       <description>
-        <p>First prototype: lab tutorial, swamp survival, crafting, knapping, fire and creatures.</p>
+        <p>First signed release builds. Gameplay is the same as 0.0.5.</p>
+      </description>
+    </release>
+    <release version="0.0.5" date="2026-11-19">
+      <description>
+        <p>Tool rework: one slow stone mattock, metal axes and shovels. Woodwork goes at the pace of the tool in use.</p>
       </description>
     </release>
   </releases>
