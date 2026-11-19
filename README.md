@@ -26,7 +26,7 @@ As time goes on you’ll be able to do a bit more. Make a mattok to start replan
 * A pre-fab softwood structure
 * Composting, which greatly speeds up farming
 
-**3: End game** Build yourself a raft, and go sailing to find island copper deposits. Copper unlocks axes (can cut hardwood), and allows cold working of meteoric iron. Metal also unlocks tools like shovels (better at digging then the mattock) and saws (better at cutting wood than axes or mattocks). There's also some additional end game content, such as:
+**3: End game** Build yourself a raft, and go sailing to find island copper deposits. Copper unlocks axes (can cut hardwood), and allows cold working of meteoric iron. Metal also unlocks tools like shovels (better at digging then the mattock) and saws (better at cutting wood than axes or mattocks). There's also some additional end game content planned, such as:
 * more and larger structures
 * more building materials
 
