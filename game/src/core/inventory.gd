@@ -195,6 +195,7 @@ func swap(a: int, b: int) -> void:
 	if sa != null and sb != null and sa.id == sb.id and a != b and not sa.has("data") and not sb.has("data"):
 		var max_n := Items.max_stack(sa.id)
 		var k := mini(sa.n, max_n - sb.n)
+		sb.age = maxf(sb.age, sa.age)  # as far gone as its oldest, as in add
 		sb.n += k
 		sa.n -= k
 		if sa.n <= 0:

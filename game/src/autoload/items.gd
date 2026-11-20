@@ -1314,7 +1314,8 @@ const KNAP_MATERIAL := {"chitin_hook": "chitin"}
 ## Its definition is the food's own, renamed, its nutrients times `boost`,
 ## keeping twice as long, with `alcohol` (a drink's worth when eaten) or less
 ## water (salt makes you thirsty). `extra` nutrients are added on top, after
-## the boost (pickling and brewing add a little greens and starch).
+## the boost (pickling and brewing add a little greens and starch). A cured
+## seed or root grows nothing, and cooking cured food keeps it cured.
 const CURES := {
 	"pickled": {"name": "Pickled %s", "boost": 1.1, "extra": {"greens": 3.0, "starch": 3.0}, "tint": Color(0.82, 0.95, 0.62),
 		"note": "Pickled: a little more nourishing, with a little greens and starch, and keeps twice as long."},
@@ -1346,6 +1347,9 @@ func migrate_save(v: Variant) -> Variant:
 	## A save with RENAMED items in it, every item id (value or key) swapped
 	## for its replacement; a slot's own name made again for the new item.
 	if v is String:
+		var cure := cure_of(v)
+		if cure in ["pickled", "spirit"]:
+			return cure + ":" + cure_base(base_of(v), cure)  # pickled raw plants: the cooked form
 		return RENAMED.get(v, v)
 	if v is Array:
 		return v.map(func(x): return migrate_save(x))
@@ -1397,6 +1401,25 @@ func cure_of(id: String) -> String:
 	return id.substr(0, k) if k > 0 and CURES.has(id.substr(0, k)) else ""
 
 
+func cure_base(id: String, cure: String) -> String:
+	## What pickling or brewing turns `id` into before the cure goes on: a
+	## plant food that cooks into food is cured as its cooked form, raw or
+	## cooked alike ("fiddlehead" and "cooked_fiddlehead" both become a pickled
+	## cooked fiddlehead). Meat, grubs and anything salted keep their own form.
+	if cure == "salted" or float(def(id).get("protein", 0.0)) > 0.0:
+		return id
+	var cooked: String = def(id).get("cook", "")
+	return cooked if ITEMS.has(cooked) and is_food(cooked) else id
+
+
+func _raw_plant_of(cooked: String) -> String:
+	## The raw plant food that cooks into `cooked`, or "".
+	for k in ITEMS:
+		if ITEMS[k].get("cook", "") == cooked and float(ITEMS[k].get("protein", 0.0)) <= 0.0 and ITEMS[k].has("energy"):
+			return k
+	return ""
+
+
 func base_of(id: String) -> String:
 	## The food a cured item was made from (or the item itself).
 	return id.substr(id.find(":") + 1) if cure_of(id) != "" else id
@@ -1423,13 +1446,28 @@ func _cured_def(id: String) -> Dictionary:
 		return {}
 	var c: Dictionary = CURES[cure]
 	var d: Dictionary = ITEMS[base].duplicate()
-	d.name = c.name % d.name
-	d.desc = "%s %s" % [d.get("desc", ""), c.note]
+	var raw := _raw_plant_of(base) if cure != "salted" else ""
+	d.name = c.name % (ITEMS[raw].name if raw != "" else d.name)  # "Pickled Fiddlehead", cooked first
+	var desc: String = d.get("desc", "")
+	if d.has("plant") or d.has("plant_tree"):
+		# A cured seed or root grows nothing: drop the sentence saying it does.
+		desc = " ".join(Array(desc.split(". ")).map(func(x): return x.trim_suffix(".")).filter(func(x): return not "in a hole" in x)) + "."
+	d.desc = "%s %s" % [desc, c.note]
 	for k in ["energy", "protein", "greens", "starch"]:
 		if d.has(k):
 			d[k] = snappedf(d[k] * c.boost, 0.1)
 	for k in c.get("extra", {}):
 		d[k] = snappedf(d.get(k, 0.0) + c.extra[k], 0.1)
+	d.erase("plant")       # a cured seed or root grows nothing
+	d.erase("plant_tree")
+	if d.has("cook"):
+		# Cooked, it stays cured: salted raw meat roasts into salted cooked meat.
+		var cooked: String = d.cook
+		if ITEMS.has(cooked) and can_cure(cooked):
+			d.cook = cure + ":" + cooked
+		else:
+			d.erase("cook")
+			d.erase("cook_time")
 	if d.has("decay"):
 		d.decay = d.decay * 2.0
 	if c.has("alcohol"):

@@ -150,7 +150,8 @@ func day_start(day: int) -> float:
 
 func plan(k: String, day: int) -> void:
 	## Picks when today's event happens: night-sky events from dusk until dawn,
-	## the others for 6-12 minutes at a random time of the day still to come.
+	## the others for 6-12 minutes at a random time of the day still to come
+	## (daytime ones, DAY_KINDS, between dawn and dusk, or not at all today).
 	planned = k
 	hinted = false
 	if k in NIGHT_KINDS:
@@ -158,9 +159,15 @@ func plan(k: String, day: int) -> void:
 		planned_len = Game.DAY_LENGTH - NIGHT_START + NIGHT_END
 	else:
 		planned_len = _rng.randf_range(LENGTH[0], LENGTH[1])
-		var lo := maxf(Game.time + 60.0, day_start(day))
-		var hi := maxf(day_start(day + 1) - planned_len, lo)
-		planned_at = _rng.randf_range(lo, hi)
+		# Daytime events keep to daylight, dawn to dusk; the rest any time.
+		var from := day_start(day) + (NIGHT_END if k in DAY_KINDS else 0.0)
+		var until := day_start(day) + DUSK_START if k in DAY_KINDS else day_start(day + 1)
+		var lo := maxf(Game.time + 60.0, from)
+		var hi := until - planned_len
+		if k in DAY_KINDS and hi < lo:
+			planned = ""  # too little daylight left today
+			return
+		planned_at = _rng.randf_range(lo, maxf(hi, lo))
 
 
 func start(k: String, seconds := -1.0) -> void:

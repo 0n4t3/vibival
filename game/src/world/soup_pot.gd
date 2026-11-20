@@ -37,6 +37,7 @@ const COOL_TIME := 180.0                # seconds off the fire to go cold from t
 const RAW_HEAT := 0.75                  # adding food knocks it off the boil to this
 const FIRE_TIME := 200.0                # seconds over a lit fire to fire the clay
 const HANG_R := 1.5                     # put down this close to a campfire, it hangs over it
+const RAIN_EVERY := 60.0                # seconds of rain that put a serving of water in it
 const SOUP_WATER := 30.0                # water in a serving of soup
 const CLEAN_WATER := 40.0               # a serving of boiled water (a pot of boiled water)
 const DIRTY_WATER := 35.0
@@ -263,6 +264,22 @@ func empty_out() -> void:
 		nut[k] = 0.0
 	risk = 0.0
 	raw = false
+
+
+func catch_rain(dt: float) -> void:
+	## dt seconds of rain on it (swamp._update_weather): standing out from under
+	## a roof, it gains a serving of clean rain water every RAIN_EVERY seconds,
+	## never past capacity(). Rain thins a soup out; swamp water in it stays
+	## swamp water.
+	if not fired_pot() or hauled_by != null or water >= capacity() - 0.001 or Game.sheltered(global_position):
+		return
+	var was := servings()
+	if is_empty():
+		dirty = false
+		fresh_at = Game.time
+	water = minf(water + dt / RAIN_EVERY, capacity())
+	if servings() != was:
+		_refresh()
 
 
 func fill_dirty() -> void:

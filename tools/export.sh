@@ -7,16 +7,21 @@
 #                             build/android-release/vibival.apk, signed with the
 #                             release key in $VIBIVAL_SIGNING (default
 #                             ~/.local/share/vibival-signing/android-release.env)
+#   tools/export.sh android-x86-release
+#                             build/android-x86-release/vibival.apk: the same,
+#                             for x86 devices only (32- and 64-bit x86; the
+#                             main APK is arm64 and x86_64)
 # The game is staged in build/stage so the editor's import cache and .import
 # files never land in game/. Music is kept as raw files ("keep" importer),
 # since it is loaded at runtime from its bytes.
 set -eu
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 GODOT=${GODOT:-$ROOT/.tools/godot/Godot_v4.7.2-stable_linux.x86_64}
-TARGET=${1:?usage: tools/export.sh web|android|android-release}
+TARGET=${1:?usage: tools/export.sh web|android|android-release|android-x86-release}
 SIGNING=${VIBIVAL_SIGNING:-$HOME/.local/share/vibival-signing}
 STAGE=$ROOT/build/stage
 MODE=--export-release
+ARCHS=""   # Android architectures to build in place of the preset's, if set
 case "$TARGET" in
   web) PRESET=Web; OUT=$ROOT/build/web/index.html ;;
   android)
@@ -31,8 +36,9 @@ case "$TARGET" in
         -dname "CN=Android Debug,O=Android,C=US"
     fi
     ;;
-  android-release)
-    PRESET=Android; OUT=$ROOT/build/android-release/vibival.apk
+  android-release|android-x86-release)
+    PRESET=Android; OUT=$ROOT/build/$TARGET/vibival.apk
+    [ "$TARGET" = android-x86-release ] && ARCHS="x86 x86_64"
     # The keystore path, alias and password come from the env file and are
     # read by the editor (GODOT_ANDROID_KEYSTORE_RELEASE_*), never stored here.
     ENV=$SIGNING/android-release.env
@@ -51,6 +57,15 @@ rm -rf "$STAGE/tests" "$STAGE/.godot"
 # imported), so the staged copy gets the flatpak's.
 cp "$ROOT/flatpak/top.dns7.vibival.svg" "$STAGE/icon.svg"
 sed -i 's|^config/name=.*|&\nconfig/icon="res://icon.svg"|' "$STAGE/project.godot"
+if [ -n "$ARCHS" ]; then
+  # Only the staged copy of the presets changes: every architecture off, then
+  # the ones asked for on.
+  sed -i 's|^\(architectures/[a-z0-9_-]*\)=true|\1=false|' "$STAGE/export_presets.cfg"
+  for a in $ARCHS; do
+    sed -i "s|^architectures/$a=false|architectures/$a=true|" "$STAGE/export_presets.cfg"
+  done
+  grep '^architectures/' "$STAGE/export_presets.cfg"
+fi
 for f in "$STAGE"/music/*.mp3 "$STAGE"/music/*.ogg; do
   [ -e "$f" ] && printf '[remap]\n\nimporter="keep"\n' > "$f.import"
 done

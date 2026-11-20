@@ -15,7 +15,7 @@ Look at something and press E.
 | Rotting log (search it) | 1–3 grubs, 1–2 bark tinder, up to 2 sticks | about 2 days |
 | Clay bank (dig) | 2–4 wet clay, on low muddy banks (four times as much with a sharp metal shovel in hand; it wears the edge) | about 2 days |
 | On the ground | Sticks everywhere; river stones and chert nodules, mostly on rocky ground | Picked-up items do not come back |
-| Along the shore | River stones, chert nodules and sticks washed up at the water's edge, and salt crusts on the bank just above it (for salting food in a sealed fermentation vessel) | Each lies there 1–3 days; new ones keep washing up |
+| Along the shore | River stones, chert nodules, and sticks washed up at the water's edge, and salt crusts on the bank just above it (for salting food in a sealed fermentation vessel) | Each lies there 1–3 days; new ones keep washing up |
 
 **Seed fern roots** are edible raw: a little greens, almost no food. Plant
 them (see Farming below) to grow new seed ferns.
@@ -38,11 +38,11 @@ an item away: it lies on the ground for now, but is gone once you reload.
 
 Raw materials you drop on dry ground go on a **pile** of their kind: stones,
 chert, sticks, fiber, fronds, tinder, clay, wax, ash, chitin, cordage, bark,
-branches, firewood, boards and logs. Drop another of the same thing within
+branches, firewood, boards, and logs. Drop another of the same thing within
 about 1.5 m and it joins the pile. A pile holds one kind of thing, as many as
 you like, though it only shows about a dozen. Look at a pile and press E to
 take one off the top; hold E to keep taking. A log pile hands you a log to
-carry. Food, containers and tools are dropped loose as before, and nothing is
+carry. Food, containers, and tools are dropped loose as before, and nothing is
 piled in the water.
 
 Kills leave carcasses. Small ones go into your bag; medium and large ones are
@@ -52,7 +52,7 @@ skinned (the arthropods give chitin plates) and cut into raw meat. See
 
 ## Woodcutting
 
-You need an axe or a **Stone Mattock**, in your hand, in your bag or laid out.
+You need an axe or a **Stone Mattock**, in your hand, in your bag, or laid out.
 The job uses one laid out, else the one in your hand, else the best you
 carry. The mattock is a poor axe: every woodworking job with it takes twice
 the strokes (hold your axe instead, if you carry one).
@@ -67,13 +67,13 @@ the strokes (hold your axe instead, if you carry one).
    shuffle along to the next cut. The last piece, with the crown, becomes a
    log or short log itself (a tree fern also gives a few fronds).
 3. **Carry logs** by looking at one and pressing E. A log looks like the tree
-   it came from: Calamites logs are green, ribbed and jointed, tree fern logs
+   it came from: Calamites logs are green, ribbed, and jointed, tree fern logs
    dark and shaggy with old frond bases, Lepidodendron logs covered in
    diamond-shaped scales, Sigillaria logs deeply ribbed. Stripped, each shows
    its own wood. Only logs from the same kind of tree pile together. Logs and short logs are
    held in your arms, not in the bag: they add no weight, but until you put
    them down (Q or E) you can't sprint, use or pick up anything, open your
-   bag, craft or sleep. Put a log down beside another log of the same kind and
+   bag, craft, or sleep. Put a log down beside another log of the same kind and
    they start a log pile.
 4. **Work a log.** Kneel (C) beside a loose log:
 
@@ -119,9 +119,9 @@ out (eight with the stone mattock), roots and all, for a root of that tree (plan
 |---|---|---|---|
 | Seed Fern Seed, Seed Fern Root | A seed fern | 14 days | 1–2 seeds each harvest, growing back every 5 days (2.5 if you work compost in round it within a day of picking). Two shovel swings (three with the mattock) dig it up for 2 roots; an axe cuts it down for the same. |
 | Fern Spores (dig up a fern with a shovel or the mattock, or cut it down with an axe: 3, or 1 if you picked it clean) | A fern | 14 days | Fiber and fiddleheads, growing back every 5 days (2.5 with compost). Dug up again it gives 1 spore. |
-| Calamites, Tree Fern, Lepidodendron or Sigillaria Root (from a dug-out stump) | That tree | 14 days | Fell it like any other. Its stump grows back, unless you dig it out. |
+| Calamites, Tree Fern, Lepidodendron, or Sigillaria Root (from a dug-out stump) | That tree | 14 days | Fell it like any other. Its stump grows back, unless you dig it out. |
 
-**Shoots.** A young tree fern, Calamites or seed fern (one you planted, or a
+**Shoots.** A young tree fern, Calamites, or seed fern (one you planted, or a
 stump growing back) has a tender shoot while it is under a third grown.
 Press E to pick it: greens to eat raw. The plant starts growing again from
 its roots, and has no new shoot to pick for a game day. Lepidodendron and
@@ -135,23 +135,23 @@ gone, and the spot is free.
 ## Compost
 
 Make a **Compost Basket** at a workbench with the Woodworking Tools on its
-rack: 4 boards, 6 sticks and 2 cordage. Set it down with Use, then look at it
+rack: 4 boards, 6 sticks, and 2 cordage. Set it down with Use, then look at it
 and press E to put in what you hold. It fills to level 20:
 
 | Put in | Counts | Composting time |
 |---|---|---|
-| Any food (not a drink in its pot or canteen), guts, a small carcass | 2 | 15 days |
-| A grub (raw or roasted) | 1 | 15 days |
-| A stick | 2 | 30 days |
-| A branch | 4 | 30 days |
-| A log (carry it to the basket, press E) | 10 | 60 days |
+| Any food (not a drink in its pot or canteen), guts, a small carcass | 2 | 5 days |
+| A grub (raw or roasted) | 1 | 5 days |
+| A stick | 2 | 10 days |
+| A branch | 4 | 10 days |
+| A log (carry it to the basket, press E) | 10 | 15 days |
 
 Only the slowest thing in it sets the time; they don't add up. Once it is
 full it composts and takes nothing more. When it is done, press E to dig out
 **5 Compost**; the basket is empty again. An empty basket can be picked back
 up (E with empty hands).
 
-Meat, fish, guts and carcasses smell. Each time you sleep, a basket with
+Meat, fish, guts, and carcasses smell. Each time you sleep, a basket with
 meat in it has a 15% chance of drawing a Scorpion or an Arthropleura that
 roots about beside it. It leaves the compost alone, but watch out when you
 next go there.
@@ -186,12 +186,12 @@ something has hold of you, or with the inventory open.
    - **Steps** (hafting, campfire, pot, bandage, sack,
      crushing wax):
      click the glowing marker on the work again and again. Each click is one
-     wrap, coil, fold or pound.
+     wrap, coil, fold, or pound.
    - **Knap** (tool heads): strike flakes off a chert nodule. See below.
 4. Press **C** again (or Done) to stand up. Anything still on the ground goes
    back into your inventory.
 
-The view turns, widens and if need be steps back so the work and every spot
+The view turns, widens, and if need be steps back so the work and every spot
 you need to click stay clear of the panels.
 
 On a gamepad, the right stick moves a cursor drawn on the screen, A clicks
@@ -209,9 +209,9 @@ everything back in your inventory first.
 A workbench is a plain wooden table with a tool rack along its back.
 
 1. **Build it.** Kneel (C) on dry ground with room in front of you and
-   lay out **4 boards, 4 sticks and 2 cordage**. Choose *Build a workbench*
+   lay out **4 boards, 4 sticks, and 2 cordage**. Choose *Build a workbench*
    and click the glowing spots (8 steps): the legs go up, get lashed, the top
-   boards go on and the rack board goes along the back. It stands where you
+   boards go on, and the rack board goes along the back. It stands where you
    built it, about 1.7 m in front of you, and stays there (it is saved with
    the world). The ground needn't be level: the legs reach down to it. If
    something is in the way, or the ground is wet, the option tells you what it
@@ -224,7 +224,7 @@ A workbench is a plain wooden table with a tool rack along its back.
    and press E at the bench to hang it on the next free peg. There are four.
    Look at a hanging tool and press E to take it back down.
 4. **Move it.** Hit the bench 3 times within 4 seconds with an axe, a
-   shovel or the mattock to knock it loose. Its rack tools go to your bag (or drop at your
+   shovel, or the mattock to knock it loose. Its rack tools go to your bag (or drop at your
    feet if it's full) and you pick the bench up in your arms like a log.
    Right-click (or Q) sets it up in front of you, if there's room and the
    ground is dry. You can carry it up a house's rope ladder (it rides on your
@@ -241,7 +241,7 @@ Made only at a workbench, with or without tools on its rack:
 | Unfired Spindle Whorl | 1 wet clay | 3 steps | Fire it in a campfire to make a **Spindle Whorl** |
 | Spindle | 1 spindle whorl, 1 stick | 2 steps | Spins plant fiber into string (see [String and the bow drill](#string-and-the-bow-drill)) |
 
-The platter, woodworking tools, papermaking tools and spindle hang on the
+The platter, woodworking tools, papermaking tools, and spindle hang on the
 rack. Once they do, they unlock advanced recipes at that bench. You only learn
 these once you have made or held the tool (select it in the hotbar), or used
 a bench (E, or kneeling at it) with it on the rack: until then they aren't in
@@ -272,11 +272,11 @@ The **spindle** is the first step to a bow drill:
 | Wooden Canteen | Woodworking Tools | 1 board, 2 waxy residue, 1 cordage | 6 steps | A flask for two servings of water or soup (see [Canteens](#canteens)) |
 | Unfired Unsealed Fermentation Vessel | Clay Platter | 8 wet clay | 6 steps | An open crock for pickling (see [Fermentation](#fermentation)) |
 | Unfired Sealed Fermentation Vessel | Clay Platter | 10 wet clay | 7 steps | A lidded jar for brewing alcohol or salting (see [Fermentation](#fermentation)) |
-| Wet Sheet | Papermaking Tools | 6 plant fiber, 1 serving of swamp or boiled water (a pot, a wooden canteen or a copper flask) | 5 steps | Dry it in a campfire to make a **Big Blank Sheet**. You keep the pot, canteen or flask |
+| Wet Sheet | Papermaking Tools | 6 plant fiber, 1 serving of swamp or boiled water (a pot, a wooden canteen, or a copper flask) | 5 steps | Dry it in a campfire to make a **Big Blank Sheet**. You keep the pot, canteen, or flask |
 | Unfired Pencil Core | Papermaking Tools | 1 ash, 1 wet clay | 3 steps | Fire it in a campfire to make a **Pencil Core** |
 | String | Spindle (or in your bag) | 3 plant fiber | Twist | Finer, stronger cord: a bow drill needs it |
 | Fishing Rod Blank | Woodworking Tools | 1 branch | 4 steps | The rod of a fishing rod (see [Fishing gear](#fishing-gear)) |
-| Ash Pencil | Papermaking Tools | 1 pencil core, 1 stick, 1 cordage, and any blade (a chert blade or a metal axe) to work with | 4 steps | Split the stick, lay the core in it, close and bind it. 50 uses |
+| Ash Pencil | Papermaking Tools | 1 pencil core, 1 stick, 1 cordage, and any blade (a chert blade or a metal axe) to work with | 4 steps | Split the stick, lay the core in it, close, and bind it. 50 uses |
 | Softwood House Blueprint | Papermaking Tools | 1 big blank sheet, an ash pencil with 2 uses left, and any blade to sharpen it | 10 steps | Hold it to see where the house would go, right-click to mark out the site (see [The softwood house](#the-softwood-house)) |
 
 More advanced clay and woodworking recipes are still to come.
@@ -297,7 +297,7 @@ The hook is **knapped** like a chert head, but from a chitin plate, flaked
 with a blade instead of struck with a river stone. A chitin plate only ever
 comes out as a chitin shape (a hook), never as a chert tool head.
 
-**Bait**: meat bait, beetle grubs, rotten food and guts all work as bait.
+**Bait**: meat bait, beetle grubs, rotten food, and guts all work as bait.
 Any raw meat item tears into **2 Meat Bait** by hand (3 steps): a piece of raw
 meat or fish meat, gnawed meat, any dressed small prey (Hylonomus, Petrolacosaurus, Archaeothyris, Amphibamus, Tuditanus, Morganucodon), or any small fish. Small
 fish and fish meat aren't bait as they are. Meat bait goes off like raw meat, and rotten food is still
@@ -353,7 +353,7 @@ can't sleep with a line out. A fish left on land dies after a minute and a half
 ### Traps
 
 Traps catch while you sleep. Bait them like a rod: kneel at the trap (C),
-lay out any bait (meat bait, beetle grubs, rotten food or guts), choose
+lay out any bait (meat bait, beetle grubs, rotten food, or guts), choose
 *Bait the … with …* and click the glowing spot. Baiting a trap that is
 already baited swaps the bait, giving you the old one back.
 
@@ -363,7 +363,7 @@ and E picks it up to carry in your arms. Wade into shallow water and press E
 to set it down on the bottom (it won't go down where the water is too deep to
 reach, over about a metre). It only catches set in the water. Each time you
 sleep, a baited fish trap catches 1 to 5 small fish (Haplolepis,
-Elonichthys, Amphicentrum, Acanthodes or Bandringa) and the bait is eaten.
+Elonichthys, Amphicentrum, Acanthodes, or Bandringa) and the bait is eaten.
 Unbaited, it catches nothing more. Fish stay alive in it for two days; after
 that they are rotten food.
 
@@ -383,7 +383,7 @@ close. Kill it, and butcher the carcass where it lies. Left two days, it
 dies in the noose and is rotten food (3).
 
 **Emptying a trap.** Look at it and press E: what it caught goes into your
-bag as carcasses, to roast, dress or tear up like any other you killed (or
+bag as carcasses, to roast, dress, or tear up like any other you killed (or
 rotten food, after two days). E on an empty trap picks it up; a snare's bait
 comes back with it.
 
@@ -397,7 +397,7 @@ rushes to it and tears at it for 30 seconds, leaving you alone unless you
 come close enough to set one off anyway. Afterwards they settle where the
 box was. One out on land, or in water cut off from it, takes no notice.
 The meat goes off like raw meat (15 minutes); a rotten bait box draws them
-for only 15 seconds. Thrown on land it just lands.
+for only 15 seconds.
 
 ### Paper and the ash pencil
 
@@ -413,9 +413,9 @@ with. Both are made at a workbench with the papermaking tools on its rack:
 2. **The core.** Lay out 1 ash (scooped from a campfire with a mattock or shovel) and
    1 wet clay and roll them into a rod (3 steps). Fire the Unfired Pencil
    Core in a campfire to get a Pencil Core.
-3. **The pencil.** Lay out the pencil core, a stick and a cordage, with a
+3. **The pencil.** Lay out the pencil core, a stick, and a cordage, with a
    chert blade or a metal axe laid out or in your bag. Split the stick, lay
-   the core in the groove, close the halves and bind them (4 steps). The
+   the core in the groove, close the halves, and bind them (4 steps). The
    blade is kept. A pencil has 50 uses, shown on it as it wears.
 
 ### The map
@@ -445,7 +445,7 @@ wears one use off), then rule a border and a compass rose (4 steps).
 
 The first blueprint is a **Softwood House**: a small square hut on stilts,
 with a room, a front porch under the roof, two windows, a doorway, a
-fireplace and a rope ladder up to the porch.
+fireplace, and a rope ladder up to the porch.
 
 **Drawing it.** At a workbench with the papermaking tools on the rack, lay
 out a Big Blank Sheet with an Ash Pencil laid out or in your bag, and a blade
@@ -457,14 +457,14 @@ off it. The most worn pencil that has 2 uses left is used.
 outline in front of you. It turns red, and says why, where it can't go:
 
 - a stilt or the foot of the ladder would stand in water
-- a tree, boulder or anything solid is in the way
+- a tree, boulder, or anything solid is in the way
 - another house stands within 9 m
 
 Right-click to mark out the site. That uses up the blueprint, and the outline
 stays there until the house is finished. Three blows with an axe, a
-shovel or the mattock within a few seconds tear down an unfinished site. Everything
+shovel, or the mattock within a few seconds tear down an unfinished site. Everything
 already built is dropped back on the ground as the logs, boards, cordage,
-sticks, stones and clay it took. The blueprint is lost. A finished house
+sticks, stones, and clay it took. The blueprint is lost. A finished house
 can't be torn down.
 
 **Building it.** Bring each part's materials in your bag, look at the
@@ -489,13 +489,13 @@ parts go up in order:
 | Roof, right side | 4 tree fern boards, 4 cordage | 8 | the ground on that side |
 
 That is 4 Calamites logs, 30 tree fern boards, 8 Calamites boards, 28
-cordage, 6 sticks, 8 river stones and 6 wet clay, over 100 steps. Parts
+cordage, 6 sticks, 8 river stones, and 6 wet clay, over 100 steps. Parts
 built from the ground can also be built from up in the house.
 
 **The ladder.** Walk into it facing the house to climb (look down to climb
 down), and at the top you step onto the porch. Walking back off it, or
 facing away and walking, takes you down. You can climb it carrying anything:
-a workbench, a soup pot or vessel, a log or a carcass rides on your back, and
+a workbench, a soup pot or vessel, a log, or a carcass rides on your back, and
 you can't set it down until you're off the ladder. Set down up there, it stays
 on the floor, and a pot or vessel put down by the fireplace goes on it.
 
@@ -503,9 +503,9 @@ on the floor, and a pot or vessel put down by the fireplace goes on it.
 
 - nothing spawns near it, and no animal goes for you inside or on the porch
 - sleeping there is safe: no ambush, no predators, no chill, no flooding
-- sacks, piles and anything else you set down stay up on the floor (but no
+- sacks, piles, and anything else you set down stay up on the floor (but no
   campfire on the wooden floor)
-- the fireplace works like a campfire, with fuel, cooking spots and ash, but
+- the fireplace works like a campfire, with fuel, cooking spots, and ash, but
   it can't be knocked apart
 
 ## Soup
@@ -522,11 +522,14 @@ whatever is in it while you do.
 - **Firing**: the pot is made unfired at a workbench with the Clay Platter
   on its rack, and left standing beside the bench. Hang it over a lit fire
   for about 3½ minutes to fire it. An unfired pot won't hold water.
-- **Water**: carry the fired pot to the water, look at the water and press E
+- **Water**: carry the fired pot to the water, look at the water, and press E
   to fill it: 16 servings of swamp water. Hang it over a lit fire and it
   comes to the boil in about a minute; boiled water is clean. A Clay Pot
   held up to it (E) scoops out a Pot of Boiled Water (or swamp water, if it
   hasn't boiled). With empty hands, E drinks a serving straight from it.
+- **Rain**: a fired pot standing out in the rain (not under a house's roof)
+  catches a serving of clean rain water a minute, never past its 16 servings.
+  Rain thins a soup out; swamp water already in it stays swamp water.
 - **Making soup**: once the water has boiled, hold any food and press E to
   add it. Every food counts as its cooked form: raw meat gives the soup what
   cooked meat would. The pot holds up to 12 items, and each one tops the
@@ -539,7 +542,7 @@ whatever is in it while you do.
   long as the soup in the pot would have. Eating a serving takes its share of
   the food out too, so you can keep adding to a pot as you eat from it.
 - **Looking at the pot** shows what it holds: its state (boiling, needs
-  boiling, cold...), the meat, starch and greens in each serving (as a
+  boiling, cold...), the meat, starch, and greens in each serving (as a
   percentage of the bar each fills) and how many servings are left.
 - **Keeping**: soup keeps for 36 game hours (a day and a half) after it last
   boiled. Leave it hanging over a fire that stays lit and it never goes off.
@@ -552,7 +555,7 @@ whatever is in it while you do.
 ## Canteens
 
 A **Wooden Canteen** is a hollowed length of jointed stem, sealed inside with wax, with a carved wooden lid and a cord. It holds two
-servings, both of the same thing: swamp water, boiled water or soup. Empty it
+servings, both of the same thing: swamp water, boiled water, or soup. Empty it
 weighs 1.2 kg, a fifth less than a clay pot, and each serving adds 1.5 kg, as
 in a pot.
 
@@ -577,7 +580,7 @@ C once something is in them), and set one down by a campfire and it sits in
 the middle of the fire (one pot or vessel to a fire). The first time, that
 fires it.
 
-Each holds up to **10 food**, **10 servings of water** and (sealed) **10
+Each holds up to **10 food**, **10 servings of water**, and (sealed) **10
 salt**. Nothing spoils inside.
 
 - **Water**: hold a pot (or canteen) of boiled water and press E to pour a
@@ -589,7 +592,7 @@ salt**. Nothing spoils inside.
   vessel to see what is inside and take things out, and to put in anything
   you carry.
 - **Rancid**: more food than water, or (pickling and brewing) any raw meat
-  or fish, or more than 30% of the food meat not yet pickled or preserved,
+  or fish, or more than 30% of the food being unpreserved meat,
   and the mix goes rancid: it all rots. Carry it to the
   water and fill it to wash it out. Washing out meat puts blood in the water,
   which draws amphibians, as with the soup pot. The prompt warns you before
@@ -599,15 +602,25 @@ salt**. Nothing spoils inside.
 |---|---|---|---|
 | Pickling (lacto fermentation) | Unsealed | Food in clean water, a game day | **Pickled** food: 10% more nourishing, plus a little greens and starch |
 | Brewing (alcoholic fermentation) | Sealed, no salt | Food in clean water, a game day | Food **preserved in alcohol** (10% more nourishing, plus a little greens and starch, and it counts as a drink), and alcohol to draw off |
-| Salting | Sealed, with salt | As much water and as much salt as food | **Salted** food, at once: as nourishing, but it makes you thirsty. Any amount of meat is fine. Taking food out takes a measure of salt with it |
+| Salting | Sealed, with salt | As much water and as much salt as food | **Salted** food, at once: as nourishing, but it makes you thirsty. Any amount of meat is fine. Salted raw meat is still raw: roast it and it stays salted. Taking food out takes a measure of salt with it |
 
-Pickled, alcohol-preserved and salted food keeps twice as long in your bag.
+Pickling and brewing cook plant food as they cure it: a fiddlehead or a seed
+fern seed comes out a pickled (or alcohol-preserved) fiddlehead or seed with
+the cooked food's nourishment plus the bonus, whether it went in raw or
+cooked. Meat, grubs, and salted food keep the form they went in with.
+Cured seeds and roots don't grow if you plant them.
+
+Pickled, alcohol-preserved, and salted food keeps twice as long in your bag.
+
+**Rain**: an unsealed vessel standing out in the rain (not under a house's
+roof) catches a serving of clean rain water a minute, up to its 10. Swamp
+water already in it stays swamp water. The sealed vessel's lid keeps rain out.
 
 **Alcohol**: once a brew has fermented a day, hold a canteen and press E to
 draw off ten measures of alcohol, using a serving of the brew's water (the
 bar along the bottom of its slot shows how many are left). You
 can't draw so much that more food than liquid is left. Each measure can be
-drunk (a little food, starch and water, and a drink's worth of alcohol) or used to
+drunk (a little food, starch, and water, and a drink's worth of alcohol) or used to
 clean a wound (Treat): it fights moderate and major infections (see
 [Survival](survival.md#infection)). Too many drinks are dangerous: see
 [Survival](survival.md#alcohol).
@@ -618,12 +631,12 @@ A clay pot can carry preserved food away from a vessel, and once sealed, it
 keeps that food forever.
 
 1. **Fill**: hold an empty clay pot and press **E** at a vessel. A menu
-   lists its pickled, alcohol-preserved or salted items: **Pick** 1 to 4 of
+   lists its pickled, alcohol-preserved, or salted items: **Pick** 1 to 4 of
    them, then **Fill the pot**. They go in with one serving of the vessel's
-   liquid (pickling brine, salt brine or alcohol), however many items you
+   liquid (pickling brine, salt brine, or alcohol), however many items you
    picked. You get an **Unsealed Pot of Preserves**: it shows what it holds,
    and its food keeps as it would in your bag.
-2. **Seal**: kneel to craft (C) and lay out the pot, a **Wooden Cap** and a
+2. **Seal**: kneel to craft (C) and lay out the pot, a **Wooden Cap**, and a
    lump of **wax**, then **Seal the pot** (3 clicks). It becomes a **Sealed
    Pot**. Nothing in a sealed pot spoils, and you can't see what is inside.
 3. **Open**: Use either kind, or **Open** it in your bag. All the
@@ -639,7 +652,7 @@ woodworking tools on its rack.
 
 Tab opens the inventory, and the **Recipes** tab next to it is a read-only
 book of everything you know how to make, sorted into stone tools, weapons,
-materials, fire, containers, medicine and gear. Recipes that need a tool on
+materials, fire, containers, medicine, and gear. Recipes that need a tool on
 the workbench rack are kept apart on a **Rack tools** page, grouped by tool,
 which appears once you have made or held one of those tools. Each tool's
 recipes join it as you learn the tool. The soup pot and the sheet of paper are
@@ -702,11 +715,11 @@ butcher medium and large kills, and it strips more fiber.
 2. Light it. Early on that means an **ember** (below). A Bow Drill in your
    inventory, or a lit torch in your hand, also lights it: look at the fire
    and press E.
-3. Hold sticks, fronds or tinder and press E at the fire to add fuel. A stick
-   burns for over 2.5 minutes, a frond 40 seconds and tinder about half a
+3. Hold sticks, fronds, or tinder and press E at the fire to add fuel. A stick
+   burns for over 2.5 minutes, a frond 40 seconds, and tinder about half a
    minute. A fire holds up to 40 minutes of fuel. Rain makes fuel burn almost
    twice as fast.
-4. Hold raw food, an Unfired Pot or a Pot of Swamp Water and press E to set it
+4. Hold raw food, an Unfired Pot, or a Pot of Swamp Water and press E to set it
    at the edge of the fire. There is room for six things at once, and you can
    see each one sitting by the flames.
 5. Look at a cooking item to see how far along it is, and press E to **take it
@@ -744,7 +757,7 @@ coals** for three times as long as it burned (a fire that burned for ten
 minutes glows for thirty). Coals are too low to cook on, and they die down
 faster in the rain.
 
-- **Relight it**: add fuel to the coals (E with sticks, fronds or tinder),
+- **Relight it**: add fuel to the coals (E with sticks, fronds, or tinder),
   then press E to **blow on them**. It burns again.
 - **Take an ember**: with no fuel in the fire, press E at the coals. You can
   also take embers from the stump the lightning set alight when you arrived,
@@ -752,7 +765,7 @@ faster in the rain.
   lit torch can also be lit at the burning stump.
 
 An **Ember** goes out after **three game hours** (three minutes), whether it
-is in your bag, a stash or on the ground. Its freshness bar shows how long it
+is in your bag, a stash, or on the ground. Its freshness bar shows how long it
 has left. To light a fire with it:
 
 1. Put fuel in an unlit campfire.
@@ -787,7 +800,7 @@ A **Stone Mattock** (or a shovel) works campfires:
 ## Weapons and striking
 
 Left mouse attacks with what you hold. Bare hands do 2 damage, a river stone
-4, a chert blade 7, a stone mattock 9 and a chert spear 16. Longer weapons reach
+4, a chert blade 7, a stone mattock 9, and a chert spear 16. Longer weapons reach
 further.
 
 Hold a River Stone or Chert Nodule and right-click to **throw** it. See

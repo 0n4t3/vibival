@@ -191,10 +191,6 @@ func advance() -> void:
 	_rebuild()
 
 
-func stage_name() -> String:
-	return ["rough anvil boulder", "rough anvil", "dressed anvil", "anvil"][stage]
-
-
 func chip(kg: float) -> bool:
 	## A lump knocked off a meteorite: true when that was the last of it.
 	mass -= kg * 1.15  # a little more flies off as flakes

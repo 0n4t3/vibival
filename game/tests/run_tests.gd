@@ -510,6 +510,11 @@ func test_inventory() -> void:
 	inv.add("raw_meat", 1, 0.0)
 	check(inv.count("raw_meat") == 4 and inv.slots[0].age == 500.0, "a fresh one added to a stack doesn't freshen the rest")
 	inv.clear()
+	inv.slots[0] = {"id": "raw_meat", "n": 2, "age": 600.0}
+	inv.slots[1] = {"id": "raw_meat", "n": 1, "age": 0.0}
+	inv.swap(0, 1)
+	check(inv.slots[0] == null and inv.slots[1].n == 3 and inv.slots[1].age == 600.0, "dragged onto a fresh stack, old food doesn't freshen")
+	inv.clear()
 
 	# Weight limit: arms only, then a sack.
 	var heavy := Inventory.new()
@@ -2206,6 +2211,14 @@ func test_amphibian() -> void:
 		p.stab()
 	check(p.grabbed_by == u2 and p.strike_tier == "stone" and is_equal_approx(p.escape_chance(), 0.4),
 			"stone strikes raise the odds it lets go to 40%% (%.2f)" % p.escape_chance())
+	Game.inventory.add("copper_knife")
+	Game.inventory.select(Game.inventory.find("copper_knife"))
+	p.stab()
+	check(p.strike_tier == "metal" and is_equal_approx(p.escape_chance(), 0.55), "a copper strike raises them to 55%% (%.2f)" % p.escape_chance())
+	var Hud := load("res://src/ui/hud.gd")
+	check(Player.ESCAPE_BONUS.keys().all(func(t): return Hud.STRIKES.has(t)) and Hud.strike_label("metal") == "copper weapon strike"
+			and Hud.strike_label("advanced") == "iron weapon strike", "every strike tier has a name on screen")
+	p.strike_tier = "stone"
 	p.next_roll = 0.45
 	var t_u := 0.0
 	while p.grabbed_by and not p.vitals.dead and t_u < 60.0:
@@ -3926,7 +3939,77 @@ func test_ferment() -> void:
 	v.advance(Game.DAY_LENGTH * 10.0, 0.0)
 	check(v.items.all(func(it): return Items.cure_of(it.id) == "pickled"), "nothing spoils in the vessel")
 	Game.inventory.clear()
-	check(v.take_to_bag(0) and Game.inventory.count("pickled:seed") == 1 and v.items.size() == 2, "taken out, a pickled seed goes in your bag")
+	check(v.items.map(func(it): return it.id) == ["pickled:roast_seed", "pickled:cooked_fiddlehead", "pickled:roast_seed"],
+			"plant food is pickled as its cooked form, raw or cooked alike: %s" % [v.items.map(func(it): return it.id)])
+	check(Items.item_name("pickled:roast_seed") == "Pickled Seed Fern Seed" and Items.item_name("pickled:cooked_fiddlehead") == "Pickled Fiddlehead",
+			"named for the plant: %s, %s" % [Items.item_name("pickled:roast_seed"), Items.item_name("pickled:cooked_fiddlehead")])
+	var pk_fh := Items.def("pickled:cooked_fiddlehead")
+	check(is_equal_approx(pk_fh.energy, snappedf(Items.def("cooked_fiddlehead").energy * 1.1, 0.1)) and not pk_fh.has("sick"),
+			"with the cooked stats and the pickling bonus, and safe to eat")
+	check(Items.cure_base("raw_meat", "pickled") == "raw_meat" and Items.cure_base("grub", "spirit") == "grub"
+			and Items.cure_base("fiddlehead", "salted") == "fiddlehead" and Items.cure_base("fern_root", "pickled") == "fern_root",
+			"meat, grubs, salting and plants with no cooked form keep their own form")
+	check(Items.item_name("salted:cooked_fiddlehead") == "Salted Cooked Fiddlehead", "salted food keeps its name")
+	check(not "in a hole" in Items.def("salted:seed").desc and Items.def("salted:seed").desc.begins_with("A big oily seed from a Medullosa. Salted")
+			and not "in a hole" in Items.def("pickled:fern_root").desc, "a cured seed's description no longer says it grows: %s" % Items.def("salted:seed").desc)
+	check(not Items.def("salted:seed").has("plant") and not Items.def("pickled:fern_root").has("plant")
+			and not Items.def("salted:fern_root").has("plant"), "a cured seed or root grows nothing")
+	check(Items.def("salted:raw_meat").cook == "salted:cooked_meat" and Items.def("salted:seed").cook == "salted:roast_seed"
+			and Items.def("pickled:grub").cook == "pickled:roast_grub" and not Items.def("pickled:cooked_fiddlehead").has("cook"),
+			"cooked, cured food stays cured")
+	check(Items.migrate_save({"id": "pickled:fiddlehead", "x": ["spirit:seed", "salted:seed", "pickled:raw_meat"]})
+			== {"id": "pickled:cooked_fiddlehead", "x": ["spirit:roast_seed", "salted:seed", "pickled:raw_meat"]},
+			"an old save's pickled raw plants become the cooked kind")
+	Game.inventory.clear()
+	check(v.take_to_bag(0) and Game.inventory.count("pickled:roast_seed") == 1 and v.items.size() == 2, "taken out, a pickled seed goes in your bag")
+
+	# Rain fills an open vessel a serving a minute, never past what it holds.
+	var rain_v: Node = w.add_vessel("vessel_open", spot + Vector3(-8, 0, 0))
+	rain_v.item_id = "vessel_open"
+	rain_v.dirty = true
+	rain_v.catch_rain(rain_v.RAIN_EVERY - 1.0)
+	check(rain_v.water == 0, "not before a minute of rain")
+	rain_v.catch_rain(2.0)
+	check(rain_v.water == 1 and not rain_v.dirty, "a minute of rain: a serving of clean water")
+	rain_v.add_food("seed")
+	for i in 20:
+		rain_v.catch_rain(rain_v.RAIN_EVERY)
+	check(rain_v.water == rain_v.CAP and not rain_v.rancid and rain_v.items.size() == 1, "rain fills it to %d and no further (%d)" % [rain_v.CAP, rain_v.water])
+	var rain_sealed: Node = w.add_vessel("vessel_sealed", spot + Vector3(-8, 0, 3))
+	rain_sealed.catch_rain(rain_v.RAIN_EVERY * 3.0)
+	check(rain_sealed.water == 0, "the sealed vessel's lid keeps rain out")
+	rain_v.water = 0
+	rain_v.items.clear()
+	w.raining = true
+	w._update_weather(rain_v.RAIN_EVERY + 1.0)
+	check(rain_v.water == 1 and rain_sealed.water == 0, "the swamp's rain fills open vessels")
+	w.raining = false
+	# Sleep passes the weather in one step: only the rain that fell counts.
+	rain_v.water = 0
+	w.raining = true
+	w._weather_t = 200.0
+	w._update_weather(480.0)
+	check(rain_v.water == 3, "rain that stops part-way through a sleep gives what fell before it stopped (%d)" % rain_v.water)
+	rain_v.water = 0
+	w.raining = false
+	w._weather_t = 1.0
+	w._rng.seed = 1
+	for i in 20:
+		if w.raining:
+			break
+		w.raining = false
+		w._weather_t = 1.0
+		w._update_weather(480.0)
+	check(w.raining and rain_v.water == 0, "rain that only begins as you wake gives nothing yet")
+	w.raining = false
+	var rain_pot: Node = w.add_soup_pot("soup_pot", spot + Vector3(-8, 0, -3))
+	rain_pot.catch_rain(rain_pot.RAIN_EVERY * 2.0)
+	check(is_equal_approx(rain_pot.water, 2.0) and not rain_pot.dirty, "a soup rain_pot catches two servings in two minutes")
+	rain_pot.catch_rain(rain_pot.RAIN_EVERY * 100.0)
+	check(is_equal_approx(rain_pot.water, rain_pot.capacity()), "and never more than it holds (%.1f)" % rain_pot.water)
+	rain_pot.queue_free()
+	rain_v.queue_free()
+	rain_sealed.queue_free()
 
 	# Too much food for the water, or too much meat: rancid.
 	var r1: Node = w.add_vessel("vessel_open", spot + Vector3(-4, 0, 0))
@@ -5883,6 +5966,18 @@ func test_weather() -> void:
 	check(ev.kind == "aurora" and notes.size() == 2 and notes[1] == ev.START_TEXT.aurora, "the curtains of light once it is dark")
 	Game.message.disconnect(note)
 	ev.stop()
+	Game.time = was
+	# A daytime meteor shower keeps to daylight, dawn to dusk.
+	for i in 50:
+		ev.plan("day_meteors", day)
+		var at: float = fmod(ev.planned_at + Game.ARRIVAL_CLOCK, Game.DAY_LENGTH)
+		if at < ev.NIGHT_END or at + ev.planned_len > ev.DUSK_START + 0.01:
+			check(false, "a daytime shower planned at night (clock %.0f)" % at)
+			break
+	check(ev.planned == "day_meteors", "daytime showers are planned between dawn and dusk")
+	Game.time = ev.day_start(day) + ev.DUSK_START - 100.0
+	ev.plan("day_meteors", day)
+	check(ev.planned == "", "with too little daylight left there is none that day")
 	Game.time = was
 	ev.plan("fog", day)
 	var dstart: float = ev.day_start(day)

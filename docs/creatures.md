@@ -51,8 +51,8 @@ water. (It actually lived in the Triassic, so it is out of its time here.)
   out into deep water fast. It kills faster than an Eogyrinus.
 - **Escaping**: once it has you in deep water (or after a moment of thrashing)
   it either lets go or it does not. The odds are 10%, raised by the best
-  strike you landed while held: +15% bare-handed, +30% with a stone weapon
-  (+60% with an advanced weapon, not in the game yet). The odds show on screen
+  strike you landed while held: +15% bare-handed, +30% with a stone weapon,
+  +45% with a copper one and +60% with an iron one. The odds show on screen
   while you are held. If it lets go, you are out in deep water where others
   may lie: swim for the bank.
 - Its carcass is dragged, and gives 14 raw meat.
@@ -107,7 +107,7 @@ swamp.
 
 ### Arthropleura
 
-A millipede-like arthropod over two metres long. Slow, armoured and very
+A millipede-like arthropod over two metres long. Slow, armoured, and very
 tough.
 
 - Leaves you alone unless you attack it. Hit it and it turns on you with a
@@ -143,17 +143,14 @@ Six kinds of small animal, all harmless, and all treated the same way:
 - The carcass goes into your bag. Gut and skin it by hand (no tools, and it
   leaves a small guts pile), then roast it whole on a fire.
 
-They share one population: **up to 4 are about by day and 2 at night**, of
-whatever kinds. More kinds means more variety, not more animals.
-
 | Animal | What it is | Look for | Out | Food |
 |---|---|---|---|---|
 | Hylonomus | A small early reptile, lizard-sized | Brown, the plain one | The commonest by day | Roast: a little less than cooked meat |
-| Petrolacosaurus | A slender early reptile | Sandy, a dark stripe down the back, long legs and a very long tail | Mostly by day | About the same as a Hylonomus. It spots you from further off and runs faster: throw a stone |
+| Petrolacosaurus | A slender early reptile | Sandy, a dark stripe down the back, long legs, and a very long tail | Mostly by day | About the same as a Hylonomus. It spots you from further off and runs faster: throw a stone |
 | Archaeothyris | A heavy-headed early relative of mammals | Dark brown with a pale belly, a deep head and jaw, the biggest | Mostly by day | The best of them: more than cooked meat. Slower, but tougher |
 | Amphibamus | A little frog-headed amphibian | Olive with dark spots, a broad flat head, big eyes, a stub of a tail | Day and night, **on the banks by the water** | Small, about half a Hylonomus. Hunting it means going near the water |
 | Tuditanus | A short-bodied amphibian | Reddish grey with pale bands, a short snout | **Mostly at night** | A little less than a Hylonomus |
-| Morganucodon | A tiny early mammal, like a shrew (it lived much later, so it is out of its time here) | Furry, grey-brown, a pointed snout, round ears and a thin tail; the smallest | Day and night, more at night | The smallest meal, under half a Hylonomus |
+| Morganucodon | A tiny early mammal, like a shrew (it lived much later, so it is out of its time here) | Furry, grey-brown, a pointed snout, round ears, and a thin tail; the smallest | Day and night, more at night | The smallest meal, under half a Hylonomus |
 
 ## Butchering
 
@@ -166,7 +163,7 @@ A kill leaves a **carcass**. What you do with it depends on its size.
 | Large | Eogyrinus, Uranocentrodon | E and you drag it, at half walking speed | Butcher where it lies, with a blade |
 
 **Carrying and dragging.** The carcass is in front of you, so your hands are
-full. You can't sprint, use or pick up items, open your bag, craft or sleep
+full. You can't sprint, use or pick up items, open your bag, craft, or sleep
 until you put it down with **Q** or **E**. A carcass doesn't count toward
 your carry weight. You drop it if something grabs you.
 

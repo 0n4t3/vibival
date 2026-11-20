@@ -295,8 +295,7 @@ func _draw_hud() -> void:
 		_canvas.draw_string(font, Vector2(c.x - 200, c.y + 70), "STAB!  [%s]" % key, HORIZONTAL_ALIGNMENT_CENTER, 400, 30, Color(1.0, 0.3, 0.2, pulse))
 		if player.rolls_for_escape():
 			# No grip to break: the best strike you land sets your odds.
-			var how: String = {"": "no strike yet", "bare": "bare-handed strike", "stone": "stone weapon strike",
-					"advanced": "advanced weapon strike"}[player.strike_tier]
+			var how := strike_label(player.strike_tier)
 			var odds := "Chance it lets go: %d%%  (%s)" % [roundi(player.escape_chance() * 100.0), how]
 			_canvas.draw_string(font, Vector2(c.x - 220, c.y + 98), odds, HORIZONTAL_ALIGNMENT_CENTER, 440, 15, Color(1, 1, 1, 0.8))
 		else:
@@ -395,3 +394,12 @@ func _draw_hotbar(_c: Vector2, size: Vector2) -> void:
 	var cap: float = inv.capacity()
 	_canvas.draw_string(font, Vector2(x0 + total - 120, y0 - 8), "%.1f / %.0f kg" % [w, cap], HORIZONTAL_ALIGNMENT_RIGHT, 120, 14,
 			Color(1.0, 0.4, 0.3) if w > cap else Color(1, 1, 1, 0.6))
+
+
+const STRIKES := {"": "no strike yet", "bare": "bare-handed strike", "stone": "stone weapon strike",
+		"metal": "copper weapon strike", "advanced": "iron weapon strike"}
+
+
+static func strike_label(tier: String) -> String:
+	## How the best strike landed while held is named beside the escape odds.
+	return STRIKES.get(tier, "weapon strike")

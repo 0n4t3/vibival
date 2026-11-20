@@ -41,6 +41,7 @@ const FIRE_TIME := 150.0            # seconds in a lit fire to fire the clay
 const HANG_R := 1.5                 # put down this close to a campfire, it sits in it
 const DRAW := 10                    # measures of alcohol a canteen draws for one serving of water
 const LIQUID_Y := [0.06, 0.52]      # liquid level in the body, empty to full
+const RAIN_EVERY := 60.0            # seconds of rain that put a serving of water in the open vessel
 
 var item_id := "vessel_open"
 var water := 0                      # servings of water
@@ -61,6 +62,7 @@ var _liquid: MeshInstance3D
 var _liquid_mat: StandardMaterial3D
 var _steam: CPUParticles3D
 var _was_boiling := false
+var _rain_t := 0.0                  # seconds of rain toward the next serving
 
 
 func setup(id: String, w: Node) -> Node3D:
@@ -285,6 +287,27 @@ func pour(clean: bool) -> String:
 	return ""
 
 
+func catch_rain(dt: float) -> void:
+	## dt seconds of rain on it (swamp._update_weather): standing open, out
+	## from under a roof, it gains a serving of clean rain water every
+	## RAIN_EVERY seconds, never past CAP. Swamp water already in it stays
+	## swamp water. The sealed vessel's lid keeps the rain out.
+	if sealed() or not fired_pot() or rancid or hauled_by != null or water >= CAP or Game.sheltered(global_position):
+		_rain_t = 0.0
+		return
+	_rain_t += dt
+	if _rain_t < RAIN_EVERY:
+		return
+	if water == 0:
+		dirty = false
+	while _rain_t >= RAIN_EVERY and water < CAP:  # a long step (sleep) adds every serving it earned
+		_rain_t -= RAIN_EVERY
+		water += 1
+	if water >= CAP:
+		_rain_t = 0.0
+	_check()
+
+
 func draw_alcohol() -> String:
 	## A canteen draws alcohol: one serving of the brew. Returns why not, or "".
 	if mode() != "alcohol" or items.is_empty() and brew_t <= 0.0:
@@ -377,7 +400,7 @@ func advance(dt: float, lit_s: float) -> void:
 		if Items.cure_of(it.id) == "":
 			it.t += dt
 			if it.t >= FERMENT_TIME:
-				it.id = cure + ":" + it.id
+				it.id = cure + ":" + Items.cure_base(it.id, cure)
 				changed = true
 	if mode() == "alcohol":
 		var was := alcohol_ready()

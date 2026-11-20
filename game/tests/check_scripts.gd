@@ -1,12 +1,14 @@
 extends Node
-## Loads every script under res://src one by one so parse errors are reported
+## Loads every script under res://src and res://tests one by one so parse errors are reported
 ## per file (the release runtime does not explain dependency failures).
 
 
 func _ready() -> void:
 	var files := []
 	_collect("res://src", files)
+	_collect("res://tests", files)  # a test script that doesn't parse would hang the suite
 	var failed := 0
+	files.erase(get_script().resource_path)  # reloading the running script crashes the engine
 	for f in files:
 		var s: Script = ResourceLoader.load(f, "", ResourceLoader.CACHE_MODE_IGNORE)
 		if s == null or not s.can_instantiate():

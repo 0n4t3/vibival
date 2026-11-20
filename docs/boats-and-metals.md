@@ -2,7 +2,7 @@
 
 [Guide home](README.md)
 
-Once you have a house, a workbench and a steady supply of boards, the swamp
+Once you have a house, a workbench, and a steady supply of boards, the swamp
 opens up: build a dock and a raft, pole out to the rocky islands far
 offshore, and bring back copper. Later, iron falls from the sky.
 
@@ -24,7 +24,7 @@ kneel (C) with what it needs laid out:
 | Spikes | 16 sticks and 8 cordage, and a blade to sharpen them |
 | Stringers | 4 Calamites boards and 4 cordage |
 | Deck | 12 tree fern boards and 6 cordage |
-| Slipway | 2 branches, 4 Calamites boards and 2 cordage |
+| Slipway | 2 branches, 4 Calamites boards, and 2 cordage |
 | Mooring post | A branch and 2 cordage |
 
 **A finished dock is safe.** No big amphibian comes for you on it, in the
@@ -32,7 +32,7 @@ water within 7 m of its sides and end, or on the bank up to 30 m behind it,
 so stepping off it onto land is safe too: they won't lie among the spiked
 piles. Until it is
 finished it protects nothing. Before it is finished, three blows of an axe, a
-shovel or the mattock tear it down and leave what it took on the ground.
+shovel, or the mattock tear it down and leave what it took on the ground.
 
 ## Rafts
 
@@ -123,7 +123,7 @@ there, so you look in to watch it.
   mould.
 - **Copper ore**: crush it on an anvil with a copper hammer (a river stone
   won't do), wash two crushed ores into one **Sifted Copper Ore**, then smelt
-  two sifted ores with 2 charcoal at the furnace: **Smelted Copper** (item id `unrefined_copper`).
+  two sifted ores with 2 charcoal at the furnace: **Smelted Copper**.
 
 Your first copper has to come from native copper, since crushing ore needs a
 copper hammer.
@@ -155,11 +155,11 @@ three stages, each where it lies:
    to knock them down a level at a time until it is flat. A blow on stone
    that is already flat is only a wasted blow, and you can stop and come
    back later. That makes a **rough anvil**, 12 kg lighter. Smashing native
-   copper, crushing ore and crushing stone go quicker on it.
+   copper, crushing ore, and crushing stone go quicker on it.
 2. **Grind the face smooth** with 2 **Stone Grit** (two river stones crushed
    together give 2 grit and you keep one stone), a pot of water and a river
    stone. You get the pot back empty. That makes a **dressed anvil**, where
-   castings, bars and iron can be worked.
+   castings, bars, and iron can be worked.
 3. **Peck a whetstone seat** into its corner with a river stone. Then a
    whetstone can be seated in it.
 
@@ -179,7 +179,7 @@ string (a spear takes 2 sticks).
 | Copper Axe | Fells every tree, the hard Lepidodendron and Sigillaria too (slowly); hacks out stumps; cuts plants down |
 | Copper Knife | Butchers faster than chert |
 | Copper Spear | Long reach and a heavy point |
-| Copper Shovel | Digs a planting hole in one swing, four times the clay from a clay bank, plants and meteorites |
+| Copper Shovel | Digs a planting hole in one swing, four times the clay from a clay bank, plants, and meteorites |
 | Copper Saw | Saws any log straight into boards, hardwoods too |
 | Copper Chisel | Bites into meteoric iron |
 | Copper Hammer | Breaks out and crushes ore, works iron cold |
@@ -251,7 +251,7 @@ and in which direction; a few seconds later the impact slams through the
 ground and shakes you. From day 10 there are daytime meteor showers too:
 fireballs streaking across the sky, trailing smoke. Those burn up high with
 a distant double boom; one that comes down hits far harder, shakes the ground
-under you and leaves a column of smoke.
+under you, and leaves a column of smoke.
 
 A tall column of dark smoke rises from where it landed, high over the trees,
 thinning away over the next day: walk towards it. The meteorite lies half
@@ -262,8 +262,8 @@ off it (an iron chisel is twice as fast). Chipping wears it down until it is
 gone.
 
 On an anvil, beat the iron clean with a copper hammer: a small lump makes
-**Refined Iron** (for a knife blade, a chisel or a pole shoe), a large one a
-**Refined Iron Bar** (for an axe, spear, shovel or hammer head). Hammer it
+**Refined Iron** (for a knife blade, a chisel, or a pole shoe), a large one a
+**Refined Iron Bar** (for an axe, spear, shovel, or hammer head). Hammer it
 to shape, grind it sharp at the whetstone, and haft it.
 
 | Tool | What it does better |

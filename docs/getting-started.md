@@ -21,7 +21,7 @@ From the title screen choose **New world**, give it a name, and pick a start:
 - **Start in the lab (tutorial)**: ride the elevator down to the
   breakroom, have two coffees (pick up the mug, pour at the coffee pot,
   then drink it with right-click or Use), and read the papers on the table
-  to find a keycard. Then pick up parts in the lab, craft and install the
+  to find a keycard. Then pick up parts in the lab, craft, and install the
   accelerator components, and switch it on. This teaches crafting and the
   inventory. The pages are worth reading: they hint at things you will
   need later.
@@ -50,13 +50,12 @@ it. See [Sleeping and saving](sleeping-and-saving.md).
    workbench, a clay **spindle** spins fiber into string, and string and two
    sticks make a **bow drill**, which lights a fire anywhere.
 3. **Knap a chert blade.** Press C to kneel, lay a chert nodule on the
-   ground, choose the blade and strike flakes off it (you need a river stone).
-   A blade butchers kills fully and cuts more fiber. Then make an axe or a
-   spear.
+   ground, choose the blade, and strike flakes off it (you need a river stone).
+   A blade butchers kills fully and cuts more fiber. Then make a spear.
 4. **Find food.** Search rotting logs for grubs, gather seed fern seeds, and
    pick fiddleheads. Cook everything on the fire.
 5. **Get water carefully.** Dig clay from a clay bank, make a pot, fire it in
-   the campfire, fill it at the water's edge and boil it. Read
+   the campfire, fill it at the water's edge, and boil it. Read
    [Creatures](creatures.md) before you go near water.
 6. **Weave a sack** (4 cordage and 8 fiber) to carry 25 kg instead of 8.
 7. **Sleep** once you are tired (after 12 minutes awake), far from the water
@@ -76,7 +75,7 @@ it. See [Sleeping and saving](sleeping-and-saving.md).
 | Drop (it stays there, even after loading) | Q | B |
 | Sleep (press twice) | Z | Back |
 | Waypoint (mark, or clear when near it) | M | |
-| Inventory, health and recipe book | Tab or I | Y |
+| Inventory, health, and recipe book | Tab or I | Y |
 | Kneel and craft on the ground | C | D-pad down |
 | Pause | Esc | Start |
 | Quick save (debug worlds) | F5 | |
@@ -93,10 +92,10 @@ keyboard instead? Switch them off with **Settings → Touch controls**.
 - **Look**: drag anywhere else.
 - **Right side**: Hit, Use, Jump, Act (pick up, drink, harvest, open a
   stash), Run and Drop. Run stays on until you stop walking.
-- **Top right**: Pause (II), Bag (inventory, health and recipes), Craft,
+- **Top right**: Pause (II), Bag (inventory, health, and recipes), Craft,
   Mark (waypoint) and Sleep (tap twice).
 - **Hotbar**: tap a slot to hold that item.
-- **Menus**: tap to click. Select an item to eat, drink or treat wounds
+- **Menus**: tap to click. Select an item to eat, drink, or treat wounds
   with the buttons beside it. Back (top right), or your phone's back button,
   closes the menu.
 

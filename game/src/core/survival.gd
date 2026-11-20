@@ -290,15 +290,6 @@ func harm() -> float:
 	return worst
 
 
-func worst_condition() -> String:
-	var h := harms()
-	var best := ""
-	for k in h:
-		if h[k] > 0.0 and (best == "" or h[k] > h[best]):
-			best = k
-	return best
-
-
 func tier() -> int:
 	var h := harm()
 	var t := 0

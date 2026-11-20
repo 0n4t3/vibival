@@ -34,7 +34,7 @@ Look at it and:
 
 - press **Z** to lie down at once (no second press), when you are tired and
   nothing stops you sleeping. Asleep on a bedroll, you heal half as fast
-  again as sleeping rough: blood, sickness, venom and wounds.
+  again as sleeping rough: blood, sickness, venom, and wounds.
 - press **E** to save the game without sleeping, unless something is hunting
   you.
 - right-click to roll it up and put it back in your bag.
@@ -99,7 +99,7 @@ world. In one:
   - spawn any creature 5 m in front of you (amphibians settle as they would
     there: buried or lurking in water, basking or roaming on land)
   - pick the **next fish** to bite on any line (never a nibble), or Random
-  - switch damage, needs (hunger, thirst and stamina) and hostile animals
+  - switch damage, needs (hunger, thirst, and stamina) and hostile animals
     off and on; these switches are saved with the world
   - sleep now, save now, or heal and feed you fully
 

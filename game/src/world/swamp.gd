@@ -1123,6 +1123,8 @@ func _update_chunks(center: Vector3, budget: int, radius_override: float) -> voi
 # --- Weather -----------------------------------------------------------------------------
 
 func _update_weather(delta: float) -> void:
+	var was_raining := raining
+	var rain_left := _weather_t   # how long the rain had to run (sleep passes it in one step)
 	_weather_t -= delta
 	if weather.storm() and not raining:
 		_weather_t = 0.0  # a thunderstorm brings rain with it
@@ -1132,6 +1134,14 @@ func _update_weather(delta: float) -> void:
 		set_rain(weather.storm() or (not raining and _rng.randf() < 0.6))
 		if raining and not weather.storm():
 			Game.notify("Warm rain begins to fall.")
+	# Rain that fell during this step: all of it if it rained throughout, up to
+	# when it stopped if it stopped, none if it has only just begun.
+	var wet := 0.0
+	if was_raining:
+		wet = delta if raining else clampf(rain_left, 0.0, delta)
+	if wet > 0.0:
+		for n in get_tree().get_nodes_in_group("soup_pots") + get_tree().get_nodes_in_group("vessels"):
+			n.catch_rain(wet)
 	var target := (-3.0 if weather.storm() else -10.0) if raining else -60.0
 	_rain_sound.volume_db = move_toward(_rain_sound.volume_db, target, delta * 15.0)
 	if not raining and _rain_sound.volume_db <= -59.0 and _rain_sound.playing:

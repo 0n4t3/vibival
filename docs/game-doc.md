@@ -93,7 +93,7 @@ Paths are relative to `game/` unless they start with `tools/` or `docs/`.
 | `src/ui/title.gd`, `pause_menu.gd`, `settings_panel.gd` | Menus |
 | `src/ui/controls_panel.gd` | Rebinding keys, mouse buttons and the gamepad |
 | `src/ui/touch_controls.gd` | On-screen stick and buttons for touch screens |
-| `tests/check_scripts.gd` | Parses every script |
+| `tests/check_scripts.gd` | Parses every script under `src/` and `tests/` |
 | `tests/run_tests.gd` | The headless gameplay suite |
 | `tests/view_trees.gd` | Dev tool: renders each tree (or with `--parts` its stump and felled ends) to `.dev-out` |
 | `tools/dev-run.sh`, `test.sh`, `pack.py`, `build-flatpak.sh` | Running, testing, packing and building |
@@ -362,8 +362,8 @@ no size limit (`Items.max_stack` is `UNLIMITED`): weight alone limits what
 you carry. Fresh tools stack; a worn one (`uses_data`) has data, so it
 leaves the stack for a slot of its own (`replace` on a stack splits one off,
 so an emptied pot or a worn pencil goes elsewhere). A stack keeps
-the age of its oldest item: `add` and a merge in `inventory_ui` take the
-larger age, and so do piles (`work_spot._add_pile`), so a fresh item added
+the age of its oldest item: `add`, `swap` (dragging a stack onto another)
+and a merge in `inventory_ui` take the larger age, and so do piles (`work_spot._add_pile`), so a fresh item added
 never makes the rest look fresher. Weight, not slots, limits what you carry: 8 kg in your arms,
 plus `sack_bonus()`: the best `carry_kg` of any item carried (frond sack 17, so
 25 kg; cloth sack 40, so 48 kg). Sacks (`tags: ["sack"]`) don't add up. Nothing
@@ -900,7 +900,8 @@ s to the boil, which cleans `dirty` water; `COOL_TIME` 180 s to cool;
   meat) calls `swamp.blood_in_water`.
 - Fermenting (lacto and alcohol, clean cool water, not rancid): each uncured
   item's `t` runs to `FERMENT_TIME` (1440 s, a game day) and becomes
-  "pickled:" or "spirit:"; brewing, `brew_t` too. `alcohol_ready()` from
+  "pickled:" or "spirit:" on `Items.cure_base` of it (a plant food that cooks
+  into food is cured as its cooked form); brewing, `brew_t` too. `alcohol_ready()` from
   then: `draw_alcohol()` (E with a canteen) takes a serving of water, never
   leaving more food than water, and makes `canteen_alcohol` with `DRAW` (10)
   measures in its slot `data` (`Items.measures_data`).
@@ -908,6 +909,14 @@ s to the boil, which cleans `dirty` water; `COOL_TIME` 180 s to cool;
   (`use_interact`, which `player._use_held` calls first on its focus) opens
   it: `swamp.open_vessel` → the inventory UI's vessel page
   (`_refresh_vessel`, `_vessel_do`), which closes if you walk away. C carries.
+- Rain: `catch_rain(dt)`, called by `swamp._update_weather` while it rains
+  for everything in "soup_pots" and "vessels", gives an unsealed, fired, set
+  down vessel not under a roof (`Game.sheltered`) a serving of clean water
+  every `RAIN_EVERY` (60 s), never past `CAP`; swamp water stays dirty.
+  `_update_weather` passes only the rain that fell in its step: all of it if
+  it rained throughout, up to when it stopped (`_weather_t` ran out), none if
+  it only began, so a sleep (`_pass_time`, one step) counts right. A long
+  step adds every serving it earned.
 - Saved as `"vessels"` with `hung`; `_pass_time` advances everything in
   "fire_pots". Dev: `--vessel=open|sealed|brew|salt|pickled`.
 
@@ -915,10 +924,18 @@ s to the boil, which cleans `dirty` water; `COOL_TIME` 180 s to cool;
 
 A cured item is "pickled:", "spirit:" or "salted:" before a food's id.
 `Items.def` builds its definition from the food's (`_cured_def`, cached):
-renamed, energy, protein, greens and starch × `boost` (1.1; salted 1.0),
+renamed (pickled or spirit cooked plant food takes the raw plant's name,
+`_raw_plant_of`: "Pickled Fiddlehead"), energy, protein, greens and starch × `boost` (1.1; salted 1.0),
 then `extra` added (pickled and spirit: greens and starch +3), `decay` × 2,
 tinted; "spirit" adds `alcohol` 1, "salted" takes `thirst` (6)
-off its water. `Items.exists`, `cure_of`, `base_of` and `can_cure` (fresh
+off its water. `Items.cure_base(id, cure)` is what pickling or brewing cures:
+a plant food (no protein) that cooks into food becomes its cooked form;
+`migrate_save` moves old saves' "pickled:"/"spirit:" raw plants onto it.
+A cured def drops `plant` and `plant_tree` (a cured seed grows nothing, and
+the sentence of its desc saying it does goes too), and
+its `cook` becomes the same cure on the cooked food ("salted:raw_meat" cooks
+into "salted:cooked_meat"), or goes if that can't be cured.
+`Items.exists`, `cure_of`, `base_of` and `can_cure` (fresh
 food: no drink containers (`is_drink_container`: `empty`, `measures`, or a
 pot or canteen shape), nothing cured, not rotten or charred) go with it; code
 that checks saved ids uses `Items.exists`. Icons are the food's own with a
@@ -998,6 +1015,10 @@ a house's fireplace it is `Assets.hearth_pot` instead (no tripod).
 - **Firing**: `advance(dt, lit_s)` adds lit seconds to `fired`; at
   `FIRE_TIME` (200 s) `soup_pot_unfired` becomes `soup_pot`. Unfired pots
   refuse water.
+- **Rain**: `catch_rain(dt)` (from `swamp._update_weather`) adds
+  `dt / RAIN_EVERY` (60 s) servings of clean water to a fired, set-down pot
+  not under a roof, never past `capacity()`; it thins soup, and swamp water
+  stays dirty.
 - **Contents**: `water` (servings of liquid, up to `SERVINGS` 16), `dirty`,
   `food` (items' worth, up to `MAX_FOOD` 12), `nut` (energy, protein,
   greens, starch totals), `risk`/`raw` (raw food since it last boiled),
@@ -1868,7 +1889,9 @@ copper hammer and its head use the `hammer` / `hammer_head` shapes
   of one event from `KINDS`; `day_meteors` joins them from day 10
   (`ALL_KINDS`: see [Meteoric iron](#meteoric-iron-weathergd-swampmeteor_fall)). Night kinds (`aurora`, `bright_moon`, `meteors`)
   last the night, from clock 1260 to 180. The others (`fog`, `wind`, `smoke`,
-  `thunderstorm`) last `LENGTH` 6–12 min, starting at a random time of the day. Events
+  `thunderstorm`) last `LENGTH` 6–12 min, starting at a random time of the day
+  (`day_meteors`, `DAY_KINDS`, between dawn and dusk: `plan` drops it for the
+  day if too little daylight is left). Events
   fade in and out over `FADE` (30 s). `apply_sky` runs at the end of
   `_update_sky` and adjusts fog, light and sky colours per kind:
   - The thunderstorm forces rain, darkens the sun to 18% and throws a bolt
@@ -2089,7 +2112,8 @@ tools/test.sh
 ```
 
 That parses every script (`tests/check_scripts.tscn`) and runs the gameplay
-suite (`tests/run_tests.tscn`, about 13 minutes headless). Every new
+suite (`tests/run_tests.tscn`, about 13 minutes headless). A run that hangs
+fails after `VIBIVAL_TEST_TIMEOUT` seconds (default 1800). Every new
 mechanic gets checks in `run_tests.gd`. Useful dev flags (after `--`) are
 listed at the top of `game.gd` and in the README: `--start`, `--seed`,
 `--time`, `--give`, `--god`, `--spawn`, `--wound`,

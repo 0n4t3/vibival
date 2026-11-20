@@ -27,10 +27,10 @@ does.
 - [Stashes and waypoints](stashes-and-waypoints.md): leaving a sack of
   supplies on the ground, and marking a spot to find your way back.
 - [Boats and metals](boats-and-metals.md): docks, rafts, the rocky
-  islands, copper, tool wear and meteoric iron.
+  islands, copper, tool wear, and meteoric iron.
 
 For developers (and AI agents) working on the game, the
-[game doc](https://github.com/0n4t3/vibival/blob/main/docs/game-doc.md) describes every mechanic, its numbers and where it
+[game doc](https://github.com/0n4t3/vibival/blob/main/docs/game-doc.md) describes every mechanic, its numbers, and where it
 lives in the code.
 
 ## Quick tips

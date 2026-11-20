@@ -6,7 +6,7 @@
 
 There is no health bar. Several things can kill you, each on its own:
 **blood loss**, **venom**, **infection** (once it turns to sepsis),
-**starvation**, **thirst**, **drowning** and **alcohol poisoning**. The bottom left of the screen
+**starvation**, **thirst**, **drowning**, and **alcohol poisoning**. The bottom left of the screen
 says how you are in a couple of words ("Healthy", "Bleeding badly", "Broken
 leg, feverish"...). The **Health** tab (Tab, then Health) has the full
 picture: a summary, a bar for each condition that is hurting you, and what to
@@ -32,7 +32,7 @@ The worse your worst condition gets, the more it costs you:
 
 If you die, your last save is eased one step in whatever killed you, so a
 save can never trap you dying of the same thing: a little more blood and
-less bleeding, less venom, less starved or parched, or an infection one stage
+less bleeding, less venom, less starved, or parched, or an infection one stage
 less serious.
 
 ## Vitals
@@ -81,12 +81,12 @@ starch, and how well you are recovering. Eating a mix of all three makes everyth
 | Food | Where | Raw | Cooked |
 |---|---|---|---|
 | Seed Fern Seed | Seed ferns | Starch, a little energy | Roasted Seed: more of both |
-| Young shoots | Tree ferns, Calamites and seed ferns while under a third grown (Farming) | Greens, a little energy | |
+| Young shoots | Tree ferns, Calamites, and seed ferns while under a third grown (Farming) | Greens, a little energy | |
 | Seed Fern Root | Dug up seed ferns | A little greens, almost no food | |
 | Fiddlehead | Ferns | Greens, bitter, small chance of sickness | Cooked Fiddlehead: safe, more greens |
 | Beetle Grub | Rotting logs | Protein | Roasted Grub: more protein |
 | Raw Meat | Cut from medium and large kills | Protein, but a 50% chance of sickness | Cooked Meat: the best food in the game |
-| Dressed small prey | A Hylonomus, Petrolacosaurus, Archaeothyris, Amphibamus, Tuditanus or Morganucodon kill, gutted and skinned by hand | Protein, a 50% chance of sickness | Roasted whole. An Archaeothyris is a bigger meal than cooked meat, an Amphibamus about half and a Morganucodon less; the others a little less than cooked meat |
+| Dressed small prey | A Hylonomus, Petrolacosaurus, Archaeothyris, Amphibamus, Tuditanus, or Morganucodon kill, gutted and skinned by hand | Protein, a 50% chance of sickness | Roasted whole. An Archaeothyris is a bigger meal than cooked meat, an Amphibamus about half, and a Morganucodon less; the others a little less than cooked meat |
 | Meganeura Carcass | A dragonfly kill | A little protein, a 40% chance of sickness | Roast Meganeura: about half of cooked meat |
 | Gnawed Meat | Snatched from an animal eating its kill | A little protein, a 50% chance of sickness | Cooked Scraps: about a third of cooked meat |
 | Charred Remains | Food left on the fire too long | Next to nothing | Burn it as fuel instead |
@@ -118,7 +118,7 @@ You drown if you stay under water too long.
 
 ## Wounds
 
-Bites, stings and claws leave wounds: a scratch, a cut, a deep wound or a
+Bites, stings, and claws leave wounds: a scratch, a cut, a deep wound, or a
 mauling. Each one has its own card in the Health tab, with what it needs and
 buttons to treat it.
 
@@ -199,7 +199,7 @@ you tipsy.
 
 ## Sickness and chill
 
-- **Sick**: from raw food, rotten food and swamp water. Thirst rises faster
+- **Sick**: from raw food, rotten food, and swamp water. Thirst rises faster
   until it passes; rest helps.
 - **Chilled**: sleeping in the rain. You tire faster and recover stamina
   slowly.
@@ -208,8 +208,8 @@ you tipsy.
 
 You can carry about **8 kg** in your arms. A **Woven Frond Sack** on you raises
 that to **25 kg**, and a **Woven Cloth Sack** to **48 kg**. Only your best sack
-counts: carrying two doesn't add them up, and the other is just weight. Up to one and a half times that you can still carry more, but
-you are slow, cannot sprint and tire quickly. Past that, nothing more fits.
+counts: carrying two doesn't add them up, and the other is just weight. You can carry up to 1.5x the limit, but
+you are slow, cannot sprint, and tire quickly. Past that, nothing more fits.
 
 Only weight counts: a stack can hold as many of a thing as you can carry.
 Things that are worn differently keep to their own slots, so a part-used
@@ -232,7 +232,7 @@ From the third day, each day has about a 1 in 3 chance of something rarer:
 | High winds | 6–12 minutes | Trees sway and the wind howls. Thrown stones drift downwind. Giant dragonflies struggle and are sometimes blown away. |
 | Wildfire smoke | 6–12 minutes | Thick, red-tinged haze with drifting ash. |
 | Thunderstorm | 6–12 minutes | Heavy rain, a dark sky by day, and constant lightning. The lightning never strikes you. |
-| Daytime meteor shower (from day 10) | 6–12 minutes | Fireballs streak across the sky, trailing smoke. It may bring a [meteorite](boats-and-metals.md#meteoric-iron) down. |
+| Daytime meteor shower (from day 10) | 6–12 minutes, between dawn and dusk | Fireballs streak across the sky, trailing smoke. It may bring a [meteorite](boats-and-metals.md#meteoric-iron) down. |
 | Aurora | The whole night | Green and violet curtains across the sky. |
 | Bright moon | The whole night | A huge moon lights the swamp. |
 | Meteor shower | The whole night | Shooting stars from one point in the sky. |

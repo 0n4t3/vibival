@@ -241,9 +241,14 @@ static func desc_lines(font: Font, size: int) -> int:
 	## Lines enough for the longest item description, with a full line of
 	## stats under it, at DESC_W.
 	var most := 1
+	var ids: Array = Items.ITEMS.keys()
 	for id in Items.ITEMS:
+		if Items.can_cure(id):  # cured food adds a note to its description
+			for cure in Items.CURES:
+				ids.append(cure + ":" + Items.cure_base(id, cure))
+	for id in ids:
 		var n := 0
-		for para in [str(Items.ITEMS[id].get("desc", "")), DESC_STATS]:
+		for para in [str(Items.def(id).get("desc", "")), DESC_STATS]:
 			n += maxi(1, ceili(font.get_multiline_string_size(para, HORIZONTAL_ALIGNMENT_LEFT, DESC_W, size).y / font.get_height(size) - 0.01))
 		most = maxi(most, n)
 	return most

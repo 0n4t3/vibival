@@ -18,6 +18,7 @@
       detailed ones.
     </p>
   </description>
+  <url type="homepage">https://vibival.dns7.top/</url>
   <launchable type="desktop-id">top.dns7.vibival.desktop</launchable>
   <content_rating type="oars-1.1">
     <content_attribute id="violence-fantasy">mild</content_attribute>
@@ -32,6 +33,11 @@
     <category>AdventureGame</category>
   </categories>
   <releases>
+    <release version="0.2" date="2026-11-20">
+      <description>
+        <p>Rain fills open soup pots and fermentation vessels. Pickling and brewing cook plant food as they cure it. Fixes: the escape odds after a copper strike, cured seeds that still grew, cured food losing its cure when cooked, and daytime meteor showers at night.</p>
+      </description>
+    </release>
     <release version="0.1" date="2026-11-19">
       <description>
         <p>First signed release builds. Gameplay is the same as 0.0.5.</p>
