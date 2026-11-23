@@ -3265,8 +3265,14 @@ func test_controls() -> void:
 	Settings.set_touch_controls(true)
 	var w: Node = await _new_swamp()
 	check(Settings.touch and w._touch != null, "touch controls are on")
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	check(not click.is_action("attack") and Settings.button_name("attack") == "Hit",
+			"a finger held to look or walk (sent as a left click too) does not attack")
 	Settings.set_touch_controls(false)
 	check(not Settings.touch and w._touch == null and Settings.button_name("craft") == "C", "switched off, they go and keys are named again")
+	check(click.is_action("attack"), "and a left click attacks again")
 	Settings.set_touch_controls(true)
 	check(w._touch != null and Settings.button_name("craft") == "Craft", "and back on")
 	Settings.touch_screen = was_screen
