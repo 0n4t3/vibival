@@ -191,6 +191,9 @@ func _ready() -> void:
 		print("== compost")
 		await test_compost_basket()
 		await test_compost_growing()
+	if only.is_empty() or "wildlife" in only:
+		print("== wildlife")
+		await test_wildlife()
 	if only.is_empty() or "traps" in only:
 		print("== traps")
 		await test_fish_trap()
@@ -2437,7 +2440,7 @@ func test_predators() -> void:
 	await _run_for(15.0, func(): return lz2.dead)
 	check(lz2.dead and sc.state == "feed", "a scorpion kills a lizard and eats it")
 	await _run_for(2.0, func(): return false)
-	check(lz2._body.scale.x < 1.0, "the body shrinks as it is eaten")
+	check(lz2._body.scale.x < lz2._base_scale, "the body shrinks as it is eaten")
 	check(lz2.prompt(w.player).begins_with("Snatch"), "a kill being eaten can be snatched")
 	var gnawed: int = Game.inventory.count("gnawed_meat")
 	lz2.interact(w.player)
@@ -7966,8 +7969,8 @@ func test_compost_basket() -> void:
 		var sp: String = c.pest_roll(rng)
 		got[sp] = got.get(sp, 0) + 1
 	var hits: int = 2000 - got.get("", 0)
-	check(hits > 220 and hits < 380 and got.keys().all(func(k): return k == "" or k in Compost.PESTS), "about 15%% of nights a pest comes (%d / 2000)" % hits)
-	check(got.has("scorpion") and got.has("arthropleura"), "a Scorpion or an Arthropleura")
+	check(hits > 420 and hits < 580 and got.keys().all(func(k): return k == "" or k in Compost.PESTS), "about 25%% of nights a pest comes (%d / 2000)" % hits)
+	check(got.has("scorpion") and got.has("arthropleura") and got.has("haptodus"), "a Scorpion, an Arthropleura or a Haptodus")
 	check(c2.pest_roll(rng) == "" and c4.pest_roll(rng) == "", "never without meat")
 	var before := Game.creatures.size()
 	for k in 60:
@@ -9042,6 +9045,289 @@ func test_tool_wear() -> void:
 	inv.add("iron_hammer", 1)
 	inv.use_tag("hammer")
 	check(inv.count("iron_hammer") == 1, "an iron hammer never wears")
+
+
+func test_wildlife() -> void:
+	## The shared spawn slots, the pale Uranocentrodon, the griffinflies, the
+	## new medium animals and how many pests compost can draw.
+	var w: Node = await _new_swamp()
+	var p: Node = w.player
+	var start: Vector3 = p.global_position
+	Game.inventory.clear()
+	var land := _find_spot(w, start, func(q): return q.y > 0.5 and q.y < 2.0 and q.distance_to(start) > 4.0)
+	check(land.is_finite(), "found open land")
+
+	# Spawn slots are shared within a category.
+	check(Creature.CATEGORIES.neutral_medium == [2, 2] and Creature.CATEGORIES.hostile_medium == [0, 2] and Creature.CATEGORIES.predator_insect == [2, 1],
+			"the medium and griffinfly budgets")
+	check(Creature.category_species("neutral_medium").size() == 4 and Creature.category_species("hostile_medium").size() == 2
+			and Creature.category_species("predator_insect").size() == 3, "four neutral, two hostile and three griffinflies share them")
+	var seen := {}
+	for k in 300:
+		seen[w.pick_in_category("predator_insect", {}, 2)] = true
+	check(seen.keys() == ["meganeura"], "by day the first griffinfly slot is always a Meganeura")
+	seen.clear()
+	for k in 300:
+		seen[w.pick_in_category("predator_insect", {"meganeura": 1}, 2)] = true
+	check(not seen.has("meganeura") and seen.has("meganeurula") and seen.has("namurotypus"), "and the other is one of the two harmless ones")
+	var megs := 0
+	for k in 2000:
+		if w.pick_in_category("predator_insect", {}, 1) == "meganeura":
+			megs += 1
+	check(megs > 880 and megs < 1120, "with one slot at night it is a Meganeura half the time (%d / 2000)" % megs)
+	for c in Game.creatures.duplicate():
+		c.queue_free()
+	await _frames(2)
+	w._calm_until = -1.0
+	for k in 300:
+		w._spawn_creatures()
+	var by_cat := {}
+	for c in Game.creatures:
+		if not c.is_queued_for_deletion() and c.def.has("category"):
+			by_cat[c.def.category] = by_cat.get(c.def.category, 0) + 1
+	var night_i: int = 1 if Game.is_night() else 0
+	check(by_cat.keys().all(func(k): return by_cat[k] <= Creature.CATEGORIES[k][night_i]) and by_cat.get("neutral_medium", 0) == 2,
+			"the spawner fills each category to its cap and no further (%s)" % str(by_cat))
+	for c in Game.creatures.duplicate():
+		c.queue_free()
+	await _frames(2)
+
+	# The pale Uranocentrodon: a quarter of them, otherwise the same animal.
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 11
+	var pales := 0
+	for k in 4000:
+		if Creature.roll_variant("uranocentrodon", rng) == "pale":
+			pales += 1
+	check(pales > 880 and pales < 1120, "about a quarter of Uranocentrodon are pale (%d / 4000)" % pales)
+	check(Creature.roll_variant("eogyrinus", rng) == "", "other species have no pale form")
+	var plain: Node = w.spawn_amphibian("uranocentrodon", "bask", land, land, "")
+	var pale: Node = w.spawn_amphibian("uranocentrodon", "bask", land + Vector3(9, 0, 0), land, "pale")
+	await _frames(1)
+	check(pale.variant == "pale" and pale.species == "uranocentrodon" and pale.def.name == "Pale Uranocentrodon" and plain.def.name == "Uranocentrodon",
+			"it goes by its own name, as the same species")
+	check(Creature.SPECIES.uranocentrodon.name == "Uranocentrodon", "without changing the species table")
+	var same := true
+	for k in Creature.SPECIES.uranocentrodon:
+		if k != "name" and pale.def[k] != plain.def[k]:
+			same = false
+	check(same, "with identical stats and drops")
+	check(pale._gills.size() == 6 and plain._gills.is_empty(), "it has three gills a side")
+	check(pale._segs[0].get_child(0).mesh != plain._segs[0].get_child(0).mesh, "and its own model, not the regular one's")
+	pale.take_damage(1e6, null)
+	var saved: Dictionary = pale.carcass_dict()
+	check(saved.variant == "pale", "a pale carcass is saved as pale")
+	var back: Node = Creature.new().setup(saved.species, land + Vector3(0, 0, 9), w, String(saved.get("variant", "")))
+	w.add_child(back)
+	back.restore_carcass(saved)
+	check(back.variant == "pale" and back.dead and "Pale Uranocentrodon" in back.prompt(p), "and comes back pale")
+	var old: Node = Creature.new().setup("uranocentrodon", land, w, "")
+	check(old.variant == "", "a carcass from an old save is the regular one")
+	old.free()
+	for n in [plain, pale, back]:
+		n.queue_free()
+	await _frames(2)
+
+	# Only the Meganeura goes for the player; Namurotypus leaves prey alone.
+	var lizard: Node = Creature.new().setup("hylonomus", land, w)
+	w.add_child(lizard)
+	p.global_position = land + Vector3(0, 0.1, 2)
+	for sp in ["meganeurula", "namurotypus"]:
+		var fly: Node = Creature.new().setup(sp, land + Vector3(3, 3, 0), w)
+		w.add_child(fly)
+		await _frames(1)
+		fly.set_process(false)
+		var chased := false
+		var dived := false
+		for k in 400:
+			fly._cd = 0.0
+			fly.global_position = land + Vector3(3, 3, 0)
+			fly._think_flyer(p, 2.0, 0.5)
+			chased = chased or fly.state == "chase"
+			dived = dived or fly.state == "dive"
+			fly.state = "wander"
+			fly._prey = null
+		check(not chased, "a %s never goes for the player" % sp)
+		check(dived == (sp == "meganeurula"), "a %s %s small prey" % [sp, "hunts" if sp == "meganeurula" else "leaves alone"])
+		fly.queue_free()
+	lizard.queue_free()
+	await _frames(2)
+	for ids in [["dragonfly_carcass", "roast_dragonfly"], ["meganeurula_carcass", "roast_meganeurula"], ["namurotypus_carcass", "roast_namurotypus"]]:
+		check(Items.def(ids[0]).cook == ids[1] and Items.def(ids[1]).energy > Items.def(ids[0]).energy, "%s roasts into %s" % ids)
+	check(Creature.SPECIES.meganeurula.carcass == "meganeurula_carcass" and Creature.SPECIES.namurotypus.carcass == "namurotypus_carcass"
+			and Creature.SPECIES.meganeura.carcass == "dragonfly_carcass", "each griffinfly leaves its own carcass")
+
+	# Edaphosaurus breaks off when badly hurt; Diadectes never does.
+	p.global_position = land + Vector3(0, 0.1, 0)
+	for sp in ["edaphosaurus", "diadectes"]:
+		var e: Node = Creature.new().setup(sp, land + Vector3(4, 0, 0), w)
+		w.add_child(e)
+		await _frames(1)
+		e.set_process(false)
+		e.take_damage(0.0, p)
+		e.hp = e.def.hp * 0.3
+		e._think_hunter(p, 4.0, 0.1)
+		check((e.state == "flee") == (sp == "edaphosaurus"), "badly hurt, a %s %s (%s)" % [sp, "runs" if sp == "edaphosaurus" else "stands its ground", e.state])
+		e.queue_free()
+	var f := Vector3.INF
+	for ch in w.chunks.values():
+		if not ch.decor_ferns.is_empty():
+			f = w.fern_spot(ch.decor_ferns[0].x, ch.decor_ferns[0].z, p.global_position + Vector3(500, 0, 0))
+			break
+	check(f.is_finite(), "a Diadectes can find a fern thicket to spawn in")
+	var near_fern := 0
+	for ch in w.chunks.values():
+		for k in 12:
+			var fs: Vector3 = w.fern_spot(ch.global_position.x + 16.0, ch.global_position.z + 16.0, p.global_position)
+			if fs.is_finite() and Vector2(fs.x - p.global_position.x, fs.z - p.global_position.z).length() < w.SPAWN_NEAR:
+				near_fern += 1
+	check(near_fern == 0, "and never one right beside the player (%d)" % near_fern)
+	# Hurt and fleeing, it calms down once the player is out of reach (in a house, on a raft).
+	var scared: Node = Creature.new().setup("edaphosaurus", land + Vector3(4, 0, 0), w)
+	w.add_child(scared)
+	await _frames(1)
+	scared.set_process(false)
+	scared.hp = scared.def.hp * 0.3
+	scared.state = "flee"
+	scared._think_hunter(null, 1e9, 0.1)
+	check(scared.state == "wander", "a hurt Edaphosaurus stops running when you are out of reach")
+	scared.state = "flee"
+	scared._think_hunter(p, 31.0, 0.1)
+	check(scared.state == "wander" and scared.home.is_equal_approx(scared.global_position), "well clear, it settles where it stopped")
+	scared._think_hunter(p, 25.0, 0.1)
+	check(scared.state == "wander", "and doesn't bolt again at the edge of that range (%s)" % scared.state)
+	scared._think_hunter(p, 10.0, 0.1)
+	check(scared.state == "flee", "until you come close")
+	scared._target = scared.global_position + Vector3(0, 0, 8)
+	var round_water: Vector3 = scared._target
+	scared._think_hunter(p, 10.0, 0.1)
+	check(scared._target == round_water, "running, it keeps the way it picked round the water")
+	scared.state = "chase"
+	scared._think_hunter(p, 40.0, 0.1)
+	check(scared.state == "wander", "hit from far off, it doesn't stay stuck chasing (%s)" % scared.state)
+	scared.state = "flee"
+	p.vitals.dead = true
+	scared._think_hunter(p, 10.0, 0.1)
+	p.vitals.dead = false
+	check(scared.state == "wander", "and it stops running from a dead player (%s)" % scared.state)
+	scared.queue_free()
+
+	# Carcasses keep the size they were built at.
+	var nam: Node = Creature.new().setup("namurotypus", land + Vector3(2, 0, 0), w)
+	w.add_child(nam)
+	await _frames(1)
+	nam.set_process(false)
+	nam.take_damage(0.5, p)
+	check(nam._altitude >= 0.9 and nam._altitude <= 2.2, "a Namurotypus goes back to flying low when disturbed (%.1f m)" % nam._altitude)
+	nam.take_damage(1e6, null)
+	var nam_save: Dictionary = nam.carcass_dict()
+	nam.restore_carcass(nam_save)
+	check(is_equal_approx(nam._body.scale.x, 0.7), "a Namurotypus carcass keeps its size through a reload (%.2f)" % nam._body.scale.x)
+	var eats: Node = Creature.new().setup("arthropleura", land + Vector3(3, 0, 0), w)
+	w.add_child(eats)
+	await _frames(1)
+	eats.set_process(false)
+	nam.eaten_by = eats
+	eats._prey = nam
+	eats.state = "feed"
+	eats._state_t = Creature._feed_time(nam) * 0.5
+	eats._forage(0.0)
+	check(is_equal_approx(nam._body.scale.x, 0.35), "and shrinks from that size as it is eaten (%.2f)" % nam._body.scale.x)
+	eats.queue_free()
+	nam.queue_free()
+	var sco: Node = Creature.new().setup("scorpion", land + Vector3(4, 0, 0), w)
+	w.add_child(sco)
+	await _frames(1)
+	sco.set_process(false)
+	sco.take_damage(1e6, null)
+	sco.restore_carcass(sco.carcass_dict())
+	check(is_equal_approx(sco._body.scale.x, 1.5), "so does a scorpion's (%.2f)" % sco._body.scale.x)
+	sco.queue_free()
+	await _frames(1)
+
+	# Hibbertopterus keeps to the shore.
+	var bank := _find_spot(w, start, func(q): return q.y > -0.1 and q.y < 0.3)
+	var hib: Node = Creature.new().setup("hibbertopterus", bank, w)
+	w.add_child(hib)
+	await _frames(1)
+	hib.set_process(false)
+	var by_water := 0
+	for k in 200:
+		hib._pick_wander()
+		var h: float = w.ground_height(hib._target.x, hib._target.z)
+		if h > -0.4 and h < 0.5:
+			by_water += 1
+	check(by_water > 170, "a Hibbertopterus wanders along the bank (%d / 200)" % by_water)
+	check(Creature.SPECIES.hibbertopterus.drops.chitin > Creature.SPECIES.arthropleura.drops.chitin, "and is the best source of chitin")
+	hib.queue_free()
+	var mud := _find_spot(w, start, func(q): return q.y > -0.4 and q.y < -0.2)
+	check(mud.is_finite(), "found mud in the shallows")
+	if mud.is_finite():
+		var hib2: Node = Creature.new().setup("hibbertopterus", mud, w)
+		w.add_child(hib2)
+		await _frames(1)
+		hib2.set_process(false)
+		hib2.take_damage(1e6, null)
+		hib2.set_hauled(null)
+		check(absf(hib2.position.y - w.floor_height(hib2.global_position)) < 0.02, "its carcass stays down on the mud (%.2f)" % hib2.position.y)
+		hib2.queue_free()
+
+	# Haptodus bites deep, backs off, and comes again.
+	var v = p.vitals
+	v.wounds.clear()
+	var hap: Node = Creature.new().setup("haptodus", p.global_position + Vector3(1.0, 0, 0), w)
+	w.add_child(hap)
+	await _frames(1)
+	hap.set_process(false)
+	hap.state = "attack"
+	hap._windup = 0.0
+	hap._think_hunter(p, 1.0, 0.01)
+	check(v.wounds.size() == 1 and is_equal_approx(v.wounds[0].sev, 8.0 / 40.0 * 2.5), "a Haptodus's bite cuts deep for its damage")
+	check(hap.state == "retreat" and hap._state_t > 0.0, "then it backs off")
+	check(w._hunted(), "and you are still being hunted, so you can't save and quit")
+	var away_d: float = hap._target.distance_to(p.global_position)
+	check(away_d > hap.global_position.distance_to(p.global_position), "away from you")
+	hap._state_t = 0.0
+	hap._think_hunter(p, 4.0, 0.01)
+	check(hap.state in ["chase", "attack"], "and comes round again")
+	hap.queue_free()
+	await _frames(1)
+	v.wounds.clear()
+	v.blood = 100.0
+	var before_wake: int = Game.creatures.size()
+	w._wake_attack("haptodus")
+	check(v.wounds.size() == 1 and is_equal_approx(v.wounds[0].sev, 8.0 / 40.0 * 2.5), "its bite cuts just as deep when it wakes you")
+	for c in Game.creatures.slice(before_wake):
+		c.queue_free()
+	await _frames(1)
+	v.wounds.clear()
+	v.blood = 100.0
+
+	# Compost: at most three pests in one sleep, however many baskets.
+	check("haptodus" in Compost.PESTS and is_equal_approx(Compost.PEST_CHANCE, 0.25), "meaty compost can draw a Haptodus, at 25% a basket")
+	var baskets: Array = []
+	for k in 40:
+		var b: Node = w.add_compost(land + Vector3(k % 8, 0, int(k / 8.0)) * 1.2)
+		b.level = 10
+		b.meat = true
+		baskets.append(b)
+	var most := 0
+	var any := 0
+	for round_n in 12:
+		var had: int = Game.creatures.size()
+		w._compost_pests()
+		var came: int = Game.creatures.size() - had
+		most = maxi(most, came)
+		any += came
+		for c in Game.creatures.slice(had):
+			c.queue_free()
+		await _frames(1)
+	check(most == Compost.MAX_PESTS and any > 0, "forty baskets never bring more than %d at once (most %d)" % [Compost.MAX_PESTS, most])
+	for b in baskets:
+		b.queue_free()
+	p.global_position = start
+	w.queue_free()
+	await _frames(2)
 
 
 func test_metals() -> void:

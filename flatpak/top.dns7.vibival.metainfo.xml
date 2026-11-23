@@ -33,6 +33,11 @@
     <category>AdventureGame</category>
   </categories>
   <releases>
+    <release version="0.2.3" date="2026-11-23">
+      <description>
+        <p>New wildlife: a pale Uranocentrodon, Edaphosaurus, Diadectes, Hibbertopterus, Haptodus, and two more griffinflies. Rafts carry cargo better, and the whetstone has a new look. Fixes: touch controls no longer attack while looking or walking, and the death screen's buttons work with menus open.</p>
+      </description>
+    </release>
     <release version="0.2" date="2026-11-20">
       <description>
         <p>Rain fills open soup pots and fermentation vessels. Pickling and brewing cook plant food as they cure it. Fixes: the escape odds after a copper strike, cured seeds that still grew, cured food losing its cure when cooked, and daytime meteor showers at night.</p>

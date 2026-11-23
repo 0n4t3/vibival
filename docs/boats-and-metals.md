@@ -58,8 +58,10 @@ dock: it bumps off the piles.
 
 **Cargo.** A raft has no hold. Sacks set down on it (Use) are lashed to its
 four corners and ride with it, and one hauled thing (a log, a pot, an anvil
-stone, a meteorite) rides in the middle. Weight slows it and makes it ride
-lower, and a load packed to one side makes it list.
+stone, a meteorite) rides in the middle. Carry it to the raft and set it down
+on the deck or just off its edge, before you board. You can't carry anything
+in your arms while aboard, so step off to load or unload. Weight slows the
+raft and makes it ride lower, and a load packed to one side makes it list.
 
 **Bites.** Out on deep, open water a big amphibian may clamp its jaws on a
 corner. You'll see ripples first, then the corner dips. You have a few

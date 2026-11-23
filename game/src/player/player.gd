@@ -1176,7 +1176,7 @@ func used_tool(_hit := true) -> void:
 		Game.inventory.use_tool(Game.inventory.selected)
 
 
-func hurt(amount: float, from: Vector3, dirt := 0.3, source := "") -> void:
+func hurt(amount: float, from: Vector3, dirt := 0.3, source := "", deep := 1.0) -> void:
 	## A blow from a creature (from != ZERO): blood lost at once, a wound that
 	## bleeds by how deep it is, a dressed wound torn open, and from a hard
 	## enough hit perhaps a broken arm or leg. Otherwise just blood lost.
@@ -1185,7 +1185,7 @@ func hurt(amount: float, from: Vector3, dirt := 0.3, source := "") -> void:
 	stop_pressure()
 	if from != Vector3.ZERO and amount >= 3.0:
 		vitals.reopen()
-		vitals.add_wound(amount / 40.0, dirt, source)
+		vitals.add_wound(amount / 40.0 * deep, dirt, source)  # deep: a bite that cuts worse than it hits
 		if amount >= FRACTURE_FROM and _injury_roll() < clampf((amount - 12.0) / 40.0, 0.0, 0.6):
 			var limb := "arm" if _rng.randf() < 0.5 else "leg"
 			if vitals.limbs.has(limb):

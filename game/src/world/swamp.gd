@@ -156,7 +156,7 @@ func _ready() -> void:
 		for i in list.size():
 			var pos := player.global_position + fwd * float(Game.dev.get("spawn-dist", "5")) + side * (i - (list.size() - 1) * 0.5) * 2.2
 			pos.y = ground_height(pos.x, pos.z)
-			var c := Creature.new().setup(list[i], pos, self)
+			var c := Creature.new().setup(list[i].get_slice(":", 0), pos, self, list[i].get_slice(":", 1) if ":" in list[i] else "")  # e.g. uranocentrodon:pale
 			c.home = pos
 			add_child(c)
 			if Game.dev.has("spawn-heading"):
@@ -820,9 +820,15 @@ func compost_near(pos: Vector3, reach: float) -> Node3D:
 
 func _compost_pests() -> Array:
 	## On waking: compost baskets with meat in them may have drawn a pest each
-	## (a Scorpion or an Arthropleura) that wanders about beside it.
+	## (a Scorpion, an Arthropleura or a Haptodus) that wanders about beside it,
+	## at most Compost.MAX_PESTS in all, the baskets taken in a random order.
 	var news := []
-	for c in get_tree().get_nodes_in_group("composters"):
+	var came := 0
+	var baskets: Array = get_tree().get_nodes_in_group("composters")
+	baskets.shuffle()
+	for c in baskets:
+		if came >= c.MAX_PESTS:
+			break
 		var sp: String = c.pest_roll(_rng)
 		if sp == "":
 			continue
@@ -832,6 +838,7 @@ func _compost_pests() -> Array:
 			at.y = ground_height(at.x, at.z)
 			if at.y > 0.15:
 				add_child(Creature.new().setup(sp, at, self))
+				came += 1
 				if at.distance_to(player.global_position) < 60.0:
 					news.append("Something drawn by the smell of your compost is rooting about beside it.")
 				break
@@ -1159,6 +1166,9 @@ func set_rain(on: bool) -> void:
 
 # --- Fauna -------------------------------------------------------------------------------
 
+const SPAWN_NEAR := 35.0  # land animals never appear closer to the player than this
+
+
 func _spawn_creatures() -> void:
 	var p := player.global_position
 	var counts := {}
@@ -1182,22 +1192,30 @@ func _spawn_creatures() -> void:
 	for sp in counts:
 		if Creature.SPECIES[sp].behavior == "prey":
 			prey += counts[sp]
-	var order: Array = Creature.SPECIES.keys().filter(func(k): return Creature.SPECIES[k].behavior != "prey")
+	var order: Array = Creature.SPECIES.keys().filter(func(k): return Creature.SPECIES[k].behavior != "prey" and not Creature.SPECIES[k].has("category"))
 	if prey < (Creature.PREY_NIGHT if night else Creature.PREY_DAY):
 		order.push_front(pick_prey(night))
+	# So do the other categories: one species for each with a slot free.
+	for cat in Creature.CATEGORIES:
+		var slots: int = Creature.CATEGORIES[cat][1 if night else 0]
+		var have := 0
+		for sp in Creature.category_species(cat):
+			have += int(counts.get(sp, 0))
+		if have < slots:
+			order.append(pick_in_category(cat, counts, slots))
 	for sp in order:
 		var def: Dictionary = Creature.SPECIES[sp]
 		if def.behavior == "lurker":
 			continue
 		# The prey species picked for this tick is only there while the pool
 		# has room, so it has no cap of its own.
-		var cap: int = 999 if def.behavior == "prey" else (def.cap_night if night else def.cap_day)
+		var cap: int = 999 if def.behavior == "prey" or def.has("category") else (def.cap_night if night else def.cap_day)
 		if def.behavior == "hunter" and Game.time < _calm_until:
 			cap = 0
 		if counts.get(sp, 0) >= cap:
 			continue
 		var a := _rng.randf() * TAU
-		var dist := _rng.randf_range(35.0, 80.0) if def.habitat != "air" else _rng.randf_range(25.0, 55.0)
+		var dist := _rng.randf_range(SPAWN_NEAR, 80.0) if def.habitat != "air" else _rng.randf_range(25.0, 55.0)
 		var x := p.x + cos(a) * dist
 		var z := p.z + sin(a) * dist
 		var h: float = terrain.height(x, z)
@@ -1213,6 +1231,13 @@ func _spawn_creatures() -> void:
 				x = s.x
 				z = s.z
 				h = s.y
+		elif def.get("spawn", "") == "ferns":
+			var f := fern_spot(x, z, p)
+			if f.is_finite():
+				x = f.x
+				z = f.z
+				h = f.y
+			ok = h > 0.15
 		if not ok or Game.nearest_fire(Vector3(x, h, z), 25.0) or house_at(Vector3(x, h, z), 6.0) \
 				or (def.get("spawn", "") == "shore" and Game.safe(Vector3(x, h, z))):
 			continue
@@ -1222,6 +1247,40 @@ func _spawn_creatures() -> void:
 		var c := Creature.new().setup(sp, Vector3(x, y, z), self)
 		add_child(c)
 		return  # at most one spawn per tick
+
+
+func pick_in_category(cat: String, counts: Dictionary, slots: int) -> String:
+	## Which species fills a free slot. One with a `share` fills that part of
+	## the cap first (with a single slot, it is that likely); the rest are even.
+	var others: Array = Creature.category_species(cat)
+	for sp in others.duplicate():
+		if not Creature.SPECIES[sp].has("share"):
+			continue
+		var share := float(Creature.SPECIES[sp].share)
+		var whole := floori(slots * share + 0.001)
+		if int(counts.get(sp, 0)) < whole or (whole == 0 and _rng.randf() < share):
+			return sp
+		others.erase(sp)
+	return others[_rng.randi() % others.size()]
+
+
+func fern_spot(x: float, z: float, p: Vector3) -> Vector3:
+	## A fern thicket in the chunk at x, z, out of sight of p (at least
+	## SPAWN_NEAR away), or INF if it has none.
+	var ch = chunks.get(Vector2i(floori(x / Chunk.SIZE), floori(z / Chunk.SIZE)))
+	if ch == null:
+		return Vector3.INF
+	var far: Array = ch.decor_ferns.filter(func(e): return Vector2(e.x - p.x, e.z - p.z).length() >= SPAWN_NEAR)
+	if far.is_empty():
+		return Vector3.INF
+	var e: Dictionary = far[_rng.randi() % far.size()]
+	return Vector3(e.x, terrain.height(e.x, e.z), e.z)
+
+
+func hostile_medium() -> String:
+	## A hostile medium animal, for what comes in the night or to a guts pile.
+	var all: Array = Creature.category_species("hostile_medium")
+	return all[_rng.randi() % all.size()]
 
 
 func pick_prey(night: bool) -> String:
@@ -1566,7 +1625,7 @@ func draw_to_guts(pile: Node3D, kind: String) -> Node3D:
 	var at: Vector3 = pile.global_position
 	var sp := kind
 	if kind == "medium":
-		sp = "arthropleura" if not Game.is_night() or Game.time < _calm_until or _rng.randf() < 0.5 else "scorpion"
+		sp = "arthropleura" if not Game.is_night() or Game.time < _calm_until or _rng.randf() < 0.5 else hostile_medium()
 	var p := player.global_position
 	var best := Vector3.INF
 	for attempt in 30:
@@ -1609,6 +1668,9 @@ func debug_spawn(sp: String) -> Node3D:
 	## Debug panel: puts a creature 5 m in front of the player, facing them.
 	## Amphibians settle as they would there: in the water a Uranocentrodon
 	## buries itself and an Eogyrinus lurks; on land they bask or roam.
+	## `sp` may name a variant: "uranocentrodon:pale".
+	var look := sp.get_slice(":", 1) if ":" in sp else ""
+	sp = sp.get_slice(":", 0)
 	var fwd := -player.global_transform.basis.z
 	fwd.y = 0.0
 	var pos := player.global_position + fwd.normalized() * 5.0
@@ -1616,7 +1678,7 @@ func debug_spawn(sp: String) -> Node3D:
 	var wet := pos.y < Terrain.WATER - 0.3
 	var c: Node3D
 	if sp == "uranocentrodon":
-		c = spawn_amphibian(sp, "hide" if wet else "bask", pos, pos)
+		c = spawn_amphibian(sp, "hide" if wet else "bask", pos, pos, look)
 	elif sp == "eogyrinus":
 		c = spawn_amphibian(sp, "lurk" if wet else "land", pos, pos)
 	else:
@@ -1641,8 +1703,9 @@ func open_debug() -> void:
 	_debug_panel.open()
 
 
-func spawn_amphibian(sp: String, m: String, pos: Vector3, water: Vector3) -> Node3D:
-	var c := Creature.new().setup(sp, pos, self)
+func spawn_amphibian(sp: String, m: String, pos: Vector3, water: Vector3, look := "roll") -> Node3D:
+	## `look`: a variant of the species, "" for the regular one, or "roll" for its odds.
+	var c := Creature.new().setup(sp, pos, self, Creature.roll_variant(sp, _rng) if look == "roll" else look)
 	add_child(c)
 	c.set_mode(m, water)
 	if _frenzy_left > 0.0:
@@ -2506,7 +2569,7 @@ func sleep(on_bedroll := false) -> void:
 	if _rng.randf() < risk.amphibian:
 		attacker = "uranocentrodon"
 	elif _rng.randf() < risk.predator:
-		attacker = "scorpion"
+		attacker = hostile_medium()
 	var slept := Game.SLEEP_LENGTH * (_rng.randf_range(0.15, 0.9) if attacker != "" else 1.0)
 	# Wildlife moves on while you sleep; the spawner refills the area.
 	for c in Game.creatures.duplicate():
@@ -2619,7 +2682,7 @@ func _wake_attack(species: String) -> void:
 		add_child(c)
 		c.state = "chase"
 		c.take_damage(0.0, player)
-		player.hurt(c.def.damage, pos, 0.4, species)
+		player.hurt(c.def.damage, pos, 0.4, species, float(c.def.get("wound", 1.0)))
 		hud.show_message("You wake to something tearing at you!")
 
 
@@ -2787,7 +2850,8 @@ func _world_state() -> Dictionary:
 
 func _hunted() -> bool:
 	for c in Game.creatures:
-		if is_instance_valid(c) and not c.dead and c.state in ["chase", "attack", "charge", "strike", "stalk", "approach"] \
+		if is_instance_valid(c) and not c.dead \
+				and (c.state in ["chase", "attack", "charge", "strike", "stalk", "approach"] or (c.state == "retreat" and c.def.get("skirmish", false))) \
 				and c.global_position.distance_to(player.global_position) < 30.0:
 			return true
 	return false
@@ -2820,7 +2884,7 @@ func _apply_restore(r: Dictionary) -> void:
 			spawn_pickup(d.id, int(d.n), Vector3(d.pos[0], d.pos[1], d.pos[2]), float(d.age), true, d.get("data", {}))
 	for d in r.get("carcasses", []):
 		if Creature.SPECIES.has(d.get("species", "")):
-			var c := Creature.new().setup(d.species, Vector3(d.pos[0], d.pos[1], d.pos[2]), self)
+			var c := Creature.new().setup(d.species, Vector3(d.pos[0], d.pos[1], d.pos[2]), self, String(d.get("variant", "")))
 			add_child(c)
 			c.restore_carcass(d)
 	for d in r.get("guts", []):

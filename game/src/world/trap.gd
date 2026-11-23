@@ -118,7 +118,7 @@ func catch(rng: RandomNumberGenerator) -> int:
 		caught.append({"id": Creature.SPECIES[prey[rng.randi() % prey.size()]].carcass, "at": Game.time})
 	elif r >= 1.0 - MEDIUM:
 		var big: Array = Creature.SPECIES.keys().filter(func(k): return Creature.SPECIES[k].get("size", "") == "medium" \
-				and Creature.SPECIES[k].habitat == "land" and Creature.SPECIES[k].behavior in ["hunter", "defensive"])
+				and Creature.SPECIES[k].habitat == "land" and Creature.SPECIES[k].get("scavenger", false))  # what comes to meat
 		caught.append({"species": big[rng.randi() % big.size()], "at": Game.time})
 	else:
 		return 0  # nothing came: the bait is still there

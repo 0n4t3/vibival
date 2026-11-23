@@ -11,8 +11,9 @@ extends StaticBody3D
 const FULL := 20
 const DAYS := 5.0
 const YIELD := 5
-const PEST_CHANCE := 0.15
-const PESTS := ["scorpion", "arthropleura"]
+const PEST_CHANCE := 0.25
+const MAX_PESTS := 3     # however many baskets, at most this many come in one sleep
+const PESTS := ["scorpion", "arthropleura", "haptodus"]
 const WOODY := {"stick": 2.0, "branch": 2.0, "log": 3.0, "log_stripped": 3.0}
 
 var level := 0

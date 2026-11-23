@@ -11,10 +11,10 @@ The animals fall into groups. Animals in the same group act much the same way.
 
 | Group | Animals | What to expect |
 |---|---|---|
-| [Large creatures](#large-creatures) | Uranocentrodon, Eogyrinus | The main threat. They live along the water and grab you. |
-| [Hostile medium creatures](#hostile-medium-creatures) | Pulmonoscorpius | Come for you on sight. |
-| [Neutral medium creatures](#neutral-medium-creatures) | Arthropleura | Leave you alone unless you attack them. |
-| [Predator insects](#predator-insects) | Meganeura | Small nips. They hunt the small animals. |
+| [Large creatures](#large-creatures) | Uranocentrodon (and its pale form), Eogyrinus | The main threat. They live along the water and grab you. |
+| [Hostile medium creatures](#hostile-medium-creatures) | Pulmonoscorpius, Haptodus | Come for you on sight. |
+| [Neutral medium creatures](#neutral-medium-creatures) | Arthropleura, Edaphosaurus, Diadectes, Hibbertopterus | Leave you alone unless you attack them. |
+| [Predator insects](#predator-insects) | Meganeura, Meganeurula, Namurotypus | Only Meganeura nips you. Most hunt the small animals. |
 | [Prey](#prey) | Hylonomus, Petrolacosaurus, Archaeothyris, Amphibamus, Tuditanus, Morganucodon | Harmless. They run from you and are food for everything else. |
 
 ## Large creatures
@@ -38,6 +38,10 @@ A large carnivorous amphibian, about 4–5 m long.
 
 A colossal flat-headed amphibian, about 7 m long, and the reason to fear the
 water. (It actually lived in the Triassic, so it is out of its time here.)
+
+About one in four is a **Pale Uranocentrodon**: soft, wet and off-white, with
+feathery pink gills on its neck. It behaves exactly the same and gives the same
+meat, but is far easier to spot when basking on the bank.
 
 - **Basking**: by day several lie out on the banks. If you come within about
   30 m, a basking one creeps toward you, low and slow, until you are in
@@ -103,6 +107,20 @@ swamp.
   feeding scorpion, it leaves its meal and goes for you.
 - Its carcass is carried, and gives 2 raw meat and a chitin plate.
 
+### Haptodus
+
+A lean, dark predator about as long as you are tall, and an early relative of
+Dimetrodon. Out at night, like the scorpion.
+
+- A hunter that notices you from far off and runs almost as fast as you sprint,
+  so running only works while your stamina lasts.
+- It sprints in, bites, backs off and circles round to come again. That gap is
+  your chance to hit it.
+- Its bite does little damage but cuts deep, so expect to bleed.
+- It fears fire, and hunts small prey and carcasses when you are not nearby.
+- Meat in a compost basket or a guts pile can draw one.
+- Its carcass is carried, and gives 3 raw meat.
+
 ## Neutral medium creatures
 
 ### Arthropleura
@@ -116,6 +134,33 @@ tough.
   kills them, and eats the whole body in about 5 seconds.
 - Its carcass is carried, and gives 5 raw meat and 4 chitin plates.
 
+### Edaphosaurus
+
+A stocky plant-eater with a tall ribbed sail on its back.
+
+- Wanders open ground and stops to graze. It ignores you unless you hit it.
+- Attacked, it turns and bites. Once badly hurt it breaks off and runs.
+- Its carcass is carried, and gives 6 raw meat.
+
+### Diadectes
+
+A very broad, heavy plant-eater that browses in the fern thickets.
+
+- Slow to notice you, and ignores you unless you hit it.
+- Attacked, it never runs. Its slow lunges hit harder than any other neutral
+  animal's and can break a bone, but you can step away from them.
+- Its carcass is carried, and gives 7 raw meat, the most of any medium animal.
+
+### Hibbertopterus
+
+A giant armoured sea scorpion that hauls itself along the banks and shallows,
+raking the mud with its front limbs.
+
+- Very slow and very tough. It leaves you alone unless you hit it.
+- It can barely chase you, but its long sweep reaches anyone beside it.
+- Its carcass is carried, and gives 3 raw meat and 6 chitin plates, the best
+  source of chitin.
+
 ## Predator insects
 
 ### Meganeura
@@ -128,6 +173,18 @@ A giant dragonfly with a wingspan of about 70 cm.
 - A thrown stone knocks it out of the air for a few seconds. If it was
   carrying an animal, it drops it.
 - Its carcass goes into your bag and is roasted whole.
+
+### Meganeurula
+
+A griffinfly nearly as large as Meganeura, with a rust-colored body and amber,
+dark-banded wings. It **never bothers you**, but it swoops on small prey just as
+Meganeura does. Its carcass roasts whole.
+
+### Namurotypus
+
+A small, slim, blue-black griffinfly that darts low over the water and banks. It
+**leaves you and everything else alone**, and is a hard target for a thrown stone.
+Its carcass is a small meal, roasted whole.
 
 ## Prey
 
@@ -158,8 +215,8 @@ A kill leaves a **carcass**. What you do with it depends on its size.
 
 | Size | Animals | Moving it | Preparing it |
 |---|---|---|---|
-| Small | The six small prey, Meganeura | E puts it in your bag | Small prey: gut and skin by hand (C), then roast. Dragonfly: roast whole |
-| Medium | Pulmonoscorpius, Arthropleura | E picks it up and you carry it | Butcher where it lies, with a blade |
+| Small | The six small prey, the griffinflies | E puts it in your bag | Small prey: gut and skin by hand (C), then roast. Griffinflies: roast whole |
+| Medium | Pulmonoscorpius, Haptodus, Arthropleura, Edaphosaurus, Diadectes, Hibbertopterus | E picks it up and you carry it | Butcher where it lies, with a blade |
 | Large | Eogyrinus, Uranocentrodon | E and you drag it, at half walking speed | Butcher where it lies, with a blade |
 
 **Carrying and dragging.** The carcass is in front of you, so your hands are
@@ -193,7 +250,7 @@ Guts piles lie for a day, are saved with the world, and draw scavengers. While
 you are within 160 m, every 5 minutes each pile has:
 
 - a 25% chance of drawing an **Eogyrinus**, and
-- a 25% chance of drawing a **Pulmonoscorpius or an Arthropleura** (only
+- a 25% chance of drawing a **Pulmonoscorpius, Haptodus or Arthropleura** (only
   Arthropleura by day).
 
 The animal turns up 30 to 50 m away and comes hungry. If you are near it or
@@ -221,7 +278,7 @@ Hold a River Stone or Chert Nodule and right-click to throw it.
 
 | Target | Effect |
 |---|---|
-| Small prey, Meganeura | Dazed for about 2.5 s; a Meganeura drops whatever it carries |
+| Small prey, griffinflies | Dazed for about 2.5 s; a griffinfly drops whatever it carries |
 | Water | A splash that draws nearby amphibians to the spot |
 | A big amphibian, struck directly | It comes for you |
 | A tree or boulder | The stone stops and drops beside it |

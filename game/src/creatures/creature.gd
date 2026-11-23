@@ -8,6 +8,8 @@ const LURE_RADIUS := 12.0  # how far a splash draws an amphibian
 const STALK_RANGE := 30.0  # a basking Uranocentrodon creeps toward a player this close
 const SNATCH_RANGE := 12.0 # a Meganeura spots small prey this far away
 const FORAGE_RANGE := 9.0  # a scavenger goes after small prey this close
+const HURT_CLEAR := 30.0   # a badly hurt animal (`flees_at`) runs until this far from the player
+const HURT_NOTICE := 15.0  # and once settled, only bolts again if they come this close
 const FEED_TIME := 5.0     # seconds a scavenger takes to eat small prey whole
 const DRAWN_NOTICE := 20.0 # an animal drawn by guts goes for a player this close to it or the guts
 const LINGER := 180.0      # seconds it hangs about where the guts were once they are eaten
@@ -98,15 +100,51 @@ const SPECIES := {
 		"name": "Pulmonoscorpius", "behavior": "hunter", "habitat": "land",
 		"hp": 40.0, "speed": 1.4, "run": 5.0, "radius": 0.6, "hit_r": 0.75, "hit_h": 0.3,
 		"sense": 13.0, "damage": 9.0, "venom": 14.0, "venom_chance": 0.45, "reach": 1.7, "windup": 0.45,
-		"cooldown": 1.4, "sound": "hiss", "drops": {"raw_meat": 2, "chitin": 1}, "cap_day": 0, "cap_night": 2,
+		"cooldown": 1.4, "sound": "hiss", "drops": {"raw_meat": 2, "chitin": 1}, "category": "hostile_medium",
 		"scavenger": true, "size": "medium", "guts": 1,
 	},
 	"arthropleura": {
 		"name": "Arthropleura", "behavior": "defensive", "habitat": "land",
 		"hp": 160.0, "speed": 0.9, "run": 2.6, "radius": 0.9, "hit_r": 1.0, "hit_h": 0.3,
 		"sense": 6.0, "damage": 18.0, "reach": 2.3, "windup": 0.7, "cooldown": 2.0, "sound": "chitter",
-		"drops": {"raw_meat": 5, "chitin": 4}, "cap_day": 1, "cap_night": 1,
+		"drops": {"raw_meat": 5, "chitin": 4}, "category": "neutral_medium",
 		"scavenger": true, "size": "medium", "guts": 2,
+	},
+	# A sail-backed plant-eater of the open ground. Leaves you alone; hit, it
+	# bites back, and badly hurt (`flees_at`) it breaks off and runs.
+	"edaphosaurus": {
+		"name": "Edaphosaurus", "behavior": "defensive", "habitat": "land",
+		"hp": 130.0, "speed": 1.0, "run": 4.2, "radius": 0.8, "hit_r": 0.9, "hit_h": 0.35,
+		"sense": 7.0, "damage": 14.0, "reach": 1.9, "windup": 0.6, "cooldown": 1.8, "sound": "hiss",
+		"drops": {"raw_meat": 6}, "category": "neutral_medium", "size": "medium", "guts": 2,
+		"flees_at": 0.35, "grazes": true, "side_y": 0.36,
+	},
+	# A broad, stubborn plant-eater of the fern thickets. It never runs, and
+	# hits the hardest of the neutral animals.
+	"diadectes": {
+		"name": "Diadectes", "behavior": "defensive", "habitat": "land",
+		"hp": 190.0, "speed": 0.8, "run": 3.2, "radius": 0.85, "hit_r": 0.95, "hit_h": 0.3,
+		"sense": 5.0, "damage": 20.0, "reach": 1.8, "windup": 0.8, "cooldown": 2.4, "sound": "hiss",
+		"drops": {"raw_meat": 7}, "category": "neutral_medium", "size": "medium", "guts": 2,
+		"spawn": "ferns", "grazes": true, "flat_y": 0.8,
+	},
+	# A giant armoured sea scorpion hauling itself along the banks, raking the
+	# mud. Very slow, very tough, and the best source of chitin.
+	"hibbertopterus": {
+		"name": "Hibbertopterus", "behavior": "defensive", "habitat": "land",
+		"hp": 220.0, "speed": 0.6, "run": 1.8, "radius": 0.9, "hit_r": 1.0, "hit_h": 0.2,
+		"sense": 5.0, "damage": 12.0, "reach": 2.2, "windup": 0.9, "cooldown": 2.4, "sound": "chitter",
+		"drops": {"raw_meat": 3, "chitin": 6}, "category": "neutral_medium", "size": "medium", "guts": 1,
+		"spawn": "shore", "keeps_shore": true, "flat_y": 0.42,
+	},
+	# A lean night hunter: sprints in, bites (`wound`: deeper than the blow
+	# alone), backs off and circles (`skirmish`) to come again.
+	"haptodus": {
+		"name": "Haptodus", "behavior": "hunter", "habitat": "land",
+		"hp": 55.0, "speed": 1.8, "run": 6.0, "radius": 0.55, "hit_r": 0.7, "hit_h": 0.3,
+		"sense": 16.0, "damage": 8.0, "reach": 1.6, "windup": 0.3, "cooldown": 1.6, "sound": "hiss",
+		"drops": {"raw_meat": 3}, "category": "hostile_medium", "scavenger": true, "size": "medium", "guts": 1,
+		"skirmish": true, "wound": 2.5, "flat_y": 0.62,
 	},
 	# Large carnivorous amphibian, a rare wanderer on land. Spawned by the swamp
 	# itself, not by the generic spawner (caps 0).
@@ -132,8 +170,25 @@ const SPECIES := {
 		"name": "Meganeura", "behavior": "flyer", "habitat": "air",
 		"hp": 6.0, "speed": 3.0, "run": 8.5, "radius": 0.3, "hit_r": 0.7, "hit_h": 0.0,
 		"sense": 14.0, "damage": 4.0, "reach": 1.1, "cooldown": 6.0,
-		"drops": {"raw_meat": 1}, "cap_day": 2, "cap_night": 1,
+		"drops": {"raw_meat": 1}, "category": "predator_insect", "share": 0.5,
 		"size": "small", "carcass": "dragonfly_carcass",
+	},
+	# Griffinflies that leave the player alone (`hostile` false). Meganeurula
+	# still hunts small prey; Namurotypus (`snatches` false) darts low by the water.
+	"meganeurula": {
+		"name": "Meganeurula", "behavior": "flyer", "habitat": "air",
+		"hp": 5.0, "speed": 2.6, "run": 7.5, "radius": 0.26, "hit_r": 0.6, "hit_h": 0.0,
+		"sense": 0.0, "damage": 0.0, "reach": 1.1, "cooldown": 6.0, "hostile": false,
+		"drops": {"raw_meat": 1}, "category": "predator_insect",
+		"size": "small", "carcass": "meganeurula_carcass",
+	},
+	"namurotypus": {
+		"name": "Namurotypus", "behavior": "flyer", "habitat": "air",
+		"hp": 3.0, "speed": 3.6, "run": 9.0, "radius": 0.18, "hit_r": 0.45, "hit_h": 0.0,
+		"sense": 0.0, "damage": 0.0, "reach": 1.1, "cooldown": 6.0, "hostile": false, "snatches": false,
+		"circle": 3.5, "dart": 1.5, "fly": [0.9, 2.2], "spawn": "shore",
+		"drops": {"raw_meat": 1}, "category": "predator_insect",
+		"size": "small", "carcass": "namurotypus_carcass",
 	},
 	# Fish: never spawned (caps 0), only hooked (fishing.gd).
 	"elonichthys": {
@@ -242,7 +297,23 @@ const SPECIES := {
 	},
 }
 
+## Species sharing spawn slots: [day, night] living animals of the category at
+## once, whatever the species (swamp._spawn_creatures). A `share` gives a species
+## that part of the cap first; the rest are picked evenly.
+const CATEGORIES := {
+	"hostile_medium": [0, 2],
+	"neutral_medium": [2, 2],
+	"predator_insect": [2, 1],
+}
+
+## Other looks of a species, with the same stats and spawn slots: `chance` of
+## each spawn (swamp.spawn_amphibian), and the name it goes by.
+const VARIANTS := {
+	"uranocentrodon": {"pale": {"name": "Pale Uranocentrodon", "chance": 0.25}},
+}
+
 var species := ""
+var variant := ""                # a look from VARIANTS, or "" for the regular one
 var def: Dictionary
 var world: Node = null
 var hp := 1.0
@@ -268,6 +339,9 @@ var _legs: Array[Node3D] = []
 var _segs: Array[Node3D] = []
 var _tail: Array[Node3D] = []
 var _wings: Array[Node3D] = []
+var _gills: Array[Node3D] = []   # a pale Uranocentrodon's, swaying
+var _sail: Node3D = null         # an Edaphosaurus's
+var _base_scale := 1.0           # the size its model was built at
 var _carcass: StaticBody3D
 var _buzz: AudioStreamPlayer3D
 
@@ -323,9 +397,27 @@ static var _part_cache := {}
 static var _ripple_mesh: Mesh
 
 
-func setup(sp: String, pos: Vector3, owner_world: Node) -> Node3D:
+static func category_species(cat: String) -> Array:
+	return SPECIES.keys().filter(func(k): return SPECIES[k].get("category", "") == cat)
+
+
+static func roll_variant(sp: String, rng: RandomNumberGenerator) -> String:
+	## Which look a new animal of this species has ("" is the regular one).
+	var roll := rng.randf()
+	var kinds: Dictionary = VARIANTS.get(sp, {})
+	for v in kinds:
+		if roll < float(kinds[v].chance):
+			return v
+		roll -= float(kinds[v].chance)
+	return ""
+
+
+func setup(sp: String, pos: Vector3, owner_world: Node, look := "") -> Node3D:
 	species = sp
 	def = SPECIES[sp]
+	if VARIANTS.get(sp, {}).has(look):
+		variant = look
+		def = def.merged({"name": VARIANTS[sp][look].name}, true)
 	world = owner_world
 	hp = def.hp
 	hit_radius = def.hit_r
@@ -344,12 +436,19 @@ func _ready() -> void:
 		_build_fish()
 	else:
 		call("_build_" + species)
+	_base_scale = _body.scale.x
 	for n in _body.find_children("*", "MeshInstance3D", true, false):
 		n.visibility_range_end = 90.0
 		if Settings.quality == 0:
 			n.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_altitude = _rng.randf_range(2.5, 6.0)
+	_altitude = _fly_height(2.5, 6.0)
 	_pick_wander()
+
+
+func _fly_height(low: float, high: float) -> float:
+	## How high a flyer cruises: its own `fly` range, or this one.
+	var fly: Array = def.get("fly", [low, high])
+	return _rng.randf_range(fly[0], fly[1])
 
 
 func _exit_tree() -> void:
@@ -632,6 +731,9 @@ func _build_eogyrinus() -> void:
 
 
 func _build_uranocentrodon() -> void:
+	if variant == "pale":
+		_build_pale_uranocentrodon()
+		return
 	# A ~7 m rhinesuchid: a broad, flat, parabolic skull with small raised eyes
 	# set well back, a wide flattened body on short sprawling legs and a long,
 	# laterally flattened tail with a low crest. Muddy olive above, paler below,
@@ -815,27 +917,307 @@ func _snap_at_player() -> void:
 
 
 func _build_meganeura() -> void:
-	var col := Color(0.15, 0.32, 0.30)
-	_add(_part("meg_body", func(b):
+	_build_griffinfly("meg", Color(0.15, 0.32, 0.30), Color(0.5, 0.4, 0.1), Color(0.75, 0.80, 0.70), Color(0.55, 0.60, 0.50), 1.3, 1.0)
+
+
+func _build_meganeurula() -> void:
+	# Rust and amber, with amber wings crossed by a dark band.
+	_build_griffinfly("mgl", Color(0.40, 0.22, 0.09), Color(0.72, 0.46, 0.14), Color(0.84, 0.66, 0.34), Color(0.62, 0.44, 0.20), 1.05, 0.85, Color(0.22, 0.13, 0.07))
+
+
+func _build_namurotypus() -> void:
+	# Small and slim, blue-black, with clear wings going dark at the tips.
+	_build_griffinfly("nam", Color(0.07, 0.10, 0.22), Color(0.16, 0.30, 0.48), Color(0.82, 0.87, 0.88), Color(0.16, 0.18, 0.24), 0.7, 1.45)
+
+
+func _build_griffinfly(key: String, col: Color, tail: Color, wing_col: Color, wing_tip: Color, size: float, pitch: float, band := Color(-1, 0, 0)) -> void:
+	_add(_part(key + "_body", func(b):
 		b.blob(Vector3(0, 0, -0.12), Vector3(0.05, 0.05, 0.08), 2, 5, col)
 		b.blob(Vector3(0.04, 0.02, -0.2), Vector3(0.035, 0.035, 0.035), 1, 5, Color(0.5, 0.15, 0.1))
 		b.blob(Vector3(-0.04, 0.02, -0.2), Vector3(0.035, 0.035, 0.035), 1, 5, Color(0.5, 0.15, 0.1))
-		b.cylinder(Vector3(0, 0, -0.05), Vector3(0, 0, 0.45), 0.025, 0.015, 5, col.lerp(Color(0.5, 0.4, 0.1), 0.5))), _body, Vector3.ZERO)
-	var wing := _part("meg_wing", func(b): b.leaf(Vector3.ZERO, Vector3(1, 0, 0), 0.38, 0.11, 0.0, 3, Color(0.75, 0.80, 0.70), Color(0.55, 0.60, 0.50)))
+		b.cylinder(Vector3(0, 0, -0.05), Vector3(0, 0, 0.45), 0.025, 0.015, 5, col.lerp(tail, 0.5))), _body, Vector3.ZERO)
+	var wing := _part(key + "_wing", func(b):
+		b.leaf(Vector3.ZERO, Vector3(1, 0, 0), 0.38, 0.11, 0.0, 3, wing_col, wing_tip)
+		if band.r >= 0.0:
+			b.box(Vector3(0.2, 0.004, 0), Vector3(0.035, 0.003, 0.085), band))
 	for z in [-0.1, -0.02]:
 		for s in [1.0, -1.0]:
 			var piv := _pivot(_body, Vector3(0.03 * s, 0.03, z))
 			var mi := _add(wing, piv, Vector3.ZERO)
 			mi.scale.x = s
 			_wings.append(piv)
-	_body.scale = Vector3.ONE * 1.3
+	_body.scale = Vector3.ONE * size
 	_buzz = AudioStreamPlayer3D.new()
 	_buzz.stream = Sfx.stream("buzz")
 	_buzz.volume_db = -14.0
+	_buzz.pitch_scale = pitch
 	_buzz.max_distance = 18.0
 	_buzz.unit_size = 3.0
 	add_child(_buzz)
 	_buzz.play.call_deferred()
+
+
+func _sprawling_legs(key: String, col: Color, foot: Color, hips: Array, reach: Vector3, r: float) -> void:
+	## Four legs from `hips` (the right side, mirrored): out to a knee, then
+	## down to a broad blunt foot at `reach` from the hip.
+	var knee := Vector3(reach.x * 0.62, reach.y * 0.25, 0)
+	var leg := _part(key + "_leg", func(b):
+		b.blob(Vector3.ZERO, Vector3.ONE * r * 1.25, 1, 6, col)
+		b.cylinder(Vector3.ZERO, knee, r, r * 0.82, 6, col)
+		b.blob(knee, Vector3.ONE * r * 0.9, 1, 5, col)
+		b.cylinder(knee, reach, r * 0.8, r * 0.62, 6, col)
+		b.blob(reach + Vector3(0.02, -0.01, -r * 0.5), Vector3(r * 1.4, r * 0.42, r * 1.7), 1, 6, foot))
+	for h in hips:
+		for s in [1.0, -1.0]:
+			var piv := _pivot(_body, Vector3(h.x * s, h.y, h.z))
+			var mi := _add(leg, piv, Vector3.ZERO)
+			mi.scale.x = s
+			_legs.append(piv)
+
+
+func _build_edaphosaurus() -> void:
+	# A stocky barrel of a plant-eater with a small blunt head, and a tall
+	# ribbed sail whose spines carry little knobbed crossbars.
+	var col := Color(0.33, 0.36, 0.27)
+	var belly := Color(0.53, 0.50, 0.38)
+	var dark := Color(0.17, 0.18, 0.13)
+	var sail := Color(0.52, 0.28, 0.16)
+	var rib := Color(0.24, 0.18, 0.12)
+	_add(_part("eda_body", func(b):
+		b.blob(Vector3(0, 0.5, 0.02), Vector3(0.34, 0.3, 0.68), 3, 10, col)
+		b.blob(Vector3(0, 0.38, 0.02), Vector3(0.29, 0.19, 0.6), 2, 8, belly)
+		b.blob(Vector3(0, 0.55, -0.62), Vector3(0.18, 0.17, 0.24), 2, 7, col)
+		b.tube([Vector3(0, 0.48, 0.55), Vector3(0, 0.4, 0.98), Vector3(0, 0.3, 1.4), Vector3(0, 0.18, 1.82)],
+				[0.2, 0.13, 0.075, 0.02], 6, [col, col * 0.95, dark.lerp(col, 0.5)])), _body, Vector3.ZERO)
+	_head = _pivot(_body, Vector3(0, 0.56, -0.74))
+	_add(_part("eda_head", func(b):
+		b.blob(Vector3(0, 0.0, -0.14), Vector3(0.13, 0.11, 0.2), 2, 7, col)
+		b.blob(Vector3(0, -0.04, -0.28), Vector3(0.09, 0.07, 0.1), 2, 6, belly)
+		for sx in [1.0, -1.0]:
+			b.blob(Vector3(0.09 * sx, 0.05, -0.17), Vector3.ONE * 0.026, 1, 5, Color(0.05, 0.04, 0.03))), _head, Vector3.ZERO)
+	_sail = _pivot(_body, Vector3(0, 0.74, 0))
+	_add(_part("eda_sail", func(b):
+		var n := 11
+		var tops := []
+		for i in n:
+			var u := i / float(n - 1)
+			var z := lerpf(-0.48, 0.58, u)
+			var top := Vector3(0, 0.06 + 0.72 * sin(PI * (u * 0.9 + 0.05)), z + 0.05)
+			tops.append(top)
+			b.cylinder(Vector3(0, -0.04, z), top, 0.02, 0.008, 4, rib)
+			for k in 3:
+				var at: Vector3 = Vector3(0, -0.04, z).lerp(top, 0.34 + k * 0.22)
+				b.box(at, Vector3(0.075, 0.014, 0.014), rib)
+		for i in n - 1:
+			var a := Vector3(0, -0.02, lerpf(-0.48, 0.58, i / float(n - 1)))
+			var d := Vector3(0, -0.02, lerpf(-0.48, 0.58, (i + 1) / float(n - 1)))
+			var shade: Color = sail * (1.0 if i % 2 == 0 else 0.88)
+			b.quad(a, d, tops[i + 1], tops[i], shade)
+			b.quad(a, tops[i], tops[i + 1], d, shade)), _sail, Vector3.ZERO)
+	_sprawling_legs("eda", col * 0.9, dark, [Vector3(0.27, 0.42, -0.38), Vector3(0.27, 0.42, 0.4)], Vector3(0.32, -0.4, -0.03), 0.08)
+
+
+func _build_diadectes() -> void:
+	# Very broad and low, barrel-chested, with a thick neck, a deep blunt skull
+	# and a short heavy tail. Dark brown-grey, pebbled, with a pale throat.
+	var col := Color(0.26, 0.23, 0.19)
+	var pale := Color(0.50, 0.44, 0.34)
+	var dark := Color(0.13, 0.11, 0.09)
+	_add(_part("dia_body", func(b):
+		b.blob(Vector3(0, 0.46, 0.05), Vector3(0.52, 0.34, 0.72), 3, 11, col)
+		b.blob(Vector3(0, 0.3, 0.05), Vector3(0.43, 0.18, 0.62), 2, 9, pale)
+		b.blob(Vector3(0, 0.5, -0.62), Vector3(0.3, 0.25, 0.26), 2, 8, col)
+		var bumps := RandomNumberGenerator.new()
+		bumps.seed = 41
+		for i in 34:
+			var a := bumps.randf_range(0.25, PI - 0.25)
+			var z := bumps.randf_range(-0.55, 0.65)
+			var f := sqrt(maxf(1.0 - pow((z - 0.05) / 0.72, 2.0), 0.0))
+			b.blob(Vector3(cos(a) * 0.52 * f, 0.46 + sin(a) * 0.34 * f, z), Vector3(0.04, 0.025, 0.04), 1, 4, dark.lerp(col, bumps.randf_range(0.2, 0.7)))
+		b.tube([Vector3(0, 0.42, 0.62), Vector3(0, 0.34, 1.0), Vector3(0, 0.22, 1.36)], [0.25, 0.14, 0.03], 7, [col, dark.lerp(col, 0.6)])), _body, Vector3.ZERO)
+	_head = _pivot(_body, Vector3(0, 0.54, -0.82))
+	_add(_part("dia_head", func(b):
+		b.blob(Vector3(0, 0.0, -0.14), Vector3(0.23, 0.17, 0.25), 2, 8, col)
+		b.blob(Vector3(0, -0.09, -0.26), Vector3(0.19, 0.08, 0.17), 2, 7, pale)
+		b.blob(Vector3(0, 0.1, -0.1), Vector3(0.15, 0.05, 0.13), 1, 6, dark)
+		for sx in [1.0, -1.0]:
+			b.blob(Vector3(0.18 * sx, 0.08, -0.16), Vector3.ONE * 0.03, 1, 5, Color(0.04, 0.03, 0.02))), _head, Vector3.ZERO)
+	_sprawling_legs("dia", col * 0.92, dark, [Vector3(0.42, 0.38, -0.36), Vector3(0.42, 0.38, 0.42)], Vector3(0.36, -0.34, -0.03), 0.115)
+
+
+func _build_hibbertopterus() -> void:
+	# A wide domed head shield, a broad body of overlapping plates with pale
+	# edges, a spiked rear plate, and rake-like front limbs that sweep the mud.
+	var col := Color(0.23, 0.16, 0.11)
+	var edge := Color(0.47, 0.36, 0.24)
+	var dark := Color(0.10, 0.07, 0.05)
+	_add(_part("hib_shield", func(b):
+		b.blob(Vector3(0, 0.25, -0.5), Vector3(0.62, 0.17, 0.42), 3, 11, col)
+		b.blob(Vector3(0, 0.2, -0.5), Vector3(0.66, 0.08, 0.46), 2, 11, edge)
+		for sx in [1.0, -1.0]:
+			b.blob(Vector3(0.24 * sx, 0.38, -0.56), Vector3(0.07, 0.045, 0.085), 1, 6, dark)), _body, Vector3.ZERO)
+	var plate := _part("hib_plate", func(b):
+		b.blob(Vector3(0, 0.21, 0), Vector3(0.58, 0.15, 0.17), 2, 9, col)
+		b.blob(Vector3(0, 0.17, 0.08), Vector3(0.6, 0.07, 0.11), 1, 9, edge))
+	var parent: Node3D = _body
+	for i in 7:
+		var piv := _pivot(parent, Vector3(0, -0.005, -0.08 if i == 0 else 0.2))
+		_add(plate, piv, Vector3.ZERO).scale = Vector3(1.0 - i * 0.095, 1.0 - i * 0.05, 1.0)
+		_segs.append(piv)
+		parent = piv
+	_add(_part("hib_spike", func(b):
+		b.cone(Vector3(0, 0.19, 0.08), Vector3(0, 0.13, 0.82), 0.09, 5, dark)), parent, Vector3.ZERO)
+	var rake := _part("hib_rake", func(b):
+		b.cylinder(Vector3.ZERO, Vector3(0.3, 0.02, -0.34), 0.055, 0.04, 5, col)
+		b.cylinder(Vector3(0.3, 0.02, -0.34), Vector3(0.38, -0.18, -0.68), 0.04, 0.028, 5, edge)
+		for k in 5:
+			var base := Vector3(0.38, -0.18, -0.68)
+			b.cone(base, base + Vector3(-0.14 + k * 0.08, -0.04, -0.2), 0.012, 3, dark))
+	for s in [1.0, -1.0]:
+		var piv := _pivot(_body, Vector3(0.22 * s, 0.23, -0.72))
+		_add(rake, piv, Vector3.ZERO).scale.x = s
+		_tail.append(piv)  # they sweep the mud (_animate)
+	var leg := _part("hib_leg", func(b):
+		b.cylinder(Vector3.ZERO, Vector3(0.42, 0.1, 0), 0.06, 0.045, 5, col)
+		b.cylinder(Vector3(0.42, 0.1, 0), Vector3(0.68, -0.18, 0.03), 0.045, 0.018, 5, dark))
+	for z in [-0.48, -0.2, 0.08, 0.34]:
+		for s in [1.0, -1.0]:
+			var piv := _pivot(_body, Vector3(0.42 * s, 0.2, z))
+			_add(leg, piv, Vector3.ZERO).scale.x = s
+			piv.rotation.y = s * (0.35 - (z + 0.48) * 0.7)
+			_legs.append(piv)
+
+
+func _build_haptodus() -> void:
+	# Long, low and lean, with a narrow deep skull, bared teeth, a long whip of
+	# a tail and pale eyes. Dark slate with faint bands. No sail.
+	var col := Color(0.18, 0.20, 0.23)
+	var band := Color(0.31, 0.33, 0.35)
+	var belly := Color(0.44, 0.43, 0.40)
+	var tooth := Color(0.92, 0.9, 0.8)
+	_add(_part("hap_body", func(b):
+		b.blob(Vector3(0, 0.46, 0.05), Vector3(0.2, 0.2, 0.62), 3, 9, col)
+		b.blob(Vector3(0, 0.36, 0.05), Vector3(0.16, 0.11, 0.54), 2, 7, belly)
+		b.blob(Vector3(0, 0.52, -0.56), Vector3(0.12, 0.13, 0.24), 2, 7, col)
+		for i in 6:
+			var z := -0.42 + i * 0.18
+			var f := sqrt(maxf(1.0 - pow((z - 0.05) / 0.62, 2.0), 0.0))
+			b.blob(Vector3(0, 0.46 + 0.19 * f, z), Vector3(0.15 * f + 0.02, 0.025, 0.035), 1, 5, band)
+		b.tube([Vector3(0, 0.44, 0.55), Vector3(0, 0.4, 1.0), Vector3(0.0, 0.34, 1.5), Vector3(0, 0.27, 2.0), Vector3(0, 0.2, 2.45)],
+				[0.13, 0.095, 0.06, 0.035, 0.008], 6, [col, band, col, band])), _body, Vector3.ZERO)
+	_head = _pivot(_body, Vector3(0, 0.56, -0.72))
+	_add(_part("hap_head", func(b):
+		b.blob(Vector3(0, 0.03, -0.18), Vector3(0.105, 0.13, 0.27), 2, 7, col)
+		b.blob(Vector3(0, -0.03, -0.42), Vector3(0.065, 0.07, 0.17), 2, 6, col)
+		for sx in [1.0, -1.0]:
+			b.blob(Vector3(0.09 * sx, 0.09, -0.17), Vector3.ONE * 0.03, 1, 5, Color(0.82, 0.80, 0.62))
+			b.blob(Vector3(0.112 * sx, 0.09, -0.18), Vector3.ONE * 0.013, 1, 4, Color(0.02, 0.02, 0.02))
+			for k in 7:
+				var z := -0.12 - k * 0.065
+				b.cone(Vector3((0.095 - k * 0.006) * sx, -0.06, z), Vector3((0.095 - k * 0.006) * sx, -0.13 - 0.02 * float(k == 2), z), 0.012, 3, tooth)), _head, Vector3.ZERO)
+	_jaw = _pivot(_head, Vector3(0, -0.08, -0.04))
+	_add(_part("hap_jaw", func(b):
+		b.blob(Vector3(0, -0.035, -0.26), Vector3(0.08, 0.04, 0.31), 2, 6, belly)), _jaw, Vector3.ZERO)
+	_sprawling_legs("hap", col * 0.95, Color(0.09, 0.09, 0.10), [Vector3(0.16, 0.42, -0.34), Vector3(0.16, 0.42, 0.36)], Vector3(0.24, -0.42, -0.05), 0.058)
+
+
+func _build_pale_uranocentrodon() -> void:
+	# The same animal as if it had never quite grown up: soft, wet and off-white
+	# like a giant axolotl, with a smooth round head, small dark eyes, rib
+	# grooves, a tall tail fin, blunt toes and feathery gills still on its neck.
+	# Same proportions and joints as _build_uranocentrodon, so it moves the same.
+	const S := "wet_skin"
+	var col := Color(0.56, 0.54, 0.48)
+	var mott := Color(0.38, 0.35, 0.31)
+	var belly := Color(0.64, 0.58, 0.53)
+	var mouth := Color(0.78, 0.42, 0.42)
+	var tooth := Color(0.93, 0.90, 0.84)
+	var eye := Color(0.06, 0.05, 0.06)
+	var widths := [0.8, 0.9, 0.9, 0.84, 0.72, 0.54, 0.4, 0.29, 0.2, 0.12]
+	var heights := [0.27, 0.29, 0.29, 0.28, 0.27, 0.26, 0.23, 0.2, 0.16, 0.11]
+	for i in widths.size():
+		var w: float = widths[i]
+		var h: float = heights[i]
+		var tail := i >= 5
+		var piv := _pivot(_body if i == 0 else _segs[i - 1], Vector3(0, 0, 0.0 if i == 0 else 0.56))
+		_add(_part("urap_seg%d" % i, func(b):
+			var y := 0.38 - (0.03 if tail else 0.0)
+			b.blob(Vector3(0, y, 0.28), Vector3(w, h, 0.56), 3, 10, col, null, 0.0, S)
+			b.blob(Vector3(0, y - h * 0.45, 0.28), Vector3(w * 0.9, h * 0.55, 0.52), 2, 8, belly, null, 0.0, S)
+			for sx in [1.0, -1.0]:
+				# Soft mottling on the back, and salamander rib grooves down the flank.
+				b.blob(Vector3(w * (0.3 + 0.15 * ((i + int(sx)) % 2)) * sx, y + h * 0.84, 0.18 + 0.16 * sx),
+						Vector3(w * 0.17, 0.035, 0.1 + 0.03 * (i % 3)), 1, 5, mott, null, 0.0, S)
+				if not tail:
+					for k in 3:
+						b.blob(Vector3(w * 0.9 * sx, y + h * 0.08, 0.08 + k * 0.2), Vector3(0.035, h * 0.56, 0.018), 1, 4, mott, null, 0.0, S)
+			if tail:
+				# A tall, thin swimming fin above and below.
+				b.blob(Vector3(0, y + h * 1.1, 0.28), Vector3(0.022, h * 0.72, 0.62), 3, 8, belly, null, 0.0, S)
+				b.blob(Vector3(0, y - h * 0.95, 0.28), Vector3(0.02, h * 0.5, 0.6), 3, 8, belly, null, 0.0, S)), piv, Vector3.ZERO)
+		_segs.append(piv)
+	_head = _pivot(_body, Vector3(0, 0, -0.05))
+	_add(_part("urap_skull", func(b):
+		for k in 6:
+			var u := k / 5.0
+			b.blob(Vector3(0, 0.46 - 0.04 * u, -0.3 - u * 1.25), Vector3(0.86 * sqrt(1.0 - u * 0.82), 0.2 - 0.06 * u, 0.42), 3, 10, col, null, 0.0, S)
+		b.blob(Vector3(0, 0.36, -0.9), Vector3(0.7, 0.07, 0.8), 2, 8, belly, null, 0.0, S)
+		for sx in [1.0, -1.0]:
+			b.blob(Vector3(0.34 * sx, 0.58, -0.82), Vector3(0.05, 0.04, 0.05), 1, 6, eye, null, 0.0, S)
+			b.blob(Vector3(0.16 * sx, 0.53, -1.58), Vector3(0.03, 0.018, 0.03), 1, 4, mott)
+			for k in 14:
+				var u := k / 13.0 * 0.94
+				var z := -0.2 - u * 1.4
+				var x: float = 0.72 * sqrt(1.0 - u) * sx
+				b.cone(Vector3(x, 0.33, z), Vector3(x, 0.22, z), 0.026, 3, tooth)
+		for k in 4:
+			var u := (k + 0.5) / 4.0 * 0.9
+			b.blob(Vector3(0, 0.32, -0.2 - u * 1.4), Vector3(0.66 * sqrt(1.0 - u), 0.02, 0.22), 1, 6, mouth, null, 0.0, S)), _head, Vector3.ZERO)
+	_jaw = _pivot(_head, Vector3(0, 0.3, -0.05))
+	_add(_part("urap_jaw", func(b):
+		b.blob(Vector3(0, -0.07, -0.55), Vector3(0.76, 0.1, 0.55), 2, 8, belly, null, 0.0, S)
+		b.blob(Vector3(0, -0.06, -1.15), Vector3(0.56, 0.09, 0.48), 2, 8, belly, null, 0.0, S)
+		for k in 4:
+			var u := (k + 0.5) / 4.0 * 0.9
+			b.blob(Vector3(0, 0.01, -0.2 - u * 1.35), Vector3(0.62 * sqrt(1.0 - u), 0.02, 0.22), 1, 6, mouth, null, 0.0, S)
+		for sx in [1.0, -1.0]:
+			for k in 13:
+				var u := k / 12.0 * 0.92
+				var z := -0.2 - u * 1.35
+				var x: float = 0.66 * sqrt(1.0 - u) * sx
+				b.cone(Vector3(x, 0.0, z), Vector3(x, 0.1, z), 0.024, 3, tooth)), _jaw, Vector3.ZERO)
+	# Three feathery gills on each side of the neck.
+	var gill := _part("urap_gill", func(b):
+		var stem := [Vector3.ZERO, Vector3(0.24, 0.1, 0.08), Vector3(0.5, 0.17, 0.2), Vector3(0.72, 0.16, 0.36)]
+		b.tube(stem, [0.05, 0.04, 0.028, 0.008], 5, [Color(0.82, 0.36, 0.38)], S)
+		for k in 10:
+			var t := (k + 1) / 11.0
+			var at: Vector3 = stem[0].lerp(stem[3], t) + Vector3(0, 0.12 * sin(t * PI), 0)
+			var long := 0.22 * sin(t * PI * 0.9 + 0.25)
+			for s in [1.0, -1.0]:
+				b.cone(at, at + Vector3(0.05, 0.1 * s, 0.14 * s + 0.05) * (long / 0.17), 0.012, 3, Color(0.86, 0.40, 0.42).lerp(Color(0.62, 0.22, 0.27), t), S))
+	for sx in [1.0, -1.0]:
+		for k in 3:
+			var piv := _pivot(_head, Vector3(0.68 * sx, 0.5 - k * 0.06, -0.08 + k * 0.17))
+			var mi := _add(gill, piv, Vector3.ZERO)
+			mi.scale.x = sx
+			piv.rotation.y = sx * (0.1 - k * 0.32)
+			_gills.append(piv)
+	var leg := _part("urap_leg", func(b):
+		b.blob(Vector3(0.1, -0.02, 0), Vector3(0.2, 0.15, 0.17), 1, 6, col, null, 0.0, S)
+		b.cylinder(Vector3(0.1, -0.02, 0), Vector3(0.48, -0.08, 0.02), 0.14, 0.11, 6, col, Color(-1, 0, 0), S)
+		b.blob(Vector3(0.48, -0.09, 0.02), Vector3(0.11, 0.1, 0.11), 1, 5, col, null, 0.0, S)
+		b.cylinder(Vector3(0.48, -0.09, 0.02), Vector3(0.56, -0.34, -0.04), 0.1, 0.08, 6, col, Color(-1, 0, 0), S)
+		b.blob(Vector3(0.6, -0.37, -0.1), Vector3(0.15, 0.04, 0.15), 1, 6, belly, null, 0.0, S)
+		for t in 4:
+			var a := -0.7 + t * 0.45
+			b.blob(Vector3(0.6 + sin(a) * 0.17, -0.38, -0.12 - cos(a) * 0.17), Vector3(0.05, 0.035, 0.07), 1, 5, belly, null, 0.0, S))
+	for spec in [[0, 0.2], [3, 0.32]]:
+		for sx in [1.0, -1.0]:
+			var piv := _pivot(_segs[spec[0]], Vector3(0.62 * sx, 0.36, spec[1]))
+			var mi := _add(leg, piv, Vector3.ZERO)
+			mi.scale.x = sx
+			_legs.append(piv)
 
 
 # --- Behaviour ---------------------------------------------------------------------
@@ -943,7 +1325,7 @@ func _behave(delta: float) -> void:
 		"flyer":
 			_think_flyer(quarry, dist, delta)
 			return
-	var spd: float = def.run if state in ["flee", "chase", "hunt"] else (def.speed * 2.0 if state == "scavenge" \
+	var spd: float = def.run if state in ["flee", "chase", "hunt", "retreat"] else (def.speed * 2.0 if state == "scavenge" \
 			else (def.speed if state == "wander" else 0.0))
 	if state == "wander" and global_position.distance_to(_target) < 1.0:
 		state = "idle"
@@ -972,8 +1354,13 @@ func _hold_in_snare() -> void:
 
 func _pick_wander() -> void:
 	state = "wander"
-	var a := _rng.randf() * TAU
-	_target = home + Vector3(cos(a), 0, sin(a)) * _rng.randf_range(3.0, 14.0)
+	# One that keeps to the shore looks for somewhere on the bank or in the shallows.
+	for k in 8 if def.get("keeps_shore", false) else 1:
+		var a := _rng.randf() * TAU
+		_target = home + Vector3(cos(a), 0, sin(a)) * _rng.randf_range(3.0, 14.0)
+		var h := _ground(_target.x, _target.z)
+		if not def.get("keeps_shore", false) or (h > -0.4 and h < 0.5):
+			break
 
 
 func _sense(dist: float) -> float:
@@ -994,6 +1381,24 @@ func _think_hunter(player: Node3D, dist: float, delta: float) -> void:
 		state = "flee"
 		_target = global_position + (global_position - fire.global_position).normalized() * 8.0
 		return
+	if def.has("flees_at") and player and not player.vitals.dead and hp <= def.hp * float(def.flees_at):
+		# Badly hurt: it gives up the fight and runs until it is well clear,
+		# then settles there. Only someone coming close sets it off again.
+		if state in ["flee", "chase", "attack"] and dist > HURT_CLEAR:
+			home = global_position
+			_pick_wander()
+		elif state in ["chase", "attack"] or (state != "flee" and dist < HURT_NOTICE) \
+				or (state == "flee" and global_position.distance_to(_target) < 1.0):
+			# A new spot only once it gets there: _steer picks another way
+			# round when water blocks this one.
+			state = "flee"
+			_target = global_position + (global_position - player.global_position).normalized() * 12.0
+		return
+	if state == "retreat":
+		# A skirmisher backing off after a bite, before it comes round again.
+		if _state_t > 0.0 and player != null and not player.vitals.dead:
+			return
+		state = "chase"
 	# Land scavengers (def.scavenger) hunt small prey while left alone. A hunter
 	# drops its meal to fight a player who walks right up to it.
 	if def.get("scavenger", false) and _anger <= 0.0:
@@ -1005,7 +1410,7 @@ func _think_hunter(player: Node3D, dist: float, delta: float) -> void:
 		elif _forage(delta):
 			return
 	if player == null or player.vitals.dead:
-		if state in ["chase", "attack"]:
+		if state in ["chase", "attack", "flee"]:
 			_pick_wander()
 		return
 	var aggressive: bool = def.behavior == "hunter" or _anger > 0.0
@@ -1015,11 +1420,16 @@ func _think_hunter(player: Node3D, dist: float, delta: float) -> void:
 		_face(player.global_position, delta)
 		if _windup <= 0.0:
 			if dist < def.reach + 0.6:
-				player.hurt(def.damage, global_position)
+				player.hurt(def.damage, global_position, 0.3, "", float(def.get("wound", 1.0)))
 				if def.has("venom") and _rng.randf() < def.venom_chance:
 					player.vitals.poison(def.venom)
 			_cd = def.cooldown
 			state = "chase"
+			if def.get("skirmish", false):
+				state = "retreat"
+				_state_t = _rng.randf_range(0.9, 1.5)
+				var away := (global_position - player.global_position).normalized()
+				_target = global_position + away.rotated(Vector3.UP, 0.9 if _rng.randf() < 0.5 else -0.9) * 7.0
 		return
 	if aggressive and dist < _sense(dist) * (2.2 if state == "chase" else 1.0) and not player_in_water \
 			and Game.nearest_fire(player.global_position, 7.0) == null:
@@ -1086,7 +1496,8 @@ func _forage(delta: float) -> bool:
 			_face(_prey.global_position, delta)
 			# The body shrinks away as it is eaten.
 			if _prey._body:
-				_prey._body.scale = Vector3.ONE * clampf(_state_t / _feed_time(_prey), 0.15, 1.0)
+				var built = _prey.get("_base_scale")  # a guts pile has none
+				_prey._body.scale = Vector3.ONE * (float(built) if built != null else 1.0) * clampf(_state_t / _feed_time(_prey), 0.15, 1.0)
 			if _state_t <= 0.0:
 				_prey.queue_free()
 				_prey = null
@@ -2103,7 +2514,7 @@ func _stunned(delta: float) -> void:
 	if _stun <= 0.0:
 		if def.behavior == "flyer":
 			state = "wander"
-			_altitude = 6.0
+			_altitude = _fly_height(6.0, 6.0)
 		else:
 			_pick_wander()
 
@@ -2231,12 +2642,13 @@ func _think_flyer(player: Node3D, dist: float, delta: float) -> void:
 		elif dist > def.sense * 2.0 or Game.nearest_fire(global_position, 8.0):
 			state = "wander"
 	else:
-		var a := t * 0.6 + home.x
-		goal = home + Vector3(cos(a) * 7.0, 0, sin(a * 1.3) * 7.0)
+		var a := t * 0.6 * float(def.get("dart", 1.0)) + home.x
+		var circle := float(def.get("circle", 7.0))
+		goal = home + Vector3(cos(a) * circle, 0, sin(a * 1.3) * circle)
 		goal.y = ground + _altitude + sin(t * 1.7) * 0.8
-		if player and dist < def.sense and _cd <= 0.0 and _rng.randf() < delta * 0.25 and not Game.nearest_fire(player.global_position, 7.0):
+		if player and def.get("hostile", true) and dist < def.sense and _cd <= 0.0 and _rng.randf() < delta * 0.25 and not Game.nearest_fire(player.global_position, 7.0):
 			state = "chase"
-		elif _cd <= 0.0 and _rng.randf() < delta * 0.2:
+		elif def.get("snatches", true) and _cd <= 0.0 and _rng.randf() < delta * 0.2:
 			_spot_lizard()
 	var to := goal - global_position
 	var dir := to.normalized()
@@ -2282,7 +2694,7 @@ func _blown_away(delta: float) -> void:
 	if blown <= 0.0:
 		_body.rotation.z = 0.0
 		home = global_position
-		_altitude = _rng.randf_range(4.0, 7.0)
+		_altitude = _fly_height(4.0, 7.0)
 
 
 func _spot_lizard() -> void:
@@ -2372,6 +2784,11 @@ func _animate(spd: float, delta: float) -> void:
 	for i in _legs.size():
 		_legs[i].rotation.z = sin(_phase + i * 1.3) * 0.35 * minf(spd, 1.0)
 		_legs[i].rotation.x = cos(_phase + i * 1.3) * 0.2 * minf(spd, 1.0)
+	if def.get("grazes", false) and _head:
+		# Head down to feed while it stands, up as soon as it moves.
+		_head.rotation.x = lerpf(_head.rotation.x, -0.55 if state == "idle" else 0.0, minf(delta * 2.5, 1.0))
+	if _sail:
+		_sail.rotation.z = sin(_phase * 0.7) * 0.035
 	match species:
 		"scorpion":
 			var curl := 0.9 if state in ["chase", "attack"] else 0.55
@@ -2389,6 +2806,14 @@ func _animate(spd: float, delta: float) -> void:
 			# Segments are chained, so small per-joint bends make a body wave.
 			for i in _segs.size():
 				_segs[i].rotation.y = sin(_phase * 0.5 - i * 0.8) * (0.03 + 0.1 * minf(spd, 1.0)) * (0.5 + i * 0.12)
+			for i in _gills.size():
+				_gills[i].rotation.x = sin(_phase * 0.7 + i * 1.1) * (0.1 + 0.16 * minf(spd, 1.0))
+		"hibbertopterus":
+			# Raking the mud with its front limbs, one and then the other.
+			for i in _tail.size():
+				_tail[i].rotation.y = sin(_phase * 0.55 + i * PI) * 0.34
+			for i in _segs.size():
+				_segs[i].rotation.y = sin(_phase * 0.4 - i * 0.7) * 0.025
 
 
 # --- Damage & carcass -----------------------------------------------------------
@@ -2424,7 +2849,7 @@ func take_damage(amount: float, attacker: Node3D) -> void:
 				_strike_t = 4.0
 		"flyer":
 			state = "wander"
-			_altitude = 7.0
+			_altitude = _fly_height(7.0, 7.0)
 	if def.behavior != "prey":
 		Sfx.play_at(def.get("sound", "hiss"), global_position, 0.0, 0.2)
 
@@ -2462,10 +2887,12 @@ func _die(killer: Node3D = null) -> void:
 		if hooked_by and is_instance_valid(hooked_by) and hooked_by.has_method("fish_died"):
 			hooked_by.fish_died()
 		hooked_by = null
-	var flat: bool = species in ["arthropleura", "eogyrinus", "uranocentrodon"]
+	var flat: bool = species in ["arthropleura", "eogyrinus", "uranocentrodon"] or def.has("flat_y")
 	_body.rotation.z = PI if flat else PI * 0.5
 	if flat:
-		_body.position.y = 0.75 if species == "uranocentrodon" else 0.6
+		_body.position.y = float(def.get("flat_y", 0.75 if species == "uranocentrodon" else 0.6))
+	elif def.has("side_y"):
+		_body.position.y = float(def.side_y)  # on its side, with its sail out flat
 	_carcass = StaticBody3D.new()
 	_carcass.collision_layer = 2
 	_carcass.collision_mask = 0
@@ -2495,7 +2922,7 @@ func expired() -> bool:
 
 func carcass_dict() -> Dictionary:
 	var p := global_position
-	return {"species": species, "pos": [p.x, p.y, p.z], "heading": rotation.y, "stage": stage,
+	return {"species": species, "variant": variant, "pos": [p.x, p.y, p.z], "heading": rotation.y, "stage": stage,
 			"cuts": cuts_left, "gnawed": gnawed, "died": died_at}
 
 
@@ -2522,7 +2949,7 @@ func _show_stage() -> void:
 	if _body == null:
 		return
 	var full: float = maxf(def.drops.get(def.get("meat", "raw_meat"), 1), 1)
-	_body.scale = Vector3.ONE * (lerpf(0.55, 1.0, cuts_left / full) if stage == "skinned" else 1.0)
+	_body.scale = Vector3.ONE * _base_scale * (lerpf(0.55, 1.0, cuts_left / full) if stage == "skinned" else 1.0)
 	var tint: Variant = null
 	if stage == "skinned":
 		tint = Color(0.78, 0.38, 0.36)
@@ -2574,7 +3001,9 @@ func set_hauled(by: Node3D) -> void:
 		_carcass.collision_layer = 0 if by else 2
 	if by == null:
 		var g: float = world.floor_height(global_position) if world and world.has_method("floor_height") else _ground(position.x, position.z)
-		position.y = maxf(g, -0.3 if def.habitat == "amphibious" else 0.0)
+		# Down to the mud for what lives in the shallows.
+		var lowest: float = -0.3 if def.habitat == "amphibious" else (-0.45 if def.get("keeps_shore", false) else 0.0)
+		position.y = maxf(g, lowest)
 		home = position
 
 

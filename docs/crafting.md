@@ -152,9 +152,10 @@ full it composts and takes nothing more. When it is done, press E to dig out
 up (E with empty hands).
 
 Meat, fish, guts, and carcasses smell. Each time you sleep, a basket with
-meat in it has a 15% chance of drawing a Scorpion or an Arthropleura that
-roots about beside it. It leaves the compost alone, but watch out when you
-next go there.
+meat in it has a 25% chance of drawing a Scorpion, an Arthropleura or a
+Haptodus that roots about beside it, with at most three arriving in one sleep
+however many baskets you keep. It leaves the compost alone, but watch out when
+you next go there.
 
 **Using compost:**
 

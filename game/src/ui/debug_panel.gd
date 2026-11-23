@@ -111,8 +111,11 @@ func _ready() -> void:
 	var cr := _row(vb, "Creature")
 	_creature = OptionButton.new()
 	_species = Creature.SPECIES.keys()
+	for sp in Creature.VARIANTS:
+		for v in Creature.VARIANTS[sp]:
+			_species.append("%s:%s" % [sp, v])
 	for sp in _species:
-		_creature.add_item(Creature.SPECIES[sp].name)
+		_creature.add_item(_species_name(sp))
 	_creature.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cr.add_child(_creature)
 	_button(cr, "Spawn", _spawn)
@@ -314,10 +317,17 @@ func _pick_item(id: String) -> void:
 	_item.text = Items.item_name(id) + "  ▾"
 
 
+func _species_name(sp: String) -> String:
+	## "uranocentrodon:pale" is a variant of the species.
+	if ":" in sp:
+		return Creature.VARIANTS[sp.get_slice(":", 0)][sp.get_slice(":", 1)].name
+	return Creature.SPECIES[sp].name
+
+
 func _spawn() -> void:
 	var sp: String = _species[_creature.selected]
 	world.debug_spawn(sp)
-	_say("Spawned a %s." % Creature.SPECIES[sp].name)
+	_say("Spawned a %s." % _species_name(sp))
 
 
 func _set_next_fish() -> void:

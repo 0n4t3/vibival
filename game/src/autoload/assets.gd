@@ -195,6 +195,12 @@ func _build_materials() -> void:
 	materials["whetstone"] = _textured(hone, "whetstone", 10.0)
 	materials["whetstone"].normal_scale = 0.3  # a fine stone: barely any relief
 
+	# Wet amphibian skin: smooth, with a soft sheen.
+	var wet_skin := solid.duplicate()
+	wet_skin.roughness = 0.52
+	wet_skin.metallic_specular = 0.35
+	materials["wet_skin"] = wet_skin
+
 	# Textured surfaces: [kind, tiles per metre]
 	for t in [["stone", 5.0], ["wood", 6.0], ["fiber", 9.0], ["clay", 4.0], ["organic", 5.0]]:
 		materials[t[0]] = _textured(solid, t[0], t[1])
@@ -1197,7 +1203,7 @@ func _item_mesh(b, rng: RandomNumberGenerator, id: String) -> void:
 			b.tube([Vector3(-0.3, 0.02, 0), Vector3(-0.1, 0.022, 0), Vector3(0.05, 0.025, 0)], [0.008, 0.012, 0.016], 4, [col], "organic")
 			b.blob(Vector3(0.09, 0.028, 0), Vector3(0.045, 0.026, 0.028), 2, 6, col.darkened(0.15), rng, 0.05, "organic")
 			b.blob(Vector3(0.14, 0.03, 0), Vector3(0.022, 0.022, 0.026), 2, 6, col.darkened(0.3), rng, 0.0, "organic")
-			var wing := Color(0.75, 0.78, 0.72) if id == "dragonfly_carcass" else col.lightened(0.35)
+			var wing: Color = def.get("wing", col.lightened(0.35))
 			for side in [-1.0, 1.0]:
 				for k in 2:
 					b.leaf(Vector3(0.09 - k * 0.05, 0.035, 0), Vector3(-0.15 * k, 0.0, side).normalized(), 0.3, 0.06, 0.0, 3, wing)

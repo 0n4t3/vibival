@@ -291,6 +291,8 @@ Bandage and Seal with wax.
 
 ### Dying, and the save
 
+`player._on_died` first calls `close_menus` (work, the Tab menu, the map and
+the debug panel), because their layer is drawn over the HUD's death screen.
 `swamp._on_player_died` names the `cause` (`DEATHS`) and calls
 `Game.ease_saves(cause)`, which rewrites this run's camp and suspend saves
 with `Survival.ease(vitals, cause)`: blood +25 and each bleed a level less;
@@ -351,8 +353,9 @@ steps recipe takes.
 
 ### Inventory (`src/core/inventory.gd`)
 
-30 slots, the first 6 are the hotbar. Each slot is null or
-`{id, n, age}`, plus `data` for a one of a kind item (a Pot of Soup): a
+30 slots, the first 6 are the hotbar. Slots draw their count with
+`Icons.draw_count`: exact up to 9999, then in thousands ("12k"). Each slot is
+null or `{id, n, age}`, plus `data` for a one of a kind item (a Pot of Soup): a
 Dictionary that overrides the item's fields for that item
 (`inventory.def_of(i)`). Items with `data` never stack or merge, can't be
 laid out to craft with, and keep it through `add`/`take` (extra `data`
@@ -1167,16 +1170,22 @@ spawn caps by day and night (prey instead have `prey` weights [day, night]
 in the shared prey pool), and flags such as `scavenger`.
 
 Every species belongs to a category (see [Categories](#categories-for-adding-animals)
-below). Categories are a design rule for now and are only in the code for
-prey (the shared pool and `behavior == "prey"` checks).
+below). Prey, medium animals and griffinflies share spawn slots in code; the two
+large budgets are still separate constants in `swamp.gd`.
 
 | Species | Category | Behaviour | Notes |
 |---|---|---|---|
-| uranocentrodon | large | ambusher | Basks on banks or lies buried in shallows; strikes anything at the edge, drags it to deep water. Escape roll. |
+| uranocentrodon | large | ambusher | Basks on banks or lies buried in shallows; strikes anything at the edge, drags it to deep water. Escape roll. 25% are the `pale` variant (same stats, `wet_skin` material, gills). |
 | eogyrinus | large | lurker | Spawned by the swamp near water; charges and grabs. Stab to break the grip. |
 | scorpion (Pulmonoscorpius) | hostile medium | hunter, scavenger | Night only, not in the first minutes (`_calm_until`). Venom. Flees fire. |
+| haptodus | hostile medium | hunter, scavenger | Night only. `skirmish`: bites, backs off, returns. `wound` 2.5. Flees fire. A compost pest. |
 | arthropleura | neutral medium | defensive, scavenger | Leaves you alone until hit (`_anger` 25 s). |
-| meganeura | predator insect | flyer | Circles, nips the player, snatches small prey and eats them where it lands. |
+| edaphosaurus | neutral medium | defensive | Sail-backed grazer. Runs below `flees_at` 35% hp. |
+| diadectes | neutral medium | defensive | `spawn` "ferns". Never flees, damage 20. |
+| hibbertopterus | neutral medium | defensive | `spawn` "shore", `keeps_shore`. Slow, hp 220, 6 chitin. |
+| meganeura | predator insect | flyer | Circles, nips the player, snatches small prey and eats them where it lands. `share` 0.5 of the cap. |
+| meganeurula | predator insect | flyer | `hostile` false: ignores the player, still snatches prey. Own carcass and roast. |
+| namurotypus | predator insect | flyer | `hostile` and `snatches` false. Small, darts low by the water (`spawn` "shore"). Own carcass and roast. |
 | hylonomus | prey | prey | Flees the player within `sense`. Food for other animals. The commonest prey by day. |
 | petrolacosaurus | prey | prey | Long legs and tail: `run` 8, `sense` 12. Mostly by day. |
 | archaeothyris | prey | prey | Biggest prey: hp 14, slower, 2 meat (`radius` 0.34, still under `ThrownRock.SMALL`). |
@@ -1406,8 +1415,9 @@ now + `DAYS` (5) × `slow` days: 5, 10 or 15. Done, E gives `YIELD` (5) compost 
 the bag is full) and resets it. E with an empty hand on an empty basket picks
 it up. A carried log (`wood_log.haul_prompt` / `haul_interact`, within 2.2 m
 via `swamp.compost_near`) goes in from your arms. After each sleep,
-`swamp._compost_pests()` asks every basket's `pest_roll` (`PEST_CHANCE` 0.15
-with meat in it) and adds a Scorpion or Arthropleura 2.5–5 m from it (the
+`swamp._compost_pests()` asks the baskets in random order for a `pest_roll`
+(`PEST_CHANCE` 0.25 with meat in it) and adds a Scorpion, Arthropleura or Haptodus
+2.5–5 m from it, at most `MAX_PESTS` (3) per sleep. These skip the spawn caps (the
 spawner frees anything over 160 m from you).
 
 ### Traps (`trap.gd`)
@@ -1510,9 +1520,9 @@ spawning apply to everything in it.
 | Category | Now | Shared by members | May differ per species |
 |---|---|---|---|
 | **Large** | Uranocentrodon, Eogyrinus | Amphibious, spawned by `_spawn_amphibians` along the player's shoreline, grab the player (`grab_dps`, `grip`), drag prey to water, lured by splashes, worst sleep risk near water | hp, bite, grip and escape rules, ambush or lurk style, basking, rivalry (an Uranocentrodon may hunt an arriving Eogyrinus) |
-| **Hostile medium** | Pulmonoscorpius | Land, hunts the player on sight, scavenges small prey, flees fire, the predator part of the sleep risk | Day or night, venom, damage, chitin drops |
-| **Neutral medium** | Arthropleura | Land, ignores the player until hit (`_anger`), scavenges small prey | hp, damage, drops |
-| **Predator insects** | Meganeura | Air, circles and nips the player, snatches small prey, knocked down by stones, blown about by high winds | Size, damage, what it can carry |
+| **Hostile medium** | Pulmonoscorpius, Haptodus | Land, hunts the player on sight, scavenges small prey, flees fire, the predator part of the sleep risk | Day or night, venom, damage, chitin drops |
+| **Neutral medium** | Arthropleura, Edaphosaurus, Diadectes, Hibbertopterus | Land, ignores the player until hit (`_anger`) | hp, damage, drops |
+| **Predator insects** | Meganeura, Meganeurula, Namurotypus | Air, circles and nips the player, snatches small prey, knocked down by stones, blown about by high winds | Size, damage, what it can carry |
 | **Passive insects** | none yet | (To decide when the first is added: harmless, perhaps food or bait, and never a sleep risk.) | |
 | **Prey** | Hylonomus, Petrolacosaurus, Archaeothyris, Amphibamus, Tuditanus, Morganucodon | Land, flees the player, eaten by medium creatures and predator insects, stunned by stones, gutted by hand and roasted whole | Look and size, speed and `sense`, hp, meat (1, or 2 for Archaeothyris), day/night weight, where it spawns (`spawn`) |
 
@@ -1525,8 +1535,8 @@ between lizards and shrews. Today's totals are the budgets:
 |---|---|---|---|
 | Large: Uranocentrodon | 5 basking, 16 buried | 20 buried | `BASKING`, `HIDDEN_DAY`, `HIDDEN_NIGHT` in `swamp.gd` |
 | Large: Eogyrinus | up to 4, 1/37 chance per tick | same | `EOGYRINUS_MAX`, `EOGYRINUS_CHANCE` |
-| Hostile medium | 0 | 2 | `cap_day` / `cap_night` of each species |
-| Neutral medium | 1 | 1 | same |
+| Hostile medium | 0 | 2 | `Creature.CATEGORIES` |
+| Neutral medium | 2 | 2 | same |
 | Predator insects | 2 | 1 | same |
 | Passive insects | (none yet) | | needs its own budget |
 | Prey | 4 | 2 | `PREY_DAY` / `PREY_NIGHT` in `creature.gd`, shared by every prey species by `prey` weight (done) |
@@ -1535,34 +1545,28 @@ The two large budgets are separate because buried ambushers and roaming
 lurkers spawn differently. A new ambusher would share the Uranocentrodon
 slots, and a new lurker the Eogyrinus slots.
 
-Prey are already done this way (the `prey` weights and pool, and
-`behavior == "prey"` in `_forage` and `_spot_lizard`). When the first animal
-is added to another category, the code needs to change to match:
+Medium animals and griffinflies are in code the same way: each `SPECIES` entry
+has a `category`, `Creature.CATEGORIES` holds its [day, night] slots, and
+`swamp._spawn_creatures` counts living animals by category. When a slot is free,
+`pick_in_category` chooses the species: one with a `share` (Meganeura, 0.5) fills
+that part of the cap first, and with a single slot is that likely. The rest are
+even. Optional spawn places: `spawn` "shore" (`shore_spot`) and "ferns"
+(`fern_spot`).
 
-1. Give each `SPECIES` entry a `category`, and a `weight` for its share of
-   the slots (equal by default).
-2. Move the caps from the species into a per-category table, and have
-   `_spawn_creatures` count living animals by category, then pick which
-   species fills a free slot by weight (skipping any that can't spawn at
-   that time or place). `_spawn_amphibians` does the same for the large
-   slots.
-3. Replace the checks by species name with checks by category, so a new
-   member gets the shared behaviour for free:
-   - ~~`species == "hylonomus"` in `_forage` and `_spot_lizard`~~: done,
-     now `behavior == "prey"`.
-   - `c.species == species` in `_look_for_quarry`: an ambusher ignores its
-     own kind. Decide whether that means its own species or its category.
-   - The Eogyrinus rival in `_spawn_eogyrinus`, the restored modes for
-     `--spawn` in `_ready`, and `debug_spawn`: use the category or behaviour.
-   - `sleep()` and `_wake_attack`: the night attacker is named
-     `"uranocentrodon"` or `"scorpion"`. Pick a species from the large or
-     hostile medium category instead.
-   - Looks stay per species: the `_build_<species>` functions, `_animate`,
-     and the list of flat bodies in `_die`.
-4. Behaviour that already keys on `behavior`, `habitat` or flags
-   (`scavenger`, `escape`) carries over to any new species that sets them.
-   A look-alike can copy its template's entry and change only `name`, look
-   and drops.
+Other species keys: `flees_at` (share of hp at which a `defensive` animal runs),
+`grazes` (head down while idle), `keeps_shore` (wanders on the bank or shallows),
+`skirmish` (backs off after a bite, state "retreat"), `wound` (multiplies wound
+depth, `player.hurt`'s `deep`), `hostile` and `snatches` (flyers, default true),
+`circle`, `dart` and `fly` (flight path), and `flat_y` or `side_y` (dead pose).
+
+Named medium slots are gone from `sleep()` and the guts visitor: they use
+`hostile_medium()`. A snare's medium catch is any land `scavenger`, so the
+plant-eaters and Hibbertopterus don't come to meat.
+
+**Variants** (`Creature.VARIANTS`) are other looks of one species with the same
+stats and slots. `spawn_amphibian` rolls them. `setup(sp, pos, world, look)` merges
+the variant's name into that creature's own `def`. Its parts need their own mesh
+cache keys (`urap_*`), and `carcass_dict` saves `variant`. Dev: `--spawn=uranocentrodon:pale`.
 
 ### Grabs and the escape roll (`player.gd`)
 
@@ -1658,8 +1662,16 @@ Local space: y = 0 is `RIDE` (0.1 m) above the waterline, the bow −Z.
   lifted forward again, with a soft splash at each plant.
 - **Cargo**: sacks set down on it (Use) go to the four `SPOTS`; one hauled
   thing from `CARGO_GROUPS` (logs, workbenches, soup pots, vessels, traps,
-  anvils, meteorites) rides at `CARGO_AT`. `LOAD_REF` (150 kg) of cargo
-  halves its acceleration; uneven loads list it.
+  anvils, meteorites) rides at `CARGO_AT`, amidships between the fore and aft
+  sacks. `player.put_down` puts one there
+  (`raft.stow`) when it is held within `RAFT_LOAD_REACH` (0.45 m) of the deck
+  or you stand on it, and refuses if the middle is taken. Everything keeps its
+  heading relative to the deck (`_sack_yaw`, `_cargo_yaw`) and turns and tilts
+  with it. `LOAD_REF` (150 kg) of cargo halves its acceleration; uneven loads
+  list it.
+- **No carrying aboard**: `player.carry_blocked()` refuses any `start_haul`
+  while `riding`. Callers with side effects before `start_haul` (a carcass, a
+  log pile, knocking a bench loose) ask it first.
 - **Bites** (`creature.start_raft_bite`, state "raft_bite"): over water at
   least `BITE_DEPTH` (0.9 m) deep, outside `Game.safe`, never sooner than
   `BITE_GAP` (20 s) after the last, a chance a second of `BITE_RATE` (2% by
@@ -1717,6 +1729,9 @@ copper hammer and its head use the `hammer` / `hammer_head` shapes
   hollow of its own per kind (`Assets.mould_hollow`: axe, knife, spear,
   hammer, saw, bar, three hooks, a string of beads), shared by the item
   mesh, the icon and the pressing animation.
+- **The washing pan in use**: the work draws the pan, so one laid out is
+  lifted off its pile for the job (`_lift_worked_tool`). It isn't consumed,
+  and it is back on the pile when the job ends or is put aside.
 - **Work visuals at the stations** (`work_spot`): `cast` recipes
   (`_cast_work`) show the mould filled with grains, bedded in charcoal that
   glows with the furnace's `heat`, the copper melting into the hollow
@@ -2098,7 +2113,9 @@ swamp (not Constant) queues `OPENING` ("Empty Basin") after `OPENING_WAIT`
 ## Art (`src/autoload/assets.gd`)
 
 `Assets.mesh(key)` calls `_m_<key>(builder, rng, detail)` (or
-`_item_mesh` for `item_<id>`) and caches the result. Materials come in slots
+`_item_mesh` for `item_<id>`) and caches the result. A whetstone is
+`Assets.whetstone`, in its own fine-grained `whetstone` slot, in the bag, in
+hand and seated in an anvil. Materials come in slots
 (`solid`, `foliage`, `wood`, `stone`, `fiber`, `organic`, `clay`, ...) with
 procedural detail textures, compensated so their average stays the vertex
 colour. Item meshes follow their real shape: knapped heads are built from
