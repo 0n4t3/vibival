@@ -3,6 +3,14 @@
 #   tools/export.sh web       build/web/index.html (+ .wasm, .pck, .js)
 #   tools/export.sh android   build/android/vibival.apk (debug-signed; needs the
 #                             Android SDK and JDK paths in the editor settings)
+#   tools/export.sh android-test
+#                             build/android-test/vibival.apk: the debug build as
+#                             top.dns7.vibival.test ("Vibival Test"), so it
+#                             installs beside the real game with its own saves
+#   tools/export.sh android-test-lite
+#                             build/android-test-lite/vibival.apk: the same, arm64
+#                             only and without the music, small enough to send
+#                             (under 30 MiB)
 #   tools/export.sh android-release
 #                             build/android-release/vibival.apk, signed with the
 #                             release key in $VIBIVAL_SIGNING (default
@@ -17,15 +25,19 @@
 set -eu
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 GODOT=${GODOT:-$ROOT/.tools/godot/Godot_v4.7.2-stable_linux.x86_64}
-TARGET=${1:?usage: tools/export.sh web|android|android-release|android-x86-release}
+TARGET=${1:?usage: tools/export.sh web|android|android-test|android-test-lite|android-release|android-x86-release}
 SIGNING=${VIBIVAL_SIGNING:-$HOME/.local/share/vibival-signing}
 STAGE=$ROOT/build/stage
 MODE=--export-release
 ARCHS=""   # Android architectures to build in place of the preset's, if set
+TEST=""    # set for the side-by-side test package
+NO_MUSIC=""  # set to leave the music out
 case "$TARGET" in
   web) PRESET=Web; OUT=$ROOT/build/web/index.html ;;
-  android)
-    PRESET=Android; OUT=$ROOT/build/android/vibival.apk; MODE=--export-debug
+  android|android-test|android-test-lite)
+    PRESET=Android; OUT=$ROOT/build/$TARGET/vibival.apk; MODE=--export-debug
+    [ "$TARGET" != android ] && TEST=1
+    [ "$TARGET" = android-test-lite ] && { ARCHS="arm64-v8a"; NO_MUSIC=1; }
     # Signed with the editor's debug keystore (export/android/debug_keystore
     # in its editor settings), made here if it is missing.
     KS=$(dirname "$GODOT")/editor_data/keystores/debug.keystore
@@ -66,6 +78,13 @@ if [ -n "$ARCHS" ]; then
   done
   grep '^architectures/' "$STAGE/export_presets.cfg"
 fi
+if [ -n "$TEST" ]; then
+  sed -i -e 's|^package/unique_name=.*|package/unique_name="top.dns7.vibival.test"|' \
+    -e 's|^package/name=.*|package/name="Vibival Test"|' "$STAGE/export_presets.cfg"
+  grep '^package/\(unique_\)\?name=' "$STAGE/export_presets.cfg"
+fi
+# The game plays no music when it finds no tracks.
+[ -n "$NO_MUSIC" ] && rm -f "$STAGE"/music/*.mp3 "$STAGE"/music/*.ogg
 for f in "$STAGE"/music/*.mp3 "$STAGE"/music/*.ogg; do
   [ -e "$f" ] && printf '[remap]\n\nimporter="keep"\n' > "$f.import"
 done

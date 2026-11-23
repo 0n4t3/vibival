@@ -117,6 +117,7 @@ func set_touch_controls(on: bool) -> void:
 	if not OS.has_feature("mobile"):
 		Input.emulate_touch_from_mouse = touch
 	if touch != was:
+		apply_bindings()
 		input_changed.emit()
 
 
@@ -353,13 +354,18 @@ func _setup_input() -> void:
 func apply_bindings() -> void:
 	## Rebuilds the input map from bindings. Every event matches any device:
 	## pads are numbered differently on each platform (and a phone may give
-	## the first pad a number other than 0).
+	## the first pad a number other than 0). With touch controls on, mouse
+	## bindings are left out: every first finger down is also sent as a left
+	## click (so menus take taps), and a finger held to look or walk would
+	## otherwise hold attack. The on-screen buttons send the actions instead.
 	for action in DEFAULT_BINDINGS:
 		if InputMap.has_action(action):
 			InputMap.action_erase_events(action)
 		else:
 			InputMap.add_action(action, 0.2)
 		for b: Dictionary in bindings.get(action, []):
+			if touch and b.has("mouse"):
+				continue
 			for ev in _events(b):
 				InputMap.action_add_event(action, ev)
 	# Esc always pauses (it cancels on the Controls screen, so it can't be
