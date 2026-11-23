@@ -556,6 +556,11 @@ func close_ui() -> void:
 		toggle_inventory()
 
 
+func close_menus() -> void:
+	## Everything drawn over the HUD, closed for the death screen.
+	close_ui()
+
+
 func open_stash(stash: Node) -> void:
 	## Opens the inventory beside a stash's contents.
 	if inv_ui.visible or player.vitals.dead:

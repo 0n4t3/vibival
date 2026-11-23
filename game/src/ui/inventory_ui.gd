@@ -70,6 +70,12 @@ var _book: VBoxContainer
 var _cat := ""
 
 
+static func stat_text(stat: String, value: float) -> String:
+	## "Water +4", or "Water -6" for what takes it away (salted food).
+	var whole := int(value)
+	return "%s %s%d" % [stat.capitalize(), "-" if whole < 0 else "+", absi(whole)]
+
+
 class Slot extends Button:
 	var index := 0
 	var store := false     # a slot of the stash, not of your inventory
@@ -94,7 +100,7 @@ class Slot extends Button:
 			return
 		Icons.draw_item(self, r.grow(-8), s.id)
 		if s.n > 1:
-			draw_string(ThemeDB.fallback_font, Vector2(size.x - 22, size.y - 6), str(s.n), HORIZONTAL_ALIGNMENT_RIGHT, 18, 14)
+			Icons.draw_count(self, Vector2(size.x - 4, size.y - 6), s.n, 14)
 		var fresh: float = inv.freshness(index)
 		if fresh < 1.0:
 			draw_rect(Rect2(4, size.y - 5, (size.x - 8) * fresh, 2), Color(0.4, 0.8, 0.3).lerp(Color(0.8, 0.3, 0.2), 1.0 - fresh))
@@ -605,7 +611,7 @@ func _refresh_info() -> void:
 	var stats := []
 	for k in ["energy", "protein", "greens", "starch", "water"]:
 		if def.has(k):
-			stats.append("%s +%d" % [k.capitalize(), def[k]])
+			stats.append(stat_text(k, def[k]))
 	match def.get("treat", ""):
 		"clean":
 			stats.append("Washes your wounds")

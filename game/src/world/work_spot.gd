@@ -1542,6 +1542,8 @@ func pile_at(screen: Vector2) -> int:
 	var best := -1
 	var best_d := PICK_PX
 	for p in _piles.size():
+		if not _piles[p].visible:
+			continue  # the pan in use, lifted off its pile
 		var d := _on_screen(_piles[p].global_position + Vector3(0, 0.04, 0)).distance_to(screen)
 		if d < best_d:
 			best_d = d
@@ -1706,11 +1708,28 @@ func _rebuild_piles() -> void:
 			l.outline_size = 10
 			l.pixel_size = 0.0018
 			l.position = Vector3(0, 0.12, 0)
+			l.name = "Count"
 			node.add_child(l)
 		_piles.append(node)
+	_lift_worked_tool()
+
+
+func _lift_worked_tool() -> void:
+	## A washing pan laid out is picked up to wash in: the work draws it, so
+	## one comes off its pile until the job is done or put aside.
+	for p in mini(piles.size(), _piles.size()):
+		var left: int = piles[p].n
+		if piles[p].id == "washing_pan" and recipe.get("tools", {}).has("washing_pan"):
+			left -= 1
+		_piles[p].visible = left > 0
+		var count := _piles[p].get_node_or_null("Count") as Label3D
+		if count:
+			count.text = str(left)
+			count.visible = left > 1
 
 
 func _rebuild_work() -> void:
+	_lift_worked_tool()
 	_rng.seed = 11
 	_shown = progress
 	_roll_shown = _roll
@@ -2757,7 +2776,7 @@ func _anvil_work(b, k: int, n: int) -> void:
 			# only the wet stripe and the grit are drawn on it.)
 			var stone := Vector2(0.2, 0.09) if _on_whetstone else Vector2(0.4, 0.16)
 			if not _on_whetstone:
-				b.box(Vector3(0, 0.02, 0), Vector3(0.4, 0.04, 0.16), Color(0.46, 0.45, 0.42), Basis(), "stone")
+				Assets.whetstone(b, _rng, Vector3(0.4, 0.04, 0.16))
 			if k > 0:
 				b.box(Vector3(0, 0.0405, 0), Vector3(stone.x - 0.03, 0.001, stone.y - 0.02), Color(0.3, 0.3, 0.29), Basis(), "stone")
 			var turned := k >= n - 2

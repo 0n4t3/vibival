@@ -60,7 +60,7 @@ class TraySlot extends Button:
 			return
 		Icons.draw_item(self, r.grow(-5), s.id)
 		if s.n > 1:
-			draw_string(ThemeDB.fallback_font, Vector2(size.x - 18, size.y - 4), str(s.n), HORIZONTAL_ALIGNMENT_RIGHT, 16, 12)
+			Icons.draw_count(self, Vector2(size.x - 2, size.y - 4), s.n, 12)
 
 
 func _ready() -> void:

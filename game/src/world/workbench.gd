@@ -227,7 +227,7 @@ func _hit() -> void:
 	_hits = 0
 	var world := get_parent()
 	var player: Node = world.player if world and "player" in world else null
-	if player == null or player.hauling:
+	if player == null or player.hauling or player.carry_blocked():
 		return
 	# Its tools come off the rack into your bag (onto the ground if it is full).
 	for i in SLOTS:

@@ -1363,6 +1363,14 @@ func open_map() -> void:
 	_map_view.open()
 
 
+func close_menus() -> void:
+	super()
+	if _map_view and _map_view.visible:
+		_map_view.close()
+	if _debug_panel and _debug_panel.visible:
+		_debug_panel.close()
+
+
 # --- Shore stones --------------------------------------------------------------------------
 
 func _update_shore(delta: float) -> void:
@@ -1371,7 +1379,7 @@ func _update_shore(delta: float) -> void:
 	var p := player.global_position
 	var near := 0
 	for e in _shore.duplicate():
-		var n: Node3D = e.node
+		var n = e.node  # untyped: one picked up is already freed
 		if not is_instance_valid(n) or n.is_queued_for_deletion():
 			_shore.erase(e)
 		elif Game.time > e.until or n.global_position.distance_to(p) > SHORE_RANGE * 2.0:
@@ -2261,10 +2269,10 @@ func raft_at_dock(dock: Node3D) -> Node3D:
 	return null
 
 
-func raft_under(pos: Vector3) -> Node3D:
-	## The floating raft whose deck pos is over, or null.
+func raft_under(pos: Vector3, margin := 0.2) -> Node3D:
+	## The floating raft whose deck pos is over (or within margin of), or null.
 	for r in Game.rafts:
-		if is_instance_valid(r) and r.complete() and r.over(pos, 0.2) and absf(pos.y - r.floor_top(r.global_position)) < 1.2:
+		if is_instance_valid(r) and r.complete() and r.over(pos, margin) and absf(pos.y - r.floor_top(r.global_position)) < 1.2:
 			return r
 	return null
 

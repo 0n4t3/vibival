@@ -13,6 +13,21 @@ static func draw_durability(ci: CanvasItem, r: Rect2, left: float) -> void:
 		ci.draw_rect(Rect2(r.position, Vector2(r.size.x * left, r.size.y)), Color(0.85, 0.3, 0.2).lerp(Color(0.95, 0.72, 0.3), left))
 
 
+static func count_text(n: int) -> String:
+	## A stack's size for its slot: exact up to 9999, then in thousands.
+	return str(n) if n < 10000 else "%dk" % (n / 1000)
+
+
+static func draw_count(ci: CanvasItem, right: Vector2, n: int, font_size: int) -> void:
+	## A stack's size, its baseline ending at `right`. It grows leftward over
+	## the icon as it needs to, with a dark outline to stay readable there.
+	var font: Font = ThemeDB.fallback_font
+	var text := count_text(n)
+	var at := right - Vector2(font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x, 0)
+	ci.draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 3, Color(0, 0, 0, 0.85))
+	ci.draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+
+
 static func draw_item(ci: CanvasItem, r: Rect2, id: String) -> void:
 	var def := Items.def(id)
 	if def.is_empty():
@@ -101,6 +116,9 @@ static func draw_item(ci: CanvasItem, r: Rect2, id: String) -> void:
 			ci.draw_line(o + Vector2(-s * 0.9, 0), o + Vector2(s * 0.9, s * 0.05), c.darkened(0.2), 1.5)
 		"rock", "clay", "chitin", "blob", "guts", "lizard", "dragonfly", "salt", "ember":
 			_blob(ci, o, s * 0.8, c, hash(id))
+		"whetstone":
+			ci.draw_rect(Rect2(o - Vector2(s, s * 0.32), Vector2(s * 2.0, s * 0.64)), c.darkened(0.25))
+			ci.draw_rect(Rect2(o - Vector2(s * 0.85, s * 0.28), Vector2(s * 1.7, s * 0.3)), c)
 		"copper_drops":
 			for i in 7:
 				var a := i * 2.4

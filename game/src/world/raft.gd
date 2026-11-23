@@ -9,8 +9,10 @@ extends "res://src/world/site.gd"
 ##
 ## It has no hold: sacks set down on it (Use) are lashed to its four corners
 ## and ride with it, and one hauled thing (a log, a pot, an anvil stone, a
-## meteorite) set down on it rides in the middle. Their weight slows it,
-## makes it ride lower and, packed to one side, makes it list.
+## meteorite) set down on it rides in the middle, all turning with the deck.
+## Their weight slows it, makes it ride lower and, packed to one side, makes
+## it list. Nothing is carried in your arms while aboard (player.carry_blocked):
+## load and unload it standing beside it or on its deck, before you board.
 ##
 ## Out on open water a big amphibian may clamp its jaws on a corner
 ## (creature.gd "raft_bite"): the corner dips, and you have a few seconds to
@@ -31,8 +33,8 @@ const LOG_GAP := 0.32
 const HALF := Vector2(0.96, 1.0)     # half its width and length
 const TOP := 0.24                    # the deck stands this high over the water
 const STAND := Vector3(0, TOP, 0.42) # where you stand to pole
-const CARGO_AT := Vector3(0, TOP, -0.38)
-const SPOTS := [Vector3(-0.56, TOP, -0.62), Vector3(0.56, TOP, -0.62), Vector3(-0.56, TOP, 0.62), Vector3(0.56, TOP, 0.62)]
+const CARGO_AT := Vector3(0, TOP, -0.02)  # amidships, clear of the sacks fore and aft
+const SPOTS := [Vector3(-0.58, TOP, -0.68), Vector3(0.58, TOP, -0.68), Vector3(-0.58, TOP, 0.68), Vector3(0.58, TOP, 0.68)]
 const CORNERS := [Vector3(-0.92, 0, -0.96), Vector3(0.92, 0, -0.96), Vector3(-0.92, 0, 0.96), Vector3(0.92, 0, 0.96)]
 const CORNER_NAMES := ["front left", "front right", "back left", "back right"]
 const CARGO_GROUPS := ["logs", "workbenches", "soup_pots", "vessels", "traps", "anvils", "meteorites"]
@@ -79,6 +81,8 @@ var grounded := false
 var tilt := Vector2.ZERO     # x: the +X side dips, y: the stern (+Z) dips, in radians
 var sacks: Array = [null, null, null, null]
 var cargo: Node3D = null
+var _sack_yaw: Array = [0.0, 0.0, 0.0, 0.0]   # each sack's heading on the deck
+var _cargo_yaw := 0.0                         # the hauled thing's heading on the deck
 
 var biter: Node3D = null     # the animal with its jaws on a corner
 var bite_corner := -1        # the corner under attack (from the warning on), or -1
@@ -224,7 +228,47 @@ func free_spot(near: Vector3) -> int:
 
 func lash_sack(s: Node3D, spot: int) -> void:
 	sacks[spot] = s
+	_sack_yaw[spot] = _deck_yaw(s)
 	_carry()
+
+
+func takes(c: Node3D) -> bool:
+	## Whether this is something that rides in the middle of the deck.
+	for g in CARGO_GROUPS:
+		if c.is_in_group(g):
+			return true
+	return false
+
+
+func has_room_for(c: Node3D) -> bool:
+	_drop_gone()
+	return cargo == null or cargo == c
+
+
+func cargo_point() -> Vector3:
+	return to_global(CARGO_AT)
+
+
+func stow(c: Node3D) -> void:
+	## Something just set down on the deck rides from now on. A pot that went
+	## onto a fire beside the raft, or a log that joined a pile, stays there.
+	if not is_instance_valid(c) or c.is_queued_for_deletion() or c.get("hauled_by") != null or c.get("fire") != null:
+		return
+	cargo = c
+	_cargo_yaw = _deck_yaw(c)
+	_carry()
+
+
+func _deck_yaw(n: Node3D) -> float:
+	## Its heading relative to the raft's.
+	return wrapf(n.rotation.y - _yaw, -PI, PI)
+
+
+func _on_deck(deck_yaw: float) -> Vector3:
+	## The rotation of something lying at `deck_yaw` on the deck: it turns with
+	## the raft and tilts with it. Its y stays its true heading, for saving.
+	var t := Basis(Vector3.UP, -deck_yaw) * Vector3(tilt.y, 0, -tilt.x)
+	return Vector3(t.x, wrapf(_yaw + deck_yaw, -PI, PI), t.z)
 
 
 func load_kg() -> float:
@@ -283,6 +327,7 @@ func _adopt() -> void:
 		var spot := free_spot(s.global_position)
 		if spot >= 0:
 			sacks[spot] = s
+			_sack_yaw[spot] = _deck_yaw(s)
 	if cargo == null:
 		for g in CARGO_GROUPS:
 			for n in get_tree().get_nodes_in_group(g):
@@ -290,18 +335,20 @@ func _adopt() -> void:
 						or absf(n.global_position.y - (global_position.y + TOP)) > 0.9:
 					continue
 				cargo = n
+				_cargo_yaw = _deck_yaw(n)
 				return
 
 
 func _carry() -> void:
-	## Keeps what rides on it where it is lashed, tilting with the deck.
+	## Keeps what rides on it where it is lashed, turning and tilting with the deck.
 	for i in sacks.size():
 		var s = sacks[i]
 		if s != null and is_instance_valid(s):
 			s.global_position = to_global(SPOTS[i] + Vector3(0, -0.05, 0))
-			s.rotation = Vector3(rotation.x, s.rotation.y, rotation.z)
+			s.rotation = _on_deck(_sack_yaw[i])
 	if cargo and is_instance_valid(cargo):
 		cargo.global_position = to_global(CARGO_AT)
+		cargo.rotation = _on_deck(_cargo_yaw)
 
 
 # --- Afloat --------------------------------------------------------------------------------

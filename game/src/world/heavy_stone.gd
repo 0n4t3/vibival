@@ -100,7 +100,7 @@ func _rebuild() -> void:
 		if stage == SEATED:
 			b.box(SEAT + Vector3(0, ANVIL.y + 0.001, 0), Vector3(0.23, 0.002, 0.11), Color(0.22, 0.22, 0.23), Basis(), "stone")
 		if whetstone:
-			b.box(SEAT + Vector3(0, ANVIL.y + 0.01, 0), Vector3(0.2, 0.04, 0.09), Color(0.66, 0.66, 0.62), Basis(), "stone")
+			Assets.whetstone(b, rng, Vector3(0.2, 0.04, 0.09), SEAT + Vector3(0, ANVIL.y - 0.01, 0))
 		box.size = ANVIL
 		_shape.position.y = ANVIL.y * 0.5
 	else:

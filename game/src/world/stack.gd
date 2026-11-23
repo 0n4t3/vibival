@@ -126,7 +126,7 @@ func take_one(player: Node) -> bool:
 	if count <= 0:
 		return false
 	if carried():
-		if player.hauling or player.world == null or not player.world.has_method("add_log"):
+		if player.hauling or player.world == null or not player.world.has_method("add_log") or player.carry_blocked():
 			return false
 		var top: Transform3D = layout(item_id, mini(count, SHOWN)).back()
 		var lg: Node3D = player.world.add_log(item_id, global_transform * top.origin, rotation.y, kind)

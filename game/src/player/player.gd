@@ -89,6 +89,7 @@ var _bob := 0.0
 ## planted ahead in the water and pushed back past you, stroke after stroke.
 const POLE_RATE := 3.0     # radians of stroke a second
 const POLE_DRAW := 2.5     # the pole model drawn this much longer while poling
+const RAFT_LOAD_REACH := 0.45  # set down this near a raft's edge, a thing goes on its deck
 var poling := false
 var pole_phase := 0.0
 var _pole_k := 0.0         # how far into the poling pose the hand is
@@ -977,8 +978,18 @@ func drop_point() -> Vector3:
 # (Q or E). What can be hauled has can_haul, haul_mode, haul_name, haul_radius,
 # haul_yaw, haul_lift and set_hauled (creature.gd, wood_log.gd).
 
+func carry_blocked() -> bool:
+	## Aboard a raft your hands are for the pole: nothing is taken up to carry.
+	## Callers that change something first (a carcass, a pile, a bench's rack)
+	## ask this before they do.
+	if riding == null:
+		return false
+	Game.notify("You can't carry that while you're aboard. Look out over the water and press E to step off first.")
+	return true
+
+
 func start_haul(c: Node3D) -> void:
-	if hauling or c == null or not c.can_haul():
+	if hauling or c == null or not c.can_haul() or carry_blocked():
 		return
 	hauling = c
 	c.set_hauled(self)
@@ -996,7 +1007,13 @@ func put_down() -> void:
 	if c and climbing:
 		Game.notify("Climb off the ladder before you set the %s down." % c.haul_name())
 		return
-	if c and is_instance_valid(c):
+	var raft: Node3D = _raft_for(c) if is_instance_valid(c) else null
+	if raft and not raft.has_room_for(c):
+		Game.notify("There's already a %s on the raft." % raft.cargo.haul_name())
+		return
+	if raft:
+		c.global_position = raft.cargo_point()  # the middle of the deck
+	elif c and is_instance_valid(c):
 		_keep_on_floor(c)  # first, so a workbench's room is checked where it will stand
 	if c and is_instance_valid(c) and c.has_method("can_put_down") and not c.can_put_down():
 		return  # a workbench needs room to stand
@@ -1004,7 +1021,20 @@ func put_down() -> void:
 	if c == null or not is_instance_valid(c):
 		return
 	c.set_hauled(null)
+	if raft:
+		raft.stow(c)
 	Sfx.play("step", -4.0)
+
+
+func _raft_for(c: Node3D) -> Node3D:
+	## The raft this would be set down on: held out over its deck or just off
+	## its edge, or with you standing on it. Null for what can't ride on one.
+	if world == null or not world.has_method("raft_under"):
+		return null
+	var r: Node3D = world.raft_under(c.global_position, RAFT_LOAD_REACH)
+	if r == null:
+		r = world.raft_under(global_position)
+	return r if r != null and r.takes(c) else null
 
 
 func _keep_on_floor(c: Node3D) -> void:
@@ -1254,8 +1284,8 @@ func _hold_pressure(delta: float, input: Vector2) -> void:
 func _on_died() -> void:
 	stop_pressure()
 	put_down()
-	if work_spot and world and world.has_method("close_work"):
-		world.close_work()
+	if world and world.has_method("close_menus"):
+		world.close_menus()  # they are drawn over the death screen's buttons
 	capture_mouse(false)
 	if grabbed_by and is_instance_valid(grabbed_by):
 		grabbed_by.victim_died()

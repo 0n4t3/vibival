@@ -189,6 +189,12 @@ func _build_materials() -> void:
 	crust.metallic = 0.4
 	materials["meteorite"] = _textured(crust, "meteorite", 6.0)
 
+	# A whetstone: fine-grained, with a slight polish from use.
+	var hone := solid.duplicate()
+	hone.roughness = 0.88
+	materials["whetstone"] = _textured(hone, "whetstone", 10.0)
+	materials["whetstone"].normal_scale = 0.3  # a fine stone: barely any relief
+
 	# Textured surfaces: [kind, tiles per metre]
 	for t in [["stone", 5.0], ["wood", 6.0], ["fiber", 9.0], ["clay", 4.0], ["organic", 5.0]]:
 		materials[t[0]] = _textured(solid, t[0], t[1])
@@ -263,6 +269,10 @@ func detail_textures(kind: String) -> Array:
 			noise.frequency = 0.05
 			noise.fractal_type = FastNoiseLite.FRACTAL_NONE
 			fine.frequency = 0.3
+		"whetstone":
+			noise.frequency = 0.05
+			noise.fractal_octaves = 3
+			fine.frequency = 0.2
 		_:
 			noise.frequency = 0.03
 			fine.frequency = 0.15
@@ -307,6 +317,13 @@ func detail_textures(kind: String) -> Array:
 					var pit := clampf((a + 1.0) * 0.5 * 1.6, 0.0, 1.0)
 					v = 0.5 + pit * 0.38 + f * 0.12
 					h = pit * 0.85 + f * 0.15
+				"whetstone":
+					# Fine sandstone: soft sediment bands, faint honing scratches
+					# along its length, and only a trace of grain.
+					var band := 0.5 + 0.5 * sin(TAU * 3.0 * y / N + a * 2.5)
+					var scratch := 0.5 + 0.5 * sin(TAU * 22.0 * y / N + a * 4.0)
+					v = 0.76 + band * 0.07 + scratch * 0.025 + f * 0.05
+					h = band * 0.35 + scratch * 0.45 + f * 0.2
 				# Bark, for logs: texture X runs along the log, Y round it.
 				"bark_lepidodendron":
 					# Scale tree: a lattice of diamond leaf cushions, drawn out
@@ -1354,6 +1371,8 @@ func _item_mesh(b, rng: RandomNumberGenerator, id: String) -> void:
 			metal_saw(b, rng, def.get("head", Items.def("copper").color))
 		"meteorite":
 			meteorite(b, rng, 0.12)
+		"whetstone":
+			whetstone(b, rng, Vector3(0.3, 0.07, 0.12))
 		"metal_bar":
 			# A forged bar, near square in section.
 			b.box(Vector3(0, 0.012, 0), Vector3(0.2, 0.024, 0.03), col, Basis(), "metal")
@@ -2267,6 +2286,54 @@ static func metal_kind(id: String) -> String:
 		"pencil_core":
 			return "bar"
 	return ""
+
+
+const WHET_BODY := Color(0.39, 0.38, 0.35)
+const WHET_BAND := Color(0.32, 0.31, 0.28)
+const WHET_FACE := Color(0.47, 0.46, 0.43)
+const WHET_WORN := Color(0.41, 0.41, 0.39)
+
+
+func whetstone(b, rng: RandomNumberGenerator, size: Vector3, at := Vector3.ZERO) -> void:
+	## A river stone ground into a long honing bar `size` across, its underside
+	## on `at`: rounded corners and shoulders, a darker sediment band round its
+	## side, and a pale flat face worn into a shallow hollow down the middle.
+	const SIDES := 24
+	# [how far out, how high], from the underside over the shoulder to the hollow.
+	const PROFILE := [[0.84, 0.0], [0.96, 0.16], [1.0, 0.42], [0.99, 0.68], [0.95, 0.88], [0.87, 1.0], [0.66, 0.97], [0.38, 0.93]]
+	const MIDDLE := 0.9
+	var wobble := []
+	for s in SIDES:
+		wobble.append(rng.randf_range(0.975, 1.025))  # not quite machine-true
+	var rings := []
+	for pr in PROFILE:
+		var ring := []
+		for s in SIDES:
+			var ang := TAU * s / SIDES
+			var cx := cos(ang)
+			var cz := sin(ang)
+			var out: float = float(pr[0]) * float(wobble[s])
+			ring.append(at + Vector3(signf(cx) * pow(absf(cx), 0.6) * size.x * 0.5 * out, float(pr[1]) * size.y,
+					signf(cz) * pow(absf(cz), 0.6) * size.z * 0.5 * out))
+		rings.append(ring)
+	for r in PROFILE.size() - 1:
+		var col := WHET_BODY
+		if r == 2:
+			col = WHET_BAND
+		elif r == 4:
+			col = WHET_BODY.lerp(WHET_FACE, 0.5)
+		elif r >= 5:
+			col = WHET_FACE.lerp(WHET_WORN, r - 5.0)
+		for s in SIDES:
+			var t := (s + 1) % SIDES
+			b.quad(rings[r][s], rings[r][t], rings[r + 1][t], rings[r + 1][s], col * rng.randf_range(0.97, 1.03), "whetstone")
+	var last: Array = rings[rings.size() - 1]
+	var first: Array = rings[0]
+	var mid := at + Vector3(0, MIDDLE * size.y, 0)
+	for s in SIDES:
+		var t := (s + 1) % SIDES
+		b.tri(mid, last[s], last[t], WHET_WORN.darkened(0.06), "whetstone")
+		b.tri(at, first[t], first[s], WHET_BAND, "whetstone")
 
 
 const METEOR_CRUST := Color(0.16, 0.15, 0.14)

@@ -376,7 +376,7 @@ func _draw_hotbar(_c: Vector2, size: Vector2) -> void:
 		if s != null:
 			Icons.draw_item(_canvas, r.grow(-6), s.id)
 			if s.n > 1:
-				_canvas.draw_string(ThemeDB.fallback_font, r.position + Vector2(slot - 20, slot - 6), str(s.n), HORIZONTAL_ALIGNMENT_RIGHT, 16, 14)
+				Icons.draw_count(_canvas, r.position + Vector2(slot - 4, slot - 6), s.n, 14)
 			var fresh: float = inv.freshness(i)
 			if fresh < 1.0:
 				_canvas.draw_rect(Rect2(r.position + Vector2(4, slot - 5), Vector2((slot - 8) * fresh, 2)), Color(0.4, 0.8, 0.3).lerp(Color(0.8, 0.3, 0.2), 1.0 - fresh))

@@ -803,7 +803,7 @@ func suffocate_time() -> float:
 func _snap_at_player() -> void:
 	## A landed shark snaps at a player in reach.
 	var bite: float = def.fish.get("bite", 0.0)
-	var player: Node3D = Game.player
+	var player: Node3D = Game.player if is_instance_valid(Game.player) else null
 	if bite <= 0.0 or _cd > 0.0 or player == null or not Game.hostile() or player.vitals.dead:
 		return
 	if global_position.distance_to(player.global_position) > float(def.fish.get("bite_reach", 1.5)):
@@ -892,7 +892,7 @@ func _behave(delta: float) -> void:
 	if carried_by:
 		_carried(delta)
 		return
-	var player: Node3D = Game.player
+	var player: Node3D = Game.player if is_instance_valid(Game.player) else null
 	var dist := 1e9
 	if player:
 		dist = global_position.distance_to(player.global_position)
@@ -2612,6 +2612,8 @@ func prompt(_player: Node) -> String:
 
 func interact(player: Node) -> void:
 	if not dead or in_jaws():
+		return
+	if haul_mode() != "" and player.carry_blocked():
 		return
 	var eater := _eater()
 	if eater:

@@ -490,6 +490,16 @@ func test_inventory() -> void:
 	var inv := Inventory.new()
 	# Weight, not stack size, is the limit; things worn differently keep apart.
 	check(inv.add("stone", 60, 0.0, true) == 0 and inv.slots[0].n == 60 and inv.slots[1] == null, "a stack has no size limit")
+	var icons = preload("res://src/ui/icons.gd")
+	check(icons.count_text(120) == "120" and icons.count_text(9999) == "9999" and icons.count_text(12500) == "12k",
+			"a slot shows a stack's whole size, in thousands from 10000")
+	var count_font: Font = ThemeDB.fallback_font
+	check(count_font.get_string_size(icons.count_text(9999), HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x < 42.0
+			and count_font.get_string_size(icons.count_text(9999), HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x < 50.0,
+			"and the longest count fits inside the smallest slots")
+	var inv_ui = preload("res://src/ui/inventory_ui.gd")
+	check(inv_ui.stat_text("water", 4.0) == "Water +4" and inv_ui.stat_text("water", -6.0) == "Water -6",
+			"a food's stats show a plus or a minus, never both")
 	inv.clear()
 	inv.add("ash_pencil", 2, 0.0, true)
 	check(inv.slots[0].n == 2, "fresh tools stack")
@@ -1138,9 +1148,12 @@ func test_health() -> void:
 	v.wounds[0].inf = Survival.INF_SEPSIS
 	check(w.save_now(), "saved while septic")
 	v.wounds[0].inf_t = Survival.SEPSIS_TIME
+	w.toggle_inventory()
+	check(w.inv_ui.visible and w.player.ui_open, "the Tab menu is open as you die")
 	v.tick(1.0, false, false)
 	check(v.dead and v.cause == "infection", "sepsis kills")
 	await _frames(2)
+	check(not w.inv_ui.visible and not w.player.ui_open and w.hud._death != null, "dying closes the Tab menu, leaving the death screen's buttons clear")
 	var save: Dictionary = Game.read_save()
 	var eased := Survival.new()
 	eased.from_dict(save.vitals)
@@ -2973,6 +2986,14 @@ func test_bench() -> void:
 		ws._rebuild_work()
 		whet.append(ws._work.mesh.get_faces().size() if ws._work.mesh else 0)
 	check(whet[0] > 0 and whet[1] > whet[0] and whet[2] > whet[1], "a whetstone is ground flat step by step (%s)" % str(whet))
+	var whet_b = preload("res://src/core/mesh_builder.gd").new()
+	Assets.whetstone(whet_b, RandomNumberGenerator.new(), Vector3(0.3, 0.07, 0.12))
+	var whet_mesh: ArrayMesh = whet_b.commit(Assets.materials)
+	var whet_box: AABB = whet_mesh.get_aabb()
+	check(Items.def("whetstone").shape == "whetstone" and whet_mesh.get_surface_count() == 1 and whet_mesh.surface_get_material(0) == Assets.materials["whetstone"],
+			"a whetstone is drawn as its own honing stone, in its own material")
+	check(whet_box.size.x > whet_box.size.z * 2.0 and whet_box.size.z > whet_box.size.y and absf(whet_box.position.y) < 0.001,
+			"it is a long, flat bar resting on its underside (%s)" % str(whet_box.size))
 	# Every recipe worked in steps shows its work, and these look different
 	# at every step (smelting's first two look alike: nothing has melted).
 	var blank := []
@@ -5331,7 +5352,7 @@ func test_butcher() -> void:
 	# A kill an Uranocentrodon is taking off is not the player's to butcher.
 	var uc: Node = Creature.new().setup("uranocentrodon", spot + Vector3(30, 0, 0), w)
 	w.add_child(uc)
-	var held: Node = _kill(w, "pulmonoscorpius", spot + Vector3(31, 0, 0))
+	var held: Node = _kill(w, "scorpion", spot + Vector3(31, 0, 0))
 	uc._prey = held
 	uc.state = "feed"
 	held.carried_by = uc
@@ -7785,7 +7806,8 @@ func test_farming_trees() -> void:
 	# Made again with its chunk, a tree grown meanwhile stands full grown.
 	var lep_c: Node = w.chunks[Vector2i(floori(lep.at.x / Chunk.SIZE), floori(lep.at.z / Chunk.SIZE))]
 	lep_c.trees.erase(lep)
-	lep.stump.queue_free()
+	if is_instance_valid(lep.stump):  # the clock has moved on: it may have grown already
+		lep.stump.queue_free()
 	lep_c.add_planting(uid2)
 	var lep2 := _planted_tree(w, uid2)
 	check(not lep2.is_empty() and lep2.stump == null and not lep2.shape.disabled and not Game.felled.has(uid2),
@@ -8843,6 +8865,41 @@ func test_boats() -> void:
 		r.global_position = was_at
 		r.vel = Vector3.ZERO
 		r.tied = true
+		# A meteorite set down on the deck rides there, turning with the raft.
+		var raft_yaw: float = r._yaw
+		if r.cargo:
+			r.cargo.queue_free()  # the log left on the slipway while building
+		await _frames(2)
+		var deck_met: Node = w.add_heavy_stone("meteorite", r.to_global(Vector3(0, 0.3, 1.6)), 0.7, 15.0)
+		await _frames(1)
+		p.global_position = r.stand_global()
+		p.start_haul(deck_met)
+		p.put_down()
+		check(r.cargo == deck_met and p.hauling == null and deck_met.global_position.distance_to(r.to_global(Raft.CARGO_AT)) < 0.05,
+				"a meteorite set down on the raft rides in the middle of its deck")
+		var sack_gap: float = absf(Raft.SPOTS[0].z - Raft.CARGO_AT.z) - Assets.mesh("stash").get_aabb().size.z * 0.5
+		check(sack_gap > deck_met.radius() * 1.2, "and clear of the sacks at the corners (%.2f m for a %.2f m stone)" % [sack_gap, deck_met.radius()])
+		var on_deck: float = angle_difference(r._yaw, deck_met.rotation.y)
+		r.tied = false
+		r._yaw += 1.2
+		for k in 3:
+			await get_tree().physics_frame
+		check(absf(angle_difference(r._yaw, deck_met.rotation.y) - on_deck) < 0.01, "and it turns with the raft instead of spinning on the deck")
+		# Aboard, nothing is taken up to carry.
+		r.board(p)
+		p.start_haul(deck_met)
+		check(p.hauling == null and r.cargo == deck_met, "aboard the raft you can't pick up something to carry")
+		r.leave(p)
+		await _frames(1)
+		p.start_haul(deck_met)
+		check(p.hauling == deck_met, "stepped off, you can")
+		p.put_down()
+		deck_met.queue_free()
+		await _frames(2)
+		r._yaw = raft_yaw
+		r.global_position = was_at
+		r.vel = Vector3.ZERO
+		r.tied = true
 	# Fishing off the end of the dock, a fish reeled in is hauled up onto the deck.
 	p.global_position = d.to_global(Vector3(0, 0.05, -Dock.LEN + 1.0))
 	await _frames(3)
@@ -9052,6 +9109,21 @@ func test_metals() -> void:
 				tilt.append(ww._pour_tilt)
 			check(faces[0] > 0 and faces[1] > faces[0], "washing for %s, water is scooped into the pan over the grit (%s)" % [out, str(faces)])
 			check(tilt[3] > 0.0 and tilt[1] == 0.0 and faces[3] < faces[0], "then it is tipped to pour the light grit off (%s)" % str(tilt))
+		# A pan laid out is the one being washed in: it isn't drawn twice.
+		ww.piles.append({"id": "washing_pan", "n": 1, "age": 0.0})
+		ww._rebuild_piles()
+		check(not ww._piles.back().visible and ww.pile_at(ww._on_screen(ww._piles.back().global_position + Vector3(0, 0.04, 0))) != ww._piles.size() - 1,
+				"a laid-out pan leaves its spot while you wash in it")
+		ww.piles.back().n = 3
+		ww._rebuild_piles()
+		check(ww._piles.back().visible and ww._piles.back().get_node("Count").text == "2", "with spare pans, one is lifted off the pile")
+		var washing: Dictionary = ww.recipe
+		ww.recipe = {}
+		ww._rebuild_work()
+		check(ww._piles.back().visible and ww._piles.back().get_node("Count").text == "3", "and it is back when the washing stops")
+		ww.piles.pop_back()
+		ww._rebuild_piles()
+		ww.recipe = washing
 		# Laying a furnace's ring: the hole dug where it will stand, then the
 		# stones set round it a few at a time.
 		ww.recipe = Items.recipe_for("furnace")

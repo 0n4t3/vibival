@@ -543,7 +543,7 @@ const ITEMS := {
 	"stone_grit": {"name": "Stone Grit", "desc": "A river stone crushed to sharp grit. With water, it grinds an anvil's face smooth.", "stack": 20, "w": 0.3,
 		"color": Color(0.55, 0.54, 0.50), "shape": "salt", "pile": true},
 	"whetstone": {"name": "Whetstone", "desc": "A river stone ground flat. Seat it in an anvil to grind and sharpen metal.", "stack": 1, "w": 0.8,
-		"color": Color(0.62, 0.62, 0.58), "shape": "rock"},
+		"color": Color(0.62, 0.62, 0.58), "shape": "whetstone"},
 	"anvil_stone": {"name": "Anvil Stone", "desc": "A heavy basalt boulder. Shape it into an anvil where you want it to stand.", "stack": 1, "w": 30.0,
 		"color": Color(0.28, 0.28, 0.30), "shape": "rock", "carry": true},
 	"meteorite": {"name": "Meteorite", "desc": "A dark, pitted, rusty lump of iron that fell from the sky. Kneel at it with a copper chisel and hammer to chip lumps off.", "stack": 1, "w": 15.0,
