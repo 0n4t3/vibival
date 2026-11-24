@@ -18,6 +18,11 @@ const WoodLog := preload("res://src/world/wood_log.gd")
 const Stack := preload("res://src/world/stack.gd")
 const Workbench := preload("res://src/world/workbench.gd")
 const SoupPot := preload("res://src/world/soup_pot.gd")
+const Handcart := preload("res://src/world/handcart.gd")
+const Furniture := preload("res://src/world/furniture.gd")
+const WallRack := preload("res://src/world/wall_rack.gd")
+const HungLamp := preload("res://src/world/hung_lamp.gd")
+const EndHouse := preload("res://src/world/end_house.gd")
 const FermentVessel := preload("res://src/world/ferment_vessel.gd")
 const House := preload("res://src/world/house.gd")
 const Plot := preload("res://src/world/plot.gd")
@@ -25,6 +30,9 @@ const Compost := preload("res://src/world/compost.gd")
 const Trap := preload("res://src/world/trap.gd")
 const Baitbox := preload("res://src/world/baitbox.gd")
 const Bedroll := preload("res://src/world/bedroll.gd")
+const Bed := preload("res://src/world/bed.gd")
+const RestPanel := preload("res://src/ui/rest_panel.gd")
+const REST_WAKE := 12.0   # food or water this low wakes you from a long rest
 const Dock := preload("res://src/world/dock.gd")
 const Raft := preload("res://src/world/raft.gd")
 const Furnace := preload("res://src/world/furnace.gd")
@@ -91,6 +99,7 @@ var _frenzy_at := Vector3.ZERO
 var _frenzy_left := 0.0
 var _edge_t := 0.0
 var _sleeping := false
+var _rest_panel: Control = null
 var _debug_panel: Control = null
 var _map_view: Control = null
 var _sleep_confirm_t := 0.0
@@ -616,6 +625,8 @@ func place(kind: String, pos: Vector3, item := "") -> bool:
 		return _place_snare(pos)
 	if kind == "bedroll":
 		return _place_bedroll()
+	if kind == "wall_rack":
+		return _place_wall_rack(player)
 	if kind != "campfire":
 		return false
 	if floor_height(pos) > ground_height(pos.x, pos.z) + 0.5:
@@ -738,7 +749,7 @@ func _place_bedroll() -> bool:
 		var h := house_at(at)
 		if h == null or not h.room_spot(at, Bedroll.LENGTH * 0.5):
 			continue
-		if h.built.has("fireplace") and Vector2(at.x - h.to_global(House.HEARTH).x, at.z - h.to_global(House.HEARTH).z).length() < 1.0:
+		if h.built.has("fireplace") and Vector2(at.x - h.hearth_point().x, at.z - h.hearth_point().z).length() < 1.0:
 			Game.notify("Not in the fireplace. Set the bedroll down somewhere else in the room.")
 			return false
 		var b := add_bedroll(Vector3(at.x, h.floor_top(at), at.z))
@@ -993,11 +1004,15 @@ func _update_roofs() -> void:
 	for h in get_tree().get_nodes_in_group("houses"):
 		if mats.size() >= MAX_ROOFS or h.global_position.distance_to(player.global_position) > 40.0:
 			continue
-		var left: bool = h.built.has("roof_left")
-		var right: bool = h.built.has("roof_right")
+		var left: bool = h.built.has("roof_left") or h.built.has("roof")
+		var right: bool = h.built.has("roof_right") or h.built.has("roof")
 		if not left and not right:
 			continue
-		mats.append(Projection(h.global_transform.affine_inverse()))
+		if h is EndHouse:
+			# Mapped onto the softwood roof's shape, the one the shader knows.
+			mats.append(Projection(h.rain_map(House.EAVE, House.RIDGE, House.ROOF_Z.y)))
+		else:
+			mats.append(Projection(h.global_transform.affine_inverse()))
 		cover.append(Vector2(-House.EAVE.x if left else 0.0, House.EAVE.x if right else 0.0))
 	var n := mats.size()
 	while mats.size() < MAX_ROOFS:
@@ -2036,7 +2051,110 @@ func add_carried(id: String, pos: Vector3, yaw := 0.0) -> Node3D:
 		return add_trap(id, Vector3(pos.x, floor_height(pos), pos.z), yaw)
 	if id in ["anvil_stone", "meteorite"]:
 		return add_heavy_stone(id, pos, yaw)
+	if id == "handcart":
+		return add_handcart(pos, yaw)
+	if id in ["wooden_table", "wooden_chair", "wooden_bed"]:
+		return add_furniture(id, pos, yaw)
+	if id == "storage_crate":
+		var crate := _add_stash(Vector3(pos.x, floor_height(pos), pos.z))
+		crate.set_sack(id)
+		crate.rotation.y = yaw
+		return crate
 	return add_log(id, pos, yaw)
+
+
+func add_handcart(pos: Vector3, yaw := 0.0) -> Node3D:
+	var c := Handcart.new().setup(self)
+	c.position = Vector3(pos.x, floor_height(pos), pos.z)
+	c.rotation.y = yaw
+	add_child(c)
+	return c
+
+
+func cart_near(pos: Vector3, reach: float) -> Node3D:
+	## The nearest handcart not being pulled, its bed within reach of pos.
+	var best: Node3D = null
+	var best_d := reach
+	for c in get_tree().get_nodes_in_group("handcarts"):
+		if c.hauled_by != null or c.is_queued_for_deletion():
+			continue
+		var d := Vector2(c.global_position.x - pos.x, c.global_position.z - pos.z).length()
+		if d < best_d:
+			best = c
+			best_d = d
+	return best
+
+
+func add_furniture(id: String, pos: Vector3, yaw := 0.0) -> Node3D:
+	var f: Node3D = (Bed.new() if id == "wooden_bed" else Furniture.new()).setup(id, self)
+	f.position = Vector3(pos.x, floor_height(pos), pos.z)
+	f.rotation.y = yaw
+	add_child(f)
+	return f
+
+
+func add_wall_rack(pos: Vector3, yaw := 0.0) -> Node3D:
+	var r := WallRack.new()
+	r.world = self
+	r.position = pos
+	r.rotation.y = yaw
+	add_child(r)
+	return r
+
+
+func add_hung_lamp(pos: Vector3, yaw := 0.0) -> Node3D:
+	var l := HungLamp.new()
+	l.world = self
+	l.position = pos
+	l.rotation.y = yaw
+	add_child(l)
+	return l
+
+
+func _house_surface(by: Node3D, reach := 3.2) -> Dictionary:
+	## The wall or ceiling of a house you are looking at, or {}.
+	var hit: Dictionary = by._ray(reach, 1)
+	if hit.is_empty() or hit.normal.y > 0.5:
+		return {}
+	var n: Node = hit.collider
+	while n and not n.is_in_group("houses"):
+		n = n.get_parent()
+	return hit if n else {}
+
+
+func wall_near(p: Vector3) -> bool:
+	## Whether a house still stands where something is fixed to one.
+	for h in Game.houses:
+		if is_instance_valid(h) and h.covers(p, 0.7):
+			return true
+	return false
+
+
+func _place_wall_rack(by: Node3D) -> bool:
+	var hit := _house_surface(by)
+	if hit.is_empty() or absf(hit.normal.y) > 0.3:
+		Game.notify("Look at a house wall to hang the rack on it.")
+		return false
+	add_wall_rack(hit.position + hit.normal * 0.06, atan2(hit.normal.x, hit.normal.z))
+	Sfx.play("craft", -4.0)
+	Game.notify("You nail the rack to the wall. Hold a tool and press E on it to hang it.")
+	return true
+
+
+func hang_lamp(by: Node3D, slot: Dictionary) -> bool:
+	## Hung on the house surface you are looking at; a lit lamp stays lit.
+	var hit := _house_surface(by)
+	if hit.is_empty():
+		return false
+	var below: bool = hit.normal.y < -0.5    # from a ceiling it hangs down
+	var at: Vector3 = hit.position + hit.normal * 0.12 - (Vector3(0, 0.36, 0) if below else Vector3(0, 0.1, 0))
+	var l := add_hung_lamp(at, atan2(hit.normal.x, hit.normal.z))
+	l.item_id = Items.lantern_base(slot.id)
+	l.fuel = float(slot.get("data", {}).get("fuel", 0.0))
+	l.lit = Items.lantern_is_lit(slot.id) and l.fuel > 0.0
+	l._refresh()
+	Sfx.play("pickup", -6.0)
+	return true
 
 
 func blood_in_water(at: Vector3, by: Node3D) -> void:
@@ -2076,7 +2194,7 @@ func pile_item(id: String, n: int, pos: Vector3, age := 0.0, data := {}) -> void
 func settle_log(lg: Node3D) -> void:
 	## A log just put down joins a pile of its kind there, or starts one with a
 	## loose log of its kind lying beside it.
-	if lg.rotten() or not _on_land(lg.global_position):
+	if lg.has_meta("cart_load") or lg.rotten() or not _on_land(lg.global_position):
 		return
 	var st := stack_near(lg.item_id, lg.global_position, lg.kind)
 	if st:
@@ -2149,6 +2267,15 @@ func place_blueprint(kind: String, from: Node3D) -> bool:
 		Sfx.play("rustle", -4.0)
 		Game.notify("You mark out the dock. Press E at it to build it, part by part: first the land post, from a Calamites log carried here in your arms.")
 		return true
+	if EndHouse.CFG.has(kind):
+		var es := end_house_spot(kind, from)
+		if es.why != "":
+			Game.notify(es.why)
+			return false
+		add_end_house(kind, es.at, es.yaw, float(es.get("walk", 8.0)))
+		Sfx.play("rustle", -4.0)
+		Game.notify("You mark out the %s. Press E at it to build it, part by part. You'll need a saw and hammer in your bag." % EndHouse.CFG[kind].name)
+		return true
 	if kind != "softwood_house":
 		return false
 	var spot := house_spot(from)
@@ -2161,7 +2288,81 @@ func place_blueprint(kind: String, from: Node3D) -> bool:
 	return true
 
 
+func add_end_house(kind: String, at: Vector3, yaw: float, walk := 8.0, d := {}) -> Node3D:
+	var h := EndHouse.new().setup(kind, self, walk)
+	h.position = at
+	h.rotation.y = yaw
+	if not d.is_empty():
+		h.from_dict(d)
+	add_child(h)
+	return h
+
+
+func end_house_spot(kind: String, from: Node3D) -> Dictionary:
+	## Where an end-game house would go for someone at `from`: {at, yaw, why,
+	## walk}. A dock house goes out over the water ahead of you, its walkway
+	## running back to the shore you stand on.
+	var c: Dictionary = EndHouse.CFG[kind]
+	var yaw: float = from.rotation.y
+	var basis := Basis(Vector3.UP, yaw)
+	var fwd := basis * Vector3.FORWARD
+	if kind == "dock_house":
+		var best := {"at": from.global_position + fwd * 14.0, "yaw": yaw, "walk": 8.0,
+			"why": "Stand on the shore facing water up to 2.5 m deep, 8 to 40 m across."}
+		for walk in range(8, 41, 4):
+			var at: Vector3 = from.global_position + fwd * (float(walk) + c.edge)
+			at.y = water_level() + float(c.h)
+			var why := _end_house_blocker(kind, at, yaw, float(walk))
+			if why == "":
+				return {"at": at, "yaw": yaw, "walk": float(walk), "why": ""}
+		return best
+	var centre: Vector3 = from.global_position + fwd * (c.edge + float(c.ramp) * 0.6 + 2.0)
+	var hi := -INF
+	for g in _end_points(c, centre, basis):
+		hi = maxf(hi, ground_height(g.x, g.z))
+	var at := Vector3(centre.x, hi + float(c.h), centre.z)
+	return {"at": at, "yaw": yaw, "why": _end_house_blocker(kind, at, yaw, 0.0)}
+
+
+func _end_points(c: Dictionary, at: Vector3, basis: Basis) -> Array:
+	var out := []
+	for x in [-c.hw, 0.0, c.hw]:
+		for z in [c.back, (c.back + c.edge) * 0.5, c.edge]:
+			out.append(at + basis * Vector3(x, 0, z))
+	return out
+
+
+func _end_house_blocker(kind: String, at: Vector3, yaw: float, walk: float) -> String:
+	var c: Dictionary = EndHouse.CFG[kind]
+	var basis := Basis(Vector3.UP, yaw)
+	for h in Game.houses:
+		if Vector2(h.global_position.x - at.x, h.global_position.z - at.z).length() < maxf(c.spacing, House.SPACING):
+			return "Too close to another house."
+	var lo := INF
+	var hi := -INF
+	for g in _end_points(c, at, basis):
+		var y := ground_height(g.x, g.z)
+		lo = minf(lo, y)
+		hi = maxf(hi, y)
+	if kind == "dock_house":
+		if hi > water_level() - 0.2:
+			return "It has to stand out in the water."
+		if lo < water_level() - 2.5:
+			return "Too deep: the piles reach 2.5 m."
+		var shore: Vector3 = at + basis * Vector3(0, 0, float(c.edge) + walk)
+		if ground_height(shore.x, shore.z) < water_level() + 0.02:
+			return "The walkway has to reach dry ground."
+		return ""
+	if lo < water_level() + 0.1:
+		return "Too wet: it needs dry ground under it."
+	if hi - lo > float(c.h) + 0.9:
+		return "The ground is too steep here."
+	return ""
+
+
 func add_house(at: Vector3, yaw: float, d := {}) -> Node3D:
+	if EndHouse.CFG.has(String(d.get("type", ""))):
+		return add_end_house(String(d.type), at, yaw, float(d.get("walk", 8.0)), d)
 	var h := House.new()
 	h.world = self
 	h.position = at
@@ -2423,7 +2624,7 @@ func _spawn_islands() -> void:
 
 const METEOR_CLEAR := 60.0   # a meteorite never lands this near anything you have built or put down
 const PLAYER_MADE := ["houses", "docks", "stacks", "stashes", "drops", "fires", "workbenches",
-	"fire_pots", "vessels", "traps", "soup_pots", "rafts", "furnaces", "composters", "clamps", "bedrolls"]
+	"fire_pots", "vessels", "traps", "soup_pots", "rafts", "furnaces", "composters", "clamps", "bedrolls", "furniture", "handcarts", "wall_racks", "hung_lamps"]
 
 
 func player_made_spots() -> Array:
@@ -2503,8 +2704,9 @@ func ladder_at(pos: Vector3) -> Node3D:
 	return null
 
 
-func sleep_blocker() -> String:
-	## Why the player can't lie down right now, or "" if they can.
+func sleep_blocker(in_bed := false) -> String:
+	## Why the player can't lie down right now, or "" if they can. A bed lets
+	## you lie down whether you're tired or not.
 	if _sleeping or player.vitals.dead or player.grabbed_by:
 		return "You can't sleep now."
 	if player.hauling:
@@ -2516,7 +2718,7 @@ func sleep_blocker() -> String:
 	if Game.debug:
 		return ""  # sleep any time, anywhere
 	var wait := Game.can_sleep_in()
-	if wait > 0.0:
+	if wait > 0.0 and not in_bed:
 		return "You aren't tired enough to sleep yet (%d min)." % ceili(wait / 60.0)
 	if player.riding and player.riding.out_on_water():
 		return "Not out on the raft. Tie it up at a dock or step ashore first."
@@ -2553,9 +2755,65 @@ func request_sleep() -> void:
 	sleep()
 
 
-func sleep(on_bedroll := false) -> void:
-	## Sleeps for Game.SLEEP_LENGTH, rolling for what goes wrong. On a bedroll
-	## you heal faster while you sleep (Survival.BEDROLL_HEAL).
+func open_rest() -> void:
+	## A bed: choose how long to rest, tired or not.
+	if player.ui_open:
+		return
+	var why := sleep_blocker(true)
+	if why != "":
+		if not _sleeping:
+			Game.notify(why)
+		return
+	if _rest_panel == null:
+		_rest_panel = RestPanel.new()
+		_rest_panel.visible = false
+		pause.get_parent().add_child(_rest_panel)
+		pause.get_parent().move_child(_rest_panel, pause.get_index())
+		_rest_panel.chosen.connect(rest_for)
+		_rest_panel.cancelled.connect(_close_rest)
+	_rest_panel.open()
+	player.ui_open = true
+	player.capture_mouse(false)
+
+
+func _close_rest() -> void:
+	if _rest_panel and _rest_panel.visible:
+		_rest_panel.visible = false
+		player.ui_open = false
+		player.capture_mouse(true)
+
+
+func rest_for(hours: float) -> void:
+	## Rests in a bed for this many hours of the game's clock.
+	_close_rest()
+	var why := sleep_blocker(true)
+	if why != "":
+		Game.notify(why)
+		return
+	_sleep_confirm_t = 0.0
+	hud.set_hint("")
+	_hint_t = 0.0
+	await sleep(true, clampf(hours, RestPanel.MIN_HOURS, RestPanel.MAX_HOURS) * 60.0)
+
+
+func _pass_rest(seconds: float) -> bool:
+	## A long rest, a game hour at a time. Stops (true) if you need food or
+	## water badly enough to wake.
+	var left := seconds
+	while left > 0.0 and not player.vitals.dead:
+		var d := minf(60.0, left)
+		_pass_time(d)
+		left -= d
+		if left > 0.0 and (player.vitals.water <= REST_WAKE or player.vitals.energy <= REST_WAKE):
+			return true
+	return false
+
+
+func sleep(on_bedroll := false, length := Game.SLEEP_LENGTH) -> void:
+	## Sleeps for `length` (a night by default), rolling for what goes wrong,
+	## with the odds scaled to how long you lie there. On a bedroll or bed you
+	## heal faster (Survival.BEDROLL_HEAL). Under half a night is only a rest:
+	## wildlife stays, traps wait, and tiredness and broken bones don't reset.
 	if _sleeping:
 		return
 	_sleeping = true
@@ -2563,50 +2821,62 @@ func sleep(on_bedroll := false) -> void:
 	var pos := player.global_position
 	var risk := sleep_risk(pos)
 	var night := Game.night_index()
+	var full: bool = length >= Game.SLEEP_LENGTH * 0.5
+	var odds := func(p: float) -> float: return 1.0 - pow(1.0 - clampf(p, 0.0, 1.0), length / Game.SLEEP_LENGTH)
 	await hud.fade_to(Color(0, 0, 0, 1), 1.2).finished
 
 	var attacker := ""
-	if _rng.randf() < risk.amphibian:
+	if _rng.randf() < odds.call(risk.amphibian):
 		attacker = "uranocentrodon"
-	elif _rng.randf() < risk.predator:
+	elif _rng.randf() < odds.call(risk.predator):
 		attacker = hostile_medium()
-	var slept := Game.SLEEP_LENGTH * (_rng.randf_range(0.15, 0.9) if attacker != "" else 1.0)
+	var slept: float = length * (_rng.randf_range(0.15, 0.9) if attacker != "" else 1.0)
 	# Wildlife moves on while you sleep; the spawner refills the area.
-	for c in Game.creatures.duplicate():
-		if is_instance_valid(c) and not c.dead:
-			c.queue_free()
+	if full:
+		for c in Game.creatures.duplicate():
+			if is_instance_valid(c) and not c.dead:
+				c.queue_free()
 	player.vitals.on_bedroll = on_bedroll
-	_pass_time(slept)
+	var woke_early := false
+	if is_equal_approx(length, Game.SLEEP_LENGTH):
+		_pass_time(slept)
+	else:
+		woke_early = _pass_rest(slept)
 	player.vitals.on_bedroll = false
 
 	var v = player.vitals
-	var news := _compost_pests()
-	_check_traps()
-	if _rng.randf() < risk.bites:
+	var news: Array = _compost_pests() if full else []
+	if full:
+		_check_traps()
+	if woke_early:
+		news.append("Hunger and thirst wake you before you meant to get up.")
+	if _rng.randf() < odds.call(risk.bites):
 		var n := _rng.randi_range(1, 2)
 		for i in n:
 			v.add_wound(_rng.randf_range(0.08, 0.2), 0.45, "bite")
 		news.append("Something bit you in the night.")
-	if risk.leeches and _rng.randf() < 0.5:
+	if risk.leeches and _rng.randf() < odds.call(0.5):
 		v.lose_blood(6.0)
 		v.protein = maxf(v.protein - 8.0, 0.0)
 		v.add_wound(0.1, 0.5, "leech")
 		news.append("Leeches cling to your legs, fat with your blood.")
-	if _rng.randf() < risk.flood:
+	if _rng.randf() < odds.call(risk.flood):
 		v.chill = maxf(v.chill, 300.0)
 		for w in v.wounds:
 			w.dirt = minf(w.dirt + 0.5, 1.0)
 		var lost := _wash_away(_rng.randi_range(1, 2))
 		news.append("You wake in rising water, soaked through." + (" Some of your things were swept away: %s." % ", ".join(lost) if not lost.is_empty() else ""))
-	elif _rng.randf() < risk.chill:
+	elif _rng.randf() < odds.call(risk.chill):
 		v.chill = maxf(v.chill, 240.0)
 		news.append("You wake cold and stiff from the damp.")
-	Game.last_sleep = Game.time
+	if full:
+		Game.last_sleep = Game.time
 	_sleeping = false
 	player.frozen = false
 	if v.dead:
 		return
-	v.slept()  # sprains and broken bones mend a step
+	if full:
+		v.slept()  # sprains and broken bones mend a step
 
 	if attacker != "":
 		hud.set_fade(Color(0, 0, 0, 0))
@@ -2615,7 +2885,7 @@ func sleep(on_bedroll := false) -> void:
 		_pending_night = night
 	else:
 		hud.fade_to(Color(0, 0, 0, 0), 1.5)
-		news.push_front("You wake up." if news.is_empty() else "A bad night.")
+		news.push_front("You wake up." if news.is_empty() else ("A bad night." if full else "A poor rest."))
 		for m in news:
 			Game.notify(m)
 		Game.saved_night = night
@@ -2762,6 +3032,11 @@ func _world_state() -> Dictionary:
 	for s in get_tree().get_nodes_in_group("stashes"):
 		if not s.is_queued_for_deletion():
 			stashes.append(s.to_dict())
+	var endgame := {"furniture": [], "handcarts": [], "wall_racks": [], "hung_lamps": []}
+	for g in endgame:
+		for n in get_tree().get_nodes_in_group(g):
+			if not n.is_queued_for_deletion():
+				endgame[g].append(n.to_dict())
 	var composters := []
 	for c in get_tree().get_nodes_in_group("composters"):
 		if not c.is_queued_for_deletion():
@@ -2828,6 +3103,7 @@ func _world_state() -> Dictionary:
 		"stones": stones,
 		"craters": craters,
 		"stashes": stashes,
+		"endgame": endgame,
 		"composters": composters,
 		"bedrolls": bedrolls,
 		"traps": traps,
@@ -2872,6 +3148,18 @@ func _apply_restore(r: Dictionary) -> void:
 		_add_fire(Vector3(f.pos[0], f.pos[1], f.pos[2]), float(f.fuel), false).from_dict(f)
 	for sd in r.get("stashes", []):
 		_add_stash(Vector3(sd.pos[0], sd.pos[1], sd.pos[2])).from_dict(sd)
+	var endgame: Dictionary = r.get("endgame", {})
+	for d in endgame.get("furniture", []):
+		add_furniture(String(d.id), Vector3(d.pos[0], d.pos[1], d.pos[2])).from_dict(d)
+		get_child(-1).position.y = float(d.pos[1])
+	for d in endgame.get("handcarts", []):
+		var cart := add_handcart(Vector3(d.pos[0], d.pos[1], d.pos[2]))
+		cart.from_dict(d)
+		cart.position.y = float(d.pos[1])
+	for d in endgame.get("wall_racks", []):
+		add_wall_rack(Vector3(d.pos[0], d.pos[1], d.pos[2])).from_dict(d)
+	for d in endgame.get("hung_lamps", []):
+		add_hung_lamp(Vector3(d.pos[0], d.pos[1], d.pos[2])).from_dict(d)
 	for cd in r.get("composters", []):
 		add_compost(Vector3(cd.pos[0], cd.pos[1], cd.pos[2])).from_dict(cd)
 	for bd in r.get("bedrolls", []):

@@ -397,6 +397,10 @@ func floor_top(p: Vector3) -> float:
 	return -INF
 
 
+func hearth_point() -> Vector3:
+	return to_global(HEARTH)
+
+
 func on_floor(p: Vector3) -> bool:
 	return floor_top(p) > -INF and absf(p.y - global_position.y) < 0.5
 

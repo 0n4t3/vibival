@@ -37,7 +37,7 @@ const CARGO_AT := Vector3(0, TOP, -0.02)  # amidships, clear of the sacks fore a
 const SPOTS := [Vector3(-0.58, TOP, -0.68), Vector3(0.58, TOP, -0.68), Vector3(-0.58, TOP, 0.68), Vector3(0.58, TOP, 0.68)]
 const CORNERS := [Vector3(-0.92, 0, -0.96), Vector3(0.92, 0, -0.96), Vector3(-0.92, 0, 0.96), Vector3(0.92, 0, 0.96)]
 const CORNER_NAMES := ["front left", "front right", "back left", "back right"]
-const CARGO_GROUPS := ["logs", "workbenches", "soup_pots", "vessels", "traps", "anvils", "meteorites"]
+const CARGO_GROUPS := ["logs", "workbenches", "soup_pots", "vessels", "traps", "anvils", "meteorites", "handcarts", "crates", "furniture"]
 const SPEED := 3.0
 const ACCEL := 2.0
 const DRAG := 0.5
@@ -510,6 +510,9 @@ func _dock_near() -> Node3D:
 	for d in Game.docks:
 		if is_instance_valid(d) and d.complete() and d.berth().distance_to(global_position) < TIE_REACH:
 			return d
+	for h in Game.houses:
+		if is_instance_valid(h) and h.has_method("berth") and h.complete() and h.berth().distance_to(global_position) < TIE_REACH:
+			return h
 	return null
 
 

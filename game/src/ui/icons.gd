@@ -282,7 +282,7 @@ static func draw_item(ci: CanvasItem, r: Rect2, id: String) -> void:
 		"paper":
 			ci.draw_rect(Rect2(o - Vector2(s * 0.9, s * 0.65), Vector2(s * 1.8, s * 1.3)), c)
 			ci.draw_rect(Rect2(o - Vector2(s * 0.9, s * 0.65), Vector2(s * 1.8, s * 1.3)), c.darkened(0.3), false, 1.5)
-		"blueprint":
+		"blueprint", "house_plan":
 			# A rolled sheet, tied round the middle.
 			ci.draw_line(o + Vector2(-s * 0.85, s * 0.45), o + Vector2(s * 0.85, -s * 0.45), c.darkened(0.35), s * 0.62)
 			ci.draw_line(o + Vector2(-s * 0.85, s * 0.45), o + Vector2(s * 0.85, -s * 0.45), c, s * 0.5)
@@ -348,7 +348,7 @@ static func draw_item(ci: CanvasItem, r: Rect2, id: String) -> void:
 			ci.draw_rect(Rect2(o - Vector2(s * 0.45, s * 0.6), Vector2(s * 0.9, s * 1.2)), c)
 			if def.shape == "injector":
 				ci.draw_circle(o, s * 0.25, Color(0.6, 0.9, 1.0))
-		"sack":
+		"sack", "framed_pack":
 			var bag := PackedVector2Array([o + Vector2(-s * 0.3, -s * 0.55), o + Vector2(s * 0.3, -s * 0.55), o + Vector2(s * 0.8, s * 0.2),
 				o + Vector2(s * 0.6, s * 0.85), o + Vector2(-s * 0.6, s * 0.85), o + Vector2(-s * 0.8, s * 0.2)])
 			ci.draw_colored_polygon(bag, c)

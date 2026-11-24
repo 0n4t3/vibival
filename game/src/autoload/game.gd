@@ -84,6 +84,7 @@ var chart := PackedByteArray()  # the world's charted map, a cell per byte (core
 var map_marks: Array = []       # markers on the map: [{x, z}]
 var hints_seen := {}
 var tiers: Array = ["hand"]     # crafting tiers unlocked (workbenches built)
+var endgame_seen: Array = []    # "metal_saw", "nails": had at some point (endgame_known)
 var tools_known: Array = []     # workbench rack tools you have made or held: their recipes are in the book
 var player: Node3D = null
 # A debug world (chosen when it is made): sleep and save at any time, fly, and
@@ -155,6 +156,7 @@ func start_new_game(tutorial: bool) -> void:
 	hints_seen.clear()
 	tiers = ["hand"]
 	tools_known = []
+	endgame_seen = []
 	copper_cast = false
 	chart = PackedByteArray()
 	map_marks = []
@@ -467,6 +469,7 @@ func save_game(world_state: Dictionary, suspended := false) -> bool:
 		"hints": hints_seen,
 		"tiers": tiers,
 		"tools_known": tools_known,
+		"endgame_seen": endgame_seen,
 		"copper_cast": copper_cast,
 		"inventory": inventory.to_dict(),
 	}
@@ -553,6 +556,8 @@ func apply_save(data: Dictionary) -> void:
 	inventory = Inventory.new()
 	inventory.from_dict(data.inventory)
 	tools_known = []
+	endgame_seen = []
+	endgame_seen = data.get("endgame_seen", []).duplicate()
 	if data.has("tools_known"):
 		for id in data.tools_known:
 			learn_tool(String(id), false)
@@ -648,6 +653,9 @@ func dock_safe(pos: Vector3) -> bool:
 	for d in docks:
 		if is_instance_valid(d) and d.guards(pos):
 			return true
+	for h in houses:
+		if is_instance_valid(h) and h.has_method("guards") and h.guards(pos):
+			return true
 	return false
 
 
@@ -657,6 +665,9 @@ func dock_keeps_out(pos: Vector3) -> Node3D:
 	for d in docks:
 		if is_instance_valid(d) and d.keeps_out(pos):
 			return d
+	for h in houses:
+		if is_instance_valid(h) and h.has_method("keeps_out") and h.keeps_out(pos):
+			return h
 	return null
 
 
@@ -722,7 +733,22 @@ func knows_recipe(r: Dictionary) -> bool:
 	## Whether a recipe is known: one needing a rack tool (`rack`), or taught
 	## by one (`known_by`), only once you have made or held that tool or used
 	## a bench with it on the rack.
+	if r.get("needs_endgame", false) and not endgame_known():
+		return false
 	return (not r.has("rack") or r.rack in tools_known) and (not r.has("known_by") or r.known_by in tools_known)
+
+
+func endgame_known() -> bool:
+	## The end-game house blueprints show once you have had both a metal saw
+	## and nails (remembered, so using up your nails doesn't hide them again).
+	if inventory:
+		for id in ["copper_saw", "iron_saw"]:
+			if inventory.count(id) > 0 and not "metal_saw" in endgame_seen:
+				endgame_seen.append("metal_saw")
+		for id in ["copper_nail", "iron_nail"]:
+			if inventory.count(id) > 0 and not "nails" in endgame_seen:
+				endgame_seen.append("nails")
+	return "metal_saw" in endgame_seen and "nails" in endgame_seen
 
 
 func unlock_tier(tier: String) -> void:

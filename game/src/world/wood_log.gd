@@ -49,9 +49,9 @@ func _ready() -> void:
 	collision_mask = 0
 	_shape = CollisionShape3D.new()
 	var box := BoxShape3D.new()
-	box.size = Vector3(length(), Assets.LOG_R * 2.0, Assets.LOG_R * 2.4)
+	box.size = Vector3(length(), radius() * 2.0, radius() * 2.4)
 	_shape.shape = box
-	_shape.position.y = Assets.LOG_R
+	_shape.position.y = radius()
 	add_child(_shape)
 	_mesh = MeshInstance3D.new()
 	_mesh.visibility_range_end = 80.0
@@ -72,7 +72,7 @@ func name_lower() -> String:
 
 
 func _rebuild() -> void:
-	_mesh.mesh = Assets.rotten_log(item_id) if rotten() else Assets.log_mesh(item_id, kind)
+	_mesh.mesh = Assets.rotten_log(item_id, kind) if rotten() else Assets.log_mesh(item_id, kind)
 
 
 func lie_on_ground() -> void:
@@ -104,7 +104,7 @@ func in_water() -> bool:
 	if world == null or not world.has_method("water_level"):
 		return false
 	var g: float = world.floor_height(global_position) if world.has_method("floor_height") else world.ground_height(global_position.x, global_position.z)
-	return g + Assets.LOG_R < world.water_level()
+	return g + radius() < world.water_level()
 
 
 func _process(delta: float) -> void:
@@ -132,8 +132,17 @@ func can_haul() -> bool:
 	return not rotten()
 
 
+func radius() -> float:
+	return Assets.log_radius(kind)
+
+
+func hardwood() -> bool:
+	return Items.HARD_LOGS.has(kind)
+
+
 func haul_mode() -> String:
-	return "carry"
+	## A full-length hardwood log is too heavy to lift: it is dragged.
+	return "drag" if hardwood() and item_id != "short_log" else "carry"
 
 
 func haul_name() -> String:
@@ -141,7 +150,7 @@ func haul_name() -> String:
 
 
 func haul_radius() -> float:
-	return Assets.LOG_R
+	return radius()
 
 
 func haul_yaw() -> float:
@@ -159,10 +168,10 @@ func haul_prompt(_player: Node) -> String:
 	if bin:
 		return "Put the %s in the compost [E]   (+10, slows it to %d days; Q puts it down)" % [haul_name(), roundi(bin.DAYS * bin.WOODY["log"])]
 	var site := _stilt_site(_player)
-	if site and _stilt_wood():
+	if site and _stilt_wood(site):
 		return "%s with this log [E]   (Q puts it down)" % site.next_part().verb
 	if site:
-		return "Put down the %s [E]   (a stilt needs a 2 m Calamites log)" % haul_name()
+		return "Put down the %s [E]   (this part needs a 2 m %s)" % [haul_name(), site.log_word() if site.has_method("log_word") else "Calamites log"]
 	return "Put down the %s [E]" % haul_name()
 
 
@@ -176,7 +185,7 @@ func haul_interact(player: Node) -> bool:
 		queue_free()
 		return true
 	var site := _stilt_site(player)
-	if site == null or not _stilt_wood():
+	if site == null or not _stilt_wood(site):
 		return false
 	world.start_house_work(site, self)
 	return true
@@ -190,7 +199,9 @@ func _compost_bin(player: Node) -> Node3D:
 	return c if c and not c.full() else null
 
 
-func _stilt_wood() -> bool:
+func _stilt_wood(site: Node = null) -> bool:
+	if site and site.has_method("takes_log"):
+		return site.takes_log(self)
 	return kind == "calamites" and item_id in ["log", "log_stripped"]
 
 

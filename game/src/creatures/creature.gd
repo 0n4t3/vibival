@@ -2351,7 +2351,7 @@ func _wet(x: float, z: float) -> bool:
 	## to a baitbox goes round a dock rather than into it.
 	if _ground(x, z) >= (world.water_level() if world and world.has_method("water_level") else 0.0):
 		return false
-	return Game.docks.is_empty() or Game.dock_keeps_out(Vector3(x, 0.0, z)) == null
+	return Game.dock_keeps_out(Vector3(x, 0.0, z)) == null
 
 
 func _reach(at: Vector3) -> Vector3:

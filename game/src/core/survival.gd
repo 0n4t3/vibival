@@ -493,7 +493,7 @@ func _tick_wounds(delta: float, wet: bool, sleeping: bool) -> float:
 					status.emit("A wound stops bleeding.")
 		# Dirt: swamp water soaks into an open wound (or through a bandage),
 		# and an open wound gathers dirt from the air.
-		var cover_i := 0 if w.cover == "" else (1 if w.cover == "bandage" else 2)
+		var cover_i := 0 if w.cover == "" else (1 if w.cover == "bandage" else 2)   # stitches keep water out like wax
 		if wet:
 			w.dirt = minf(w.dirt + WET_DIRT[cover_i] * delta, 1.0)
 		elif w.cover == "":
@@ -501,7 +501,7 @@ func _tick_wounds(delta: float, wet: bool, sleeping: bool) -> float:
 		_tick_infection(w, delta, resist)
 		if w.inf == INF_NONE and w.bleed == 0:
 			# Dirty wounds barely close; a covering helps them knit.
-			var rate: float = heal * (1.0 - 0.75 * w.dirt) * (1.3 if w.cover != "" else 1.0)
+			var rate: float = heal * (1.0 - 0.75 * w.dirt) * (2.0 if w.cover == "suture" else (1.3 if w.cover != "" else 1.0))
 			w.sev = maxf(w.sev - rate * delta, 0.0)
 	for w in wounds.duplicate():
 		if w.sev <= 0.0 and w.inf == INF_NONE and w.bleed == 0:
@@ -516,7 +516,7 @@ func _tick_infection(w: Dictionary, delta: float, resist: float) -> void:
 		# brings infection.
 		if w.dirt <= 0.05 and w.cover != "":
 			return
-		var chance: float = INFECT_RATE * w.dirt * resist * (0.5 if w.cover != "" else 1.0)
+		var chance: float = INFECT_RATE * w.dirt * resist * (3.0 if w.cover == "suture" else (0.5 if w.cover != "" else 1.0))   # dirt stitched in
 		if randf() < chance * delta:
 			_set_inf(w, INF_MINOR)
 			w.early = Game.time < EARLY_TIME
@@ -625,7 +625,7 @@ func _new_wound(severity: float, dirt: float, source: String) -> Dictionary:
 func reopen() -> bool:
 	## Another attack tears a covered wound open again: dirty and bleeding.
 	for w in wounds:
-		if w.cover != "":
+		if w.cover != "" and w.cover != "suture":   # stitches hold
 			w.cover = ""
 			w.dirt = minf(w.dirt + 0.4, 1.0)
 			w.bleed = maxi(w.bleed, 1)
@@ -823,6 +823,25 @@ func cover(i: int, with: String) -> String:
 	elif w.inf == INF_MODERATE and w.sterile and with == "bandage":
 		_set_inf(w, INF_NONE)
 		status.emit("Cleaned with alcohol and bandaged, the infection clears up.")
+	return ""
+
+
+func suture(i: int) -> String:
+	## Stitches wound i (or the worst unstitched one) closed. Returns why it
+	## can't, or "". Stops moderate bleeding at once; major bleeding must be
+	## held back by pressure first. It doesn't treat infection, and stitching
+	## in dirt makes one likely (_tick_infection).
+	var k := _pick(i, func(w): return 0.0 if w.cover == "suture" else 1.0 + w.bleed + w.sev)
+	if k < 0:
+		return "You have no wounds that need stitching."
+	var w: Dictionary = wounds[k]
+	if w.cover == "suture":
+		return "That wound is already stitched."
+	if w.bleed == 3 and w.held <= 0.0:
+		return "It's bleeding too hard to stitch. Press on the wound first."
+	w.cover = "suture"
+	w.bleed = 0
+	w.held = 0.0
 	return ""
 
 

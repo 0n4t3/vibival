@@ -509,6 +509,75 @@ on the floor, and a pot or vessel put down by the fireplace goes on it.
 - the fireplace works like a campfire, with fuel, cooking spots, and ash, but
   it can't be knocked apart
 
+## End-game woodworking
+
+Once you can work metal, **nails** and a **saw** open up a new set of things to
+build. Copper and iron nails do the same job and are used up as you build. The
+saw and hammer stay in your bag and are never put on the workbench rack.
+
+Cast **6 copper nails** from one copper and one charcoal in a fired nail mould
+at the furnace, or hammer **10 iron nails** from one refined iron.
+
+| Build | Materials | Tools in your bag | What it does |
+|---|---|---|---|
+| Open barrel | 6 boards, 8 nails, 2 wax | Saw, hammer | A fermentation vessel with twice the room |
+| Sealed barrel | 7 boards, 8 nails, 4 wax | Saw, hammer | The sealed version, also twice the room |
+| Storage crate | 4 boards, 8 nails | Hammer | Holds 150 kg set down |
+| Handcart | 6 boards, 2 sticks, 12 nails, 2 cordage | Saw, hammer | Hauls logs, vessels, stones and other big loads |
+| Table | 4 boards, 8 nails | Saw, hammer | Furniture |
+| Chair | 2 boards, 4 nails | Saw, hammer | Furniture |
+| Wall rack | 2 boards, 6 nails | Hammer | Hangs six tools on a house wall, ready to grab |
+| Pack frame | 2 boards, 4 nails | Saw, hammer | Becomes a framed pack with a cloth sack and 2 cordage |
+
+Barrels are wood, so keep them away from the fire. Rinse one out at the water.
+
+### Survival gear
+
+- **Bed:** a Mattress (8 string, 20 plant fiber, by hand) on a frame of 6 boards
+  and 12 nails, built at the bench with a saw and hammer. Carry it anywhere dry.
+- **Copper and iron lanterns:** the two differ only in looks. A copper one takes
+  2 copper bars and 1 string at the anvil, an iron one 2 refined iron bars and 1
+  string. Either burns 2 waxy residue a day. It holds 6 in your bag or 24 when
+  hung, and you can refill it for as long as you like.
+- **Framed pack:** carries 52 kg more, or can be set down as a stash.
+- **Pocket whetstone:** puts a full edge on a tool anywhere you can kneel.
+- **Fire striker:** lights campfires, torches, lamps and charcoal clamps directly.
+- **Suture kit:** stitches a wound closed. Stitched wounds heal twice as fast and
+  won't reopen, but stitching a dirty wound makes infection three times as
+  likely, so wash it first. A very heavy bleed must be held with pressure before
+  it can be stitched.
+
+### Hardwood logs
+
+Lepidodendron and Sigillaria logs are much thicker than softwood. They take
+longer to work and give far more:
+
+| From one log | Softwood | Lepidodendron | Sigillaria |
+|---|---|---|---|
+| Boards | 5 | 12 | 17 |
+| Firewood per short log | 4 | 10 | 14 |
+| Bark | 6 | 15 | 20 |
+
+You drag a hardwood log by one end at half walking speed. It can go on the
+handcart or the raft, but not up a ladder. A Lepidodendron log takes 2 of the
+cart's 4 spaces, and a Sigillaria log takes all 4.
+
+### End-game houses
+
+Draw each house's blueprint on paper. Every part needs a saw and a hammer in
+your bag.
+
+| House | Where | Boards | Nails | Logs | Stone | Clay |
+|---|---|---|---|---|---|---|
+| Outpost | Islands and long trips | 16 | 14 | 0 | 12 | 3 |
+| Dock house, 8 m walkway | Out in up to 2.5 m of water | 88 | 62 | 22 Calamites | 10 | 8 |
+| Hardwood house | Solid ground | 134 hardwood | 69 | 6 Lepidodendron | 16 | 12 |
+
+The dock house's walkway is built out in 4 m sections, and each one is safe to
+stand on once finished. Each extra section takes 2 logs, 4 boards and 4 nails.
+Water predators keep away from the finished walkway and house, and a raft can
+tie up at its mooring. The dock house also needs a branch and 2 cordage.
+
 ## Soup
 
 A **Soup Pot** is a big clay pot hanging from a tripod of three boards. It is

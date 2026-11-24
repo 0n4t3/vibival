@@ -221,6 +221,14 @@ func _ready() -> void:
 	if only.is_empty() or "map" in only:
 		print("== the charted map")
 		await test_map()
+	if only.is_empty() or "endgame" in only:
+		print("== endgame")
+		await test_endgame_items()
+		await test_endgame_lamp_rack()
+		await test_endgame_bed()
+		await test_endgame_logs()
+		await test_endgame_cart()
+		await test_endgame_houses()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Game.save_path))
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Game.suspend_path()))
 	print("%d checks, %d failures" % [_checks, _failures])
@@ -461,7 +469,7 @@ func test_data() -> void:
 		check(d.has("name") and d.has("shape") and d.has("color"), "%s has name/shape/color" % id)
 		check(d.has("w") and (d.w > 0.0 or d.get("carry", false)), "%s has a weight (or is carried in your arms)" % id)
 		if d.has("treat"):
-			check(d.treat in ["clean", "alcohol", "bandage", "wax"], "%s has a known treatment" % id)
+			check(d.treat in ["clean", "alcohol", "bandage", "wax", "suture"], "%s has a known treatment" % id)
 		for ref in ["cook", "hold", "empty"]:
 			if d.has(ref):
 				check(Items.ITEMS.has(d[ref]), "%s.%s -> %s exists" % [id, ref, d[ref]])
@@ -1208,6 +1216,7 @@ func _fresh_state() -> void:
 	Game.inventory = Inventory.new()
 	Game.tiers = ["hand"]
 	Game.tools_known = []
+	Game.endgame_seen = []
 	Game.taken.clear()
 	Game.harvested.clear()
 	Game.felled.clear()
@@ -9592,7 +9601,7 @@ func test_metals() -> void:
 
 	# Metal tools are hafted with string, not cordage.
 	var hafts := Items.RECIPES.filter(func(r): return r.get("tier", "") == "hand" and (r.out.begins_with("copper_") or r.out.begins_with("iron_")) and r["in"].has("stick"))
-	check(hafts.size() == 11 and hafts.all(func(r): return r["in"].has("string") and not r["in"].has("cordage")), "metal tools are bound with string (%d)" % hafts.size())
+	check(hafts.size() == 12 and hafts.all(func(r): return r["in"].has("string") and not r["in"].has("cordage")), "metal tools are bound with string (%d)" % hafts.size())
 	# Casting a copper axe head at it.
 	Game.inventory.clear()
 	var cast: Dictionary = Items.recipe_for("rough_copper_axe_head")
@@ -9824,5 +9833,642 @@ func test_meteor_weather() -> void:
 	check(Weather.compass(Vector3(1, 0, -1)) == "north-east" and Weather.compass(Vector3(0, 0, 1)) == "south", "the boom's direction is named")
 	wt.stop()
 	Game.copper_cast = false
+	w.queue_free()
+	await _frames(2)
+
+
+# --- End-game construction (construction.md) -----------------------------------------
+
+func _eg_ground(w: Node, p: Node) -> Vector3:
+	var at := _find_spot(w, p.global_position, func(q): return q.y > 0.5 and absf(w.ground_height(q.x + 2, q.z) - q.y) < 0.25 and absf(w.ground_height(q.x, q.z + 2) - q.y) < 0.25)
+	p.global_position = at + Vector3(0, 0.05, 0)
+	p.velocity = Vector3.ZERO
+	return at
+
+
+func _eg_bench(w: Node, p: Node) -> Node:
+	## Kneeling at a bench, with its recipes open to us.
+	Game.unlock_tier("bench")
+	var b: Node = w.add_bench(p.global_position - p.global_basis.z * 1.2, p.rotation.y)
+	await _frames(2)
+	w.start_work()
+	if w.work == null:
+		return null
+	w.work.bench = b
+	return w.work
+
+
+func _eg_build_all(w: Node, h: Node, p: Node) -> int:
+	## Builds every part of a site through the work spot, with its materials
+	## given and each log carried to it. Returns how many parts were built.
+	var n := 0
+	for guard in 200:
+		var q: Dictionary = h.next_part()
+		if q.is_empty():
+			break
+		for id in q.in:
+			Game.inventory.add({"any_nail": "iron_nail", "hardwood_board": "board_lepidodendron"}.get(id, id), q.in[id], 0.0, true)
+		for id in q.get("tools", {}):
+			if Game.inventory.count(id) == 0:
+				Game.inventory.add(id, 1, 0.0, true)
+		p.global_position = h.to_global(Vector3(0, 0.05, 0))
+		var lg: Node = null
+		if q.get("log", false):
+			lg = w.add_log("log", p.global_position + Vector3(0.5, 0, 0), 0.0, q.get("log_kind", "calamites"))
+			p.start_haul(lg)
+			if not lg.haul_interact(p):
+				return n
+		else:
+			h.interact(p)
+		if w.work == null:
+			return n
+		var o: Array = w.work.options()
+		if o.is_empty() or not o[0].missing.is_empty() or not w.work.begin(o[0].recipe):
+			print("  blocked at ", q.id, ": ", o[0].missing if not o.is_empty() else [])
+			w.close_work()
+			return n
+		for k in q.steps:
+			w.work.step()
+		await _frames(1)
+		if w.work:
+			w.close_work()
+		await _frames(1)
+		n += 1
+	return n
+
+
+func test_endgame_items() -> void:
+	var w: Node = await _new_swamp()
+	var p: Node = w.player
+	var at := _eg_ground(w, p)
+	check(at.is_finite(), "open dry ground to work on")
+	Game.inventory.clear()
+
+	# Nails are interchangeable and used up; the hammer is kept and not worn.
+	check(Items.counts_as("copper_nail", "any_nail") and Items.counts_as("iron_nail", "any_nail"), "copper and iron nails both count as nails")
+	check(not Items.ITEMS.has("any_nail") or not Items.def("any_nail").has("as"), "the nail group is never an item you find")
+	var ws: Node = await _eg_bench(w, p)
+	check(ws != null, "kneeling at a bench")
+	Game.inventory.add("copper_hammer", 1)
+	var ham: int = Game.inventory.uses_left(Game.inventory.find("copper_hammer"))
+	_lay_all(ws, {"board": 4, "copper_nail": 4, "iron_nail": 4})
+	var o := _option_for(ws, "storage_crate")
+	check(not o.is_empty() and o.missing.is_empty(), "boards and a mix of copper and iron nails make a crate")
+	check(_make(ws, o.recipe), "the crate is nailed together")
+	check(Game.inventory.uses_left(Game.inventory.find("copper_hammer")) == ham, "driving nails doesn't wear the hammer")
+	var crate: Node = null
+	for s in get_tree().get_nodes_in_group("stashes"):
+		if s.sack_id == "storage_crate":
+			crate = s
+	check(crate != null and crate.capacity() == 150.0, "a 150 kg crate is left by the bench")
+	w.close_work()
+
+	# A saw is needed from the bag for sawn things.
+	ws = await _eg_bench(w, p)
+	_lay_all(ws, {"board": 2, "iron_nail": 4})
+	o = _option_for(ws, "wooden_chair")
+	check(o.missing.any(func(m): return "saw" in m), "a chair needs a saw")
+	Game.inventory.add("copper_saw", 1)
+	o = _option_for(ws, "wooden_chair")
+	check(o.missing.is_empty(), "a saw in the bag, not on the rack, will do")
+	var edge: int = Game.inventory.edge_left(Game.inventory.find("copper_saw"))
+	check(_make(ws, o.recipe), "the chair is built")
+	check(Game.inventory.edge_left(Game.inventory.find("copper_saw")) == edge - 1, "each recipe is one use of the saw's edge")
+	w.close_work()
+	var chair: Node = get_tree().get_first_node_in_group("furniture")
+	check(chair != null and chair.item_id == "wooden_chair", "the chair stands by the bench")
+
+	# The iron saw chain.
+	var saw := Items.def("iron_saw")
+	check(int(saw.edge) == 90 and "saw" in saw.tags and saw.tier == "advanced", "the iron saw: 90 uses, a saw, advanced")
+	for id in ["rough_iron_saw_blade", "iron_saw_blade", "iron_saw", "copper_nail", "iron_nail", "mould_nail"]:
+		check(Items.RECIPES.any(func(r): return r.out == id) or Items.def(id).has("cook") or id == "mould_nail", "%s can be made" % id)
+	check(not Assets.mould_hollow("nail").is_empty(), "the nail mould has its hollows")
+
+	# Furniture: set down, three blows, carried.
+	p.start_haul(chair)
+	check(p.hauling == chair, "a new chair can be lifted")
+	p.put_down()
+	check(not chair.can_haul(), "set down, it stays")
+	chair.axe_hit(); chair.axe_hit()
+	check(not chair.can_haul(), "two blows aren't enough")
+	chair.axe_hit()
+	check(chair.can_haul(), "three blows knock it loose")
+
+	# Barrels.
+	var fire: Node = w._add_fire(at + Vector3(4, 0, 0), 100.0, false)
+	var b: Node = w.add_vessel("vessel_sealed_barrel", at + Vector3(4.4, 0, 0))
+	await _frames(1)
+	check(b.cap() == 20 and b.wooden(), "a barrel holds 20")
+	check(b.fire_near(b.global_position) == null, "a barrel is never set in a fire")
+	b.water = 20
+	b.dirty = false
+	for k in 20:
+		b.add_food("fiddlehead")
+	check(b.items.size() == 20 and b.add_food("fiddlehead") != "", "20 food, and no more")
+	var d: Dictionary = b.to_dict()
+	var b2: Node = w.add_vessel("vessel_sealed_barrel", at + Vector3(6, 0, 0))
+	b2.from_dict(d)
+	check(b2.water == 20 and b2.items.size() == 20, "a full barrel saves and loads")
+	var v: Node = w.add_vessel("vessel_open", at + Vector3(7, 0, 0))
+	await _frames(1)
+	check(v.cap() == 10, "a clay vessel still holds 10")
+	var open: Node = w.add_vessel("vessel_open_barrel", at + Vector3(8, 0, 0))
+	await _frames(1)
+	open.catch_rain(open.RAIN_EVERY * 12.0)
+	check(open.water == 12 and not open.dirty, "rain fills an unsealed barrel past a clay vessel's 10")
+	for n in [fire, b, b2, v, open]:
+		n.queue_free()
+	await _frames(1)
+
+	# The framed pack.
+	Game.inventory.clear()
+	var base: float = Game.inventory.capacity()
+	Game.inventory.add("framed_pack", 1)
+	check(is_equal_approx(Game.inventory.capacity() - base, 52.0), "the framed pack carries 52 kg more")
+	Game.inventory.clear()
+
+	# The pocket whetstone: a full edge anywhere you can kneel.
+	Game.inventory.add("pocket_whetstone", 1)
+	Game.inventory.add("iron_knife", 1)
+	var ki: int = Game.inventory.find("iron_knife")
+	Game.inventory.replace(ki, "iron_knife", 0.0, Items.edge_data("iron_knife", 1, {}))
+	w.start_work()
+	var sharp := {}
+	for x in w.work.options():
+		if x.recipe.get("sharpen_tool", "") == "iron_knife":
+			sharp = x
+	check(not sharp.is_empty() and sharp.missing.is_empty() and sharp.recipe.steps == 10, "kneeling anywhere, ten strokes")
+	check(w.work.begin(sharp.recipe), "the whetstone comes out")
+	for k in 10:
+		w.work.step()
+	w.close_work()
+	check(Game.inventory.edge_left(Game.inventory.find("iron_knife")) == int(Items.def("iron_knife").edge), "a full edge")
+	check(Game.inventory.uses_left(Game.inventory.find("pocket_whetstone")) == 29, "and one sharpening off the slip")
+	Game.inventory.clear()
+	Game.inventory.add("pocket_whetstone", 1, 0.0, false, Items.uses_data("pocket_whetstone", 1))
+	Game.inventory.add("iron_knife", 1, 0.0, false, Items.edge_data("iron_knife", 1, {}))
+	w.start_work()
+	for x in w.work.options():
+		if x.recipe.get("sharpen_tool", "") == "iron_knife":
+			w.work.begin(x.recipe)
+			for k in 10:
+				w.work.step()
+			break
+	w.close_work()
+	check(Game.inventory.count("pocket_whetstone") == 0 and Game.inventory.count("pocket_whetstone_case") == 1, "the last sharpening leaves the empty case")
+	check(Items.RECIPES.any(func(r): return r.out == "pocket_whetstone" and r.in.has("pocket_whetstone_case")), "a new slip refits it")
+
+	# The fire striker.
+	Game.inventory.clear()
+	Game.inventory.add("fire_striker", 1)
+	check(Game.inventory.has_tag("fire"), "a striker lights fires")
+	Game.inventory.add("torch", 1)
+	Game.inventory.select(Game.inventory.find("torch"))
+	p.focus = null
+	p._use_held()
+	check(Game.inventory.count("torch_lit") == 1 and Game.inventory.uses_left(Game.inventory.find("fire_striker")) == 39, "it lights a torch directly, one use")
+	Game.inventory.clear()
+	Game.inventory.add("fire_striker", 1, 0.0, false, Items.uses_data("fire_striker", 1))
+	Game.inventory.spark()
+	check(Game.inventory.count("fire_striker") == 0 and Game.inventory.count("iron_striker") == 1, "worn out, the iron is left to rebind")
+
+	# The suture kit.
+	Game.inventory.clear()
+	var s = p.vitals
+	s.wounds.clear()
+	var wnd: Dictionary = s._new_wound(0.4, 0.0, "test")
+	wnd.bleed = 2
+	wnd.dirt = 0.0
+	Game.inventory.add("suture_kit", 1)
+	check(p.treat_slot(Game.inventory.find("suture_kit")), "the kit stitches a moderately bleeding wound")
+	check(wnd.cover == "suture" and wnd.bleed == 0, "and stops the bleeding at once")
+	check(not s.reopen() and wnd.cover == "suture", "stitches don't tear on the next attack")
+	check(Game.inventory.slots[Game.inventory.find("suture_kit")].get("data", {}).get("left", 6) == 5, "one suture used of six")
+	wnd.cover = ""
+	wnd.bleed = 3
+	wnd.held = 0.0
+	check("Press" in s.suture(0), "a major bleed needs pressure first")
+	wnd.held = 10.0
+	check(s.suture(0) == "" and wnd.bleed == 0, "held back, it can be stitched")
+	s.wounds.clear()
+	w.queue_free()
+	await _frames(2)
+
+
+func test_endgame_lamp_rack() -> void:
+	var w: Node = await _new_swamp()
+	var p: Node = w.player
+	var at := _eg_ground(w, p)
+	Game.inventory.clear()
+	Game.time = 100.0
+	Game.inventory.add("copper_lantern", 1)
+	Game.inventory.add("wax", 10)
+	Game.inventory.add("fire_striker", 1)
+	Game.inventory.select(Game.inventory.find("copper_lantern"))
+	p.focus = null
+	p._use_lamp()
+	p._lamp_at = Game.time
+	var i: int = Game.inventory.find("copper_lantern_lit")
+	check(i >= 0, "filled and lit")
+	check(Game.inventory.count("wax") == 4 and is_equal_approx(float(Game.inventory.slots[i].data.fuel), 6.0 * 720.0), "it takes six wax in the hand")
+	p._update_lamp()
+	Game.time += 720.0
+	p._update_lamp()
+	check(is_equal_approx(float(Game.inventory.slots[i].data.fuel), 5.0 * 720.0), "one wax lasts half a day (two a day)")
+	check(Items.def("copper_lantern_lit").get("hooded", false), "its hood keeps the rain off")
+	Game.inventory.select(Game.inventory.find("wax"))
+	p._update_lamp()
+	check(Game.inventory.count("copper_lantern_lit") == 0 and Game.inventory.count("copper_lantern") == 1, "put away, it goes out")
+	check(is_equal_approx(float(Game.inventory.slots[Game.inventory.find("copper_lantern")].data.fuel), 5.0 * 720.0), "keeping its fuel")
+
+	var hl: Node = w.add_hung_lamp(at + Vector3(0, 2, 0))
+	await _frames(1)
+	hl.fuel = 20.0 * 720.0
+	hl.lit = true
+	hl._refresh()
+	var then: float = Game.time
+	Game.time += 720.0
+	hl._process(0.0)
+	check(is_equal_approx(hl.fuel, 19.0 * 720.0), "a hung lamp burns by the clock")
+	var d: Dictionary = hl.to_dict()
+	var h2: Node = w.add_hung_lamp(at + Vector3(0, 2, 1))
+	h2.from_dict(d)
+	await _frames(1)
+	check(h2.lit and is_equal_approx(h2.fuel, hl.fuel), "it saves lit, with its fuel")
+	h2.queue_free()
+	Game.inventory.clear()
+	hl.lit = false
+	hl.fuel = 19.0 * 720.0
+	hl.use_interact(p)
+	var li: int = Game.inventory.find("copper_lantern")
+	check(li >= 0 and is_equal_approx(float(Game.inventory.slots[li].data.fuel), 6.0 * 720.0) and Game.inventory.count("wax") == 13, "taken down it keeps six, the rest comes back as wax")
+	Game.time = then
+
+	# The wall rack: wear stays, straight into the hand, full bag swaps.
+	Game.inventory.clear()
+	var r: Node = w.add_wall_rack(at + Vector3(0, 1.5, 3))
+	await _frames(1)
+	Game.inventory.add("iron_knife", 1, 0.0, false, Items.edge_data("iron_knife", 7, {}))
+	Game.inventory.select(Game.inventory.find("iron_knife"))
+	check(Items.hangs_on_rack("iron_knife") and not Items.hangs_on_rack("board"), "tools hang, boards don't")
+	r.interact(p)
+	check(Game.inventory.count("iron_knife") == 0 and r.tools[0].id == "iron_knife", "E hangs the held tool")
+	await _frames(1)
+	r.grab(0, p)
+	var ki: int = Game.inventory.find("iron_knife")
+	check(ki == Game.inventory.selected and Game.inventory.edge_left(ki) == 7, "taken back straight into your hand, its wear intact")
+	r.interact(p)
+	for k in Game.inventory.SIZE:
+		if Game.inventory.slots[k] == null:
+			Game.inventory.slots[k] = {"id": "stone", "n": 1, "age": 0.0}
+	Game.inventory.slots[Game.inventory.selected] = {"id": "copper_axe", "n": 1, "age": 0.0}
+	r.grab(0, p)
+	check(Game.inventory.held_id() == "iron_knife" and r.tools[0].id == "copper_axe", "with a full bag the held tool swaps onto the peg")
+	var rd: Dictionary = r.to_dict()
+	var r2: Node = w.add_wall_rack(at + Vector3(0, 1.5, 5))
+	r2.from_dict(rd)
+	check(r2.tools[0].id == "copper_axe", "the rack saves its tools")
+	r2.queue_free()
+	Game.inventory.clear()
+	r.axe_hit(); r.axe_hit(); r.axe_hit()
+	check(Game.inventory.count("wall_rack") == 1 and Game.inventory.count("copper_axe") == 1, "three blows bring it down, tools and all")
+	w.queue_free()
+	await _frames(2)
+
+
+func test_endgame_bed() -> void:
+	print("\n--- end game: iron lantern and bed ---")
+	var w: Node = await _new_swamp()
+	var p: Node = w.player
+	var at := _eg_ground(w, p)
+	# Copper and iron differ only in looks.
+	for k in ["", "_lit"]:
+		var c: Dictionary = Items.def("copper_lantern" + k).duplicate()
+		var f: Dictionary = Items.def("iron_lantern" + k).duplicate()
+		for key in ["name", "desc", "color"]:
+			c.erase(key)
+			f.erase(key)
+		check(c == f, "iron and copper lanterns%s have the same stats" % k)
+	check(Assets.mesh("item_iron_lantern") != Assets.mesh("item_copper_lantern"), "and their own models")
+	Game.inventory.clear()
+	Game.time = 100.0
+	Game.inventory.add("iron_lantern", 1)
+	Game.inventory.add("wax", 6)
+	Game.inventory.add("fire_striker", 1)
+	Game.inventory.select(Game.inventory.find("iron_lantern"))
+	p.focus = null
+	p._use_lamp()
+	check(Game.inventory.count("iron_lantern_lit") == 1, "an iron lantern lights as itself")
+	Game.inventory.select(Game.inventory.find("fire_striker"))
+	p._update_lamp()
+	check(Game.inventory.count("iron_lantern") == 1 and Game.inventory.count("copper_lantern") == 0, "and goes out as itself")
+	var hl: Node = w.add_hung_lamp(at + Vector3(0, 2, 0))
+	hl.item_id = "iron_lantern"
+	var h2: Node = w.add_hung_lamp(at + Vector3(0, 2, 1))
+	h2.from_dict(hl.to_dict())
+	await _frames(1)
+	check(h2.item_id == "iron_lantern", "a hung iron lantern saves as iron")
+	Game.inventory.clear()
+	h2.use_interact(p)
+	await _frames(1)
+	check(Game.inventory.count("iron_lantern") == 1, "and comes down as iron")
+	if is_instance_valid(hl):
+		hl.queue_free()
+
+	# The bed.
+	var r: Dictionary = {}
+	for x in Items.RECIPES:
+		if x.out == "wooden_bed":
+			r = x
+	check(r.get("in", {}).has("any_nail") and r.get("in", {}).has("mattress"), "a bed is a mattress on a nailed frame")
+	var b: Node = w.add_carried("wooden_bed", at + Vector3(4, 0, 0))
+	await _frames(1)
+	check(b != null and b.has_method("sleep_on"), "it can be set down and lain on")
+	var dd: Dictionary = b.to_dict()
+	check(dd.id == "wooden_bed", "it saves as a bed")
+	p.global_position = at
+	for c in Game.creatures.duplicate():
+		if is_instance_valid(c):
+			c.queue_free()
+	await _frames(2)
+	var v = p.vitals
+	v.water = 90.0
+	v.energy = 90.0
+	Game.time = 2000.0
+	Game.last_sleep = Game.time
+	check(w.sleep_blocker() != "", "not tired: the ground won't do")
+	check(w.sleep_blocker(true) == "", "but a bed lets you rest anyway: " + w.sleep_blocker(true))
+	b.interact(p)
+	check(w._rest_panel != null and w._rest_panel.visible and p.ui_open, "the bed opens the rest panel")
+	check(is_equal_approx(w._rest_panel.slider.value, 8.0), "offering eight hours")
+	w._rest_panel.cancelled.emit()
+	check(not w._rest_panel.visible and not p.ui_open, "cancel closes it")
+	check(w._rest_panel.describe(1.25) == "1 hour 15 minutes", "it reads out the time")
+	var ls: float = Game.last_sleep
+	var t0: float = Game.time
+	await w.rest_for(1.0)
+	check(Game.time >= t0 + 15.0 and Game.time <= t0 + 66.0, "a one hour rest passes about an hour (or less if something wakes you)")
+	check(is_equal_approx(Game.last_sleep, ls), "a short rest doesn't count as a night's sleep")
+	if not p.vitals.dead:
+		p.vitals.water = 14.0
+		p.vitals.energy = 90.0
+		t0 = Game.time
+		await w.rest_for(48.0)
+		check(Game.time < t0 + 48.0 * 60.0, "thirst wakes you from a long rest")
+	if not p.vitals.dead:
+		p.vitals.water = 90.0
+		p.vitals.energy = 90.0
+		Game.last_sleep = Game.time
+		await w.rest_for(8.0)
+		check(Game.last_sleep > ls, "a full rest counts as sleep")
+	b.queue_free()
+	Game.inventory.clear()
+	w.queue_free()
+	await _frames(2)
+
+
+func test_endgame_logs() -> void:
+	var w: Node = await _new_swamp()
+	var p: Node = w.player
+	var at := _eg_ground(w, p)
+	Game.inventory.clear()
+	Game.inventory.add("iron_saw", 1)
+	Game.inventory.add("iron_axe", 1)
+	for row in [["lepidodendron", 12, 0.40, 10], ["sigillaria", 17, 0.54, 14]]:
+		var lg: Node = w.add_log("log_stripped", p.global_position - p.global_basis.z * 1.3, p.rotation.y + PI * 0.5, row[0])
+		await _frames(1)
+		check(is_equal_approx(lg.radius(), row[2]) and lg.haul_mode() == "drag", "a %s log is big, and dragged" % row[0])
+		check(float(Assets.log_mesh("log", row[0]).get_aabb().size.y) > row[2] * 1.6, "and looks it")
+		w.start_work()
+		var sw := {}
+		for o in w.work.options():
+			if o.recipe.get("wood", "") == "saw":
+				sw = o
+		check(not sw.is_empty() and sw.recipe.give.board == row[1], "it saws into %d boards" % row[1])
+		w.work.begin(sw.recipe)
+		for k in sw.recipe.steps:
+			w.work.step()
+		w.close_work()
+		await _frames(1)
+		var pile: Node = w.stack_near("board_" + row[0], lg.global_position if is_instance_valid(lg) else at)
+		var got := 0
+		for st in get_tree().get_nodes_in_group("stacks"):
+			if st.item_id == "board_" + row[0]:
+				got += st.count
+		for dr in get_tree().get_nodes_in_group("drops"):
+			if dr.get("item_id") == "board_" + row[0]:
+				got += int(dr.get("count") if dr.get("count") != null else 0)
+		check(got == row[1] or pile != null, "they land in a pile beside it")
+		check(Game.inventory.count("board_" + row[0]) == 0, "not in your bag")
+		var job: Dictionary = Items.wood_job(Items.woodwork("short_log")[0], row[0])
+		check(int(job.give.firewood) == row[3], "a short round splits into %d firewood" % row[3])
+	var soft: Node = w.add_log("log", at + Vector3(3, 0, 0), 0.0, "calamites")
+	await _frames(1)
+	check(soft.haul_mode() == "carry" and is_equal_approx(soft.radius(), Assets.LOG_R), "soft logs are as they were")
+	w.queue_free()
+	await _frames(2)
+
+
+func test_endgame_cart() -> void:
+	var w: Node = await _new_swamp()
+	var p: Node = w.player
+	var at := _eg_ground(w, p)
+	Game.inventory.clear()
+	var c: Node = w.add_handcart(p.global_position - p.global_basis.z * 2.2, p.rotation.y)
+	await _frames(2)
+	var lg: Node = w.add_log("log", p.global_position + p.global_basis.x * 1.2, 0.0, "lepidodendron")
+	await _frames(1)
+	p.start_haul(lg)
+	lg.global_position = c.cargo_point()
+	var cart_for: Node = p._cart_for(lg)
+	check(cart_for == c, "a carried log held over the bed goes on the cart")
+	p.put_down()
+	check(lg in c.cargo and is_instance_valid(lg) and is_equal_approx(c.used(), 2.0), "a Lepidodendron log takes two spaces")
+	var big: Node = w.add_log("log", at + Vector3(4, 0, 0), 0.0, "sigillaria")
+	await _frames(1)
+	check(not c.has_room_for(big), "a Sigillaria log won't fit beside it")
+	big.queue_free()
+	var crate: Node = w.add_carried("storage_crate", at + Vector3(3, 0, 3))
+	await _frames(1)
+	crate.inv.add("stone", 3)
+	check(not crate.can_haul(), "a loaded crate can't be lifted")
+	crate.global_position = c.global_position + Vector3(1.2, 0, 0)
+	crate.use_interact(p)
+	check(crate in c.cargo and is_equal_approx(c.used(), 4.0), "but it slides onto a handcart")
+	var ch: Node = w.add_furniture("wooden_chair", at + Vector3(5, 0, 5))
+	await _frames(1)
+	check(not c.has_room_for(ch), "four spaces, and no more")
+	ch.queue_free()
+
+	# Pulling.
+	var from: Vector3 = c.global_position
+	p.global_position = c.to_global(Vector3(0, 0.1, -1.4))
+	p.start_haul(c)
+	check(p.hauling == c and c.haul_speed() < 0.95, "it can be pulled, slower with a load")
+	p.global_position += (p.global_position - c.global_position).normalized() * 1.0
+	p._hold_haul()
+	check(c.global_position.distance_to(from) > 0.5, "it rolls after you")
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	check(lg.global_position.distance_to(c.cargo_point()) < 1.2 and crate.global_position.distance_to(c.cargo_point()) < 1.2, "what's on it rides along")
+	check(p._too_big_for_ladder(), "it won't go up a ladder")
+	p.hurt(5.0, p.global_position + Vector3(1, 0, 0), 0.1, "test")
+	check(p.hauling == null, "being attacked makes you let go")
+	var deep := _find_spot_far(w, at, 400.0, func(q): return q.y < w.water_level() - 0.8)
+	if deep.is_finite():
+		check(not c._can_roll(deep, Vector3.FORWARD), "deep water stops it")
+
+	# Saved with what's on it.
+	var saved: Dictionary = w._world_state()
+	check(saved.endgame.handcarts.size() == 1, "the cart is saved")
+	var ld: Node = c.cargo.back()
+	check(ld == crate, "the last thing on is on top")
+	var nc: Node = w.add_handcart(c.global_position + Vector3(0, 0, 0), c.rotation.y)
+	nc.position.y = c.position.y
+	nc._adopted = true
+	nc._adopt()
+	check(lg in nc.cargo and crate in nc.cargo, "after a load, what lay on the bed rides again")
+	nc.queue_free()
+	w.queue_free()
+	await _frames(2)
+
+
+func test_endgame_houses() -> void:
+	var w: Node = await _new_swamp()
+	var p: Node = w.player
+	var at := _eg_ground(w, p)
+	Game.inventory.clear()
+	Game.endgame_seen = []
+	var bp: Dictionary = {}
+	for r in Items.RECIPES:
+		if r.out == "blueprint_outpost":
+			bp = r
+	check(not Game.knows_recipe(bp), "the blueprints stay hidden at first")
+	Game.inventory.add("copper_saw", 1)
+	check(not Game.knows_recipe(bp), "a saw alone doesn't show them")
+	Game.inventory.add("iron_nail", 1)
+	check(Game.knows_recipe(bp), "a saw and nails do")
+	Game.inventory.remove("iron_nail", 1)
+	check(Game.knows_recipe(bp), "and it stays known")
+	Game.inventory.add("iron_hammer", 1)
+
+	# Outpost.
+	var spot: Dictionary = {}
+	var good := _find_spot(w, p.global_position, func(q):
+		p.global_position = q + Vector3(0, 0.05, 0)
+		spot = w.end_house_spot("outpost", p)
+		return q.y > 0.3 and spot.why == "")
+	check(good.is_finite(), "somewhere an outpost can stand")
+	Game.inventory.add("blueprint_outpost", 1)
+	Game.inventory.select(Game.inventory.find("blueprint_outpost"))
+	await _frames(2)
+	check(p._plan != null and p._plan.get("type") == "outpost", "the blueprint shows the outpost's plan")
+	p.focus = null
+	p._use_held()
+	check(Game.houses.size() == 1 and Game.houses[0].get("type") == "outpost", "it is marked out")
+	var h: Node = Game.houses[0]
+	var missing: Array = h.missing_for(h.recipe_for(h.next_part()), "", p)
+	check(missing.any(func(m): return "River Stone" in m), "footings need stones")
+	var built: int = await _eg_build_all(w, h, p)
+	check(h.complete() and built == 5, "the outpost goes up in five parts (%d)" % built)
+	var inside: Vector3 = h.to_global(Vector3(-0.3, 0.05, 0.2))
+	check(Game.sheltered(inside) and h.room_spot(inside), "it is full shelter with room for a bedroll")
+	check(h.fire != null, "with a small hearth")
+	var fs: float = w.floor_height(inside)
+	check(absf(fs - h.global_position.y) < 0.01, "you stand on its floor")
+	var saved: Dictionary = h.to_dict()
+	check(saved.type == "outpost" and saved.built.size() == 5, "it saves as an outpost")
+	var pos: Vector3 = h.global_position
+	h.queue_free()
+	await _frames(2)
+	var h2: Node = w.add_house(pos, float(saved.yaw), saved)
+	await _frames(2)
+	check(h2.get("type") == "outpost" and h2.complete() and h2.fire != null, "and loads as one")
+	h2.queue_free()
+	await _frames(2)
+
+	# Hardwood house.
+	Game.inventory.clear()
+	Game.inventory.add("iron_saw", 1)
+	Game.inventory.add("iron_hammer", 1)
+	var hw_spot := {}
+	var g2 := _find_spot_far(w, at, 600.0, func(q):
+		p.global_position = q + Vector3(0, 0.05, 0)
+		hw_spot = w.end_house_spot("hardwood_house", p)
+		return q.y > 0.3 and hw_spot.why == "")
+	check(g2.is_finite(), "somewhere the hardwood house can stand")
+	if g2.is_finite():
+		# A lambda's captured locals are copies: ask again out here.
+		p.global_position = g2 + Vector3(0, 0.05, 0)
+		hw_spot = w.end_house_spot("hardwood_house", p)
+		var hh: Node = w.add_end_house("hardwood_house", hw_spot.at, hw_spot.yaw)
+		await _frames(2)
+		var calam: Node = w.add_log("log", p.global_position + Vector3(0.5, 0, 0), 0.0, "calamites")
+		check(not hh.takes_log(calam), "its stilts aren't Calamites")
+		calam.queue_free()
+		check(hh.parts().size() == 18, "18 parts")
+		Game.inventory.add("board_calamites", 30)
+		Game.inventory.add("iron_nail", 12)
+		hh.build_to(6)
+		var fl: Dictionary = hh.next_part()
+		check(fl.id == "floor" and not hh.missing_for(hh.recipe_for(fl), "", p).is_empty(), "softwood boards won't do for its floor")
+		Game.inventory.remove("board_calamites", 30)
+		Game.inventory.remove("iron_nail", 12)
+		built = await _eg_build_all(w, hh, p)
+		check(hh.complete(), "the hardwood house is finished (%d more parts)" % built)
+		check(Game.sheltered(hh.to_global(Vector3(2.5, 0.05, 1.0))), "with plenty of room inside")
+		check(hh.covers(hh.to_global(Vector3(3.5, 3.0, 4.0))), "the veranda is under the roof's footprint")
+		var m: Transform3D = hh.rain_map(House.EAVE, House.RIDGE, House.ROOF_Z.y)
+		var ridge_l: Vector3 = m * hh.to_global(Vector3(0, hh.cfg().ridge, 0))
+		check(absf(ridge_l.y - House.RIDGE) < 0.01, "the rain knows the shape of its roof")
+		hh.queue_free()
+		await _frames(2)
+
+	# Dock house: stand on the shore facing shallow water.
+	Game.inventory.clear()
+	Game.inventory.add("iron_saw", 1)
+	Game.inventory.add("iron_hammer", 1)
+	var dk := {}
+	var shore := Vector3.INF
+	for r in range(0, 1200, 12):
+		for i in 24:
+			var a := TAU * i / 24.0
+			var q := at + Vector3(cos(a), 0, sin(a)) * r
+			q.y = w.ground_height(q.x, q.z)
+			if q.y < w.water_level() + 0.05 or q.y > 1.5:
+				continue
+			for t in 8:
+				p.global_position = q + Vector3(0, 0.05, 0)
+				p.rotation.y = t * TAU / 8.0
+				dk = w.end_house_spot("dock_house", p)
+				if dk.why == "":
+					shore = q
+					break
+			if shore.is_finite():
+				break
+		if shore.is_finite():
+			break
+	check(shore.is_finite(), "a shore with shallow water to build out over")
+	if shore.is_finite():
+		var dh: Node = w.add_end_house("dock_house", dk.at, dk.yaw, dk.walk)
+		await _frames(2)
+		check(dh.parts()[0].id == "walk_0_a" and dk.walk >= 8.0 and dk.walk <= 40.0, "the walkway comes first, 8-40 m")
+		var near: Vector3 = dh.to_global(Vector3(0, dh._walk_top(dh._walk_z().y - 1.0) + 0.05, dh._walk_z().y - 1.0))
+		check(not Game.dock_safe(near), "not safe before it's built")
+		dh.build_to(2)
+		check(Game.dock_safe(near) and w.floor_height(near) > w.ground_height(near.x, near.z) - 0.01, "each finished section is safe to stand on")
+		check(dh.parts().filter(func(q): return q.id.begins_with("pile_")).size() == 18, "six tall piles of three logs each")
+		built = await _eg_build_all(w, dh, p)
+		check(dh.complete(), "the dock house is finished (%d more parts)" % built)
+		check(Game.sheltered(dh.to_global(Vector3(0, 0.05, 0))), "shelter out on the water")
+		check(Game.dock_safe(dh.to_global(Vector3(0, -2.0, 0))), "the water round it is safe")
+		var kept: Vector3 = dh.to_global(Vector3(1.0, -2.0, 0.5))
+		check(Game.dock_keeps_out(kept) == dh, "water predators are kept out from under it")
+		check(not dh.keeps_out(dh.way_out(kept)), "and one caught there has a way out")
+		check(w.wall_near(dh.to_global(Vector3(dh.cfg().hw, 1.5, 0))) and not w.wall_near(dh.to_global(Vector3(dh.cfg().hw + 6.0, 1.5, -8.0))), "a wall rack needs a wall right there")
+		check(dh.berth().distance_to(dh.to_global(Vector3(4.2, 0, 3.3))) < 3.5, "with a berth for a raft")
+		var ds: Dictionary = dh.to_dict()
+		check(ds.type == "dock_house" and is_equal_approx(float(ds.walk), float(dk.walk)), "it saves its walkway")
 	w.queue_free()
 	await _frames(2)

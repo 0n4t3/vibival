@@ -426,8 +426,9 @@ func interact(_player: Node) -> void:
 		if fuel <= 0.0:
 			Game.notify("The fire needs fuel: sticks, fronds or tinder.")
 		elif not inv.has_tag("fire"):
-			Game.notify("You need an ember to light a fire: take one from glowing coals or a burning stump. (A bow drill or a lit torch works too.)")
+			Game.notify("You need an ember to light a fire: take one from glowing coals or a burning stump. (A bow drill, fire striker or a lit torch works too.)")
 		else:
+			inv.spark()
 			_light_up()
 
 

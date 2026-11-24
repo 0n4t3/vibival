@@ -322,6 +322,7 @@ func options() -> Array:
 		out.append(b)
 	out.append_array(wood_options())
 	out.append_array(station_options())
+	out.append_array(pocket_options())
 	for r in Items.recipes_for(where, ["hand", "bench"] if bench else [tier]):
 		if bench and r.has("build"):
 			continue
@@ -365,6 +366,29 @@ func station_options() -> Array:
 					"label": "Its edge made good again (%s)" % ("blunt now" if Game.inventory.blunt(i) else "%d of %d uses left" % [Game.inventory.edge_left(i), edge]),
 					"how": "Click to draw the edge along the wet whetstone, again and again, then hone it fine."}
 			out.append({"recipe": r, "missing": missing_for(r)})
+	return out
+
+
+func pocket_options() -> Array:
+	## With a pocket whetstone, every worn metal edge you carry can be made
+	## good anywhere you can kneel. (Rough castings have no edge to grind.)
+	var out := []
+	if Game.inventory.count("pocket_whetstone") == 0 or station_kind == "anvil":
+		return out
+	var seen := {}
+	for i in Game.inventory.SIZE:
+		var sl = Game.inventory.slots[i]
+		if sl == null or seen.has(sl.id):
+			continue
+		var edge := int(Items.def(sl.id).get("edge", 0))
+		if edge <= 0 or Game.inventory.edge_left(i) >= edge:
+			continue
+		seen[sl.id] = true
+		var r := {"sharpen_tool": sl.id, "pocket": true, "out": sl.id, "n": 1, "in": {}, "act": "steps", "steps": 10, "cat": "Metal",
+				"verb": "Sharpen the %s (pocket whetstone)" % Items.item_name(sl.id).to_lower(),
+				"label": "A full edge again (%s)" % ("blunt now" if Game.inventory.blunt(i) else "%d of %d uses left" % [Game.inventory.edge_left(i), edge]),
+				"how": "Click to draw the slip along the edge, again and again, then hone it fine."}
+		out.append({"recipe": r, "missing": []})
 	return out
 
 
@@ -591,7 +615,8 @@ func _house_ok() -> bool:
 
 func _log_id() -> String:
 	## The log carried here for a stilt, as the house wants it ("" if none).
-	if house_log and is_instance_valid(house_log) and house_log.kind == "calamites" and house_log.item_id in ["log", "log_stripped"]:
+	if house_log and is_instance_valid(house_log) and house_log.item_id in ["log", "log_stripped"] \
+			and (house.takes_log(house_log) if house and house.has_method("takes_log") else house_log.kind == "calamites"):
 		return house_log.item_id
 	return ""
 
@@ -680,7 +705,7 @@ func wood_options() -> Array:
 	var hold := " (hold your %s for it)" % Items.item_name(better).to_lower() if better != "" else ""
 	var metal_axe := axe_tier in ["metal", "advanced"]
 	for r in Items.woodwork(on):
-		r = r.duplicate()
+		r = Items.wood_job(r, kind).duplicate()
 		var missing := []
 		if r.wood == "poles" and kind != "calamites":
 			continue  # only a hollow Calamites trunk splits into poles
@@ -809,8 +834,8 @@ func _use_tools(r: Dictionary) -> void:
 	if r.has("tool_tag"):
 		tags.append(r.tool_tag)
 	for tag in tags:
-		if tag == "hammer" and r.get("hammer_wear", false):
-			continue  # worn a strike at a time instead (_hammer_wear)
+		if tag == "hammer" and (r.get("hammer_wear", false) or r.get("no_hammer_wear", false)):
+			continue  # worn a strike at a time instead (_hammer_wear), or driving nails, which doesn't wear it
 		if laid_tag(tag) == "":
 			Game.inventory.use_tag(tag)
 
@@ -915,6 +940,9 @@ func _finish_sharpen(r: Dictionary) -> void:
 	if best >= 0:
 		Game.inventory.sharpen(best)
 		Game.notify("The %s is sharp again." % Items.item_name(r.sharpen_tool).to_lower())
+		if r.get("pocket", false) and Game.inventory.wear("pocket_whetstone") == 0:
+			Game.inventory.add("pocket_whetstone_case", 1, 0.0, true)
+			Game.notify("The whetstone slip is worn away. A new slip fits the case.")
 	Sfx.play("craft", -4.0)
 	Game.crafted.emit("sharpened")
 	_rebuild_work()
@@ -1102,6 +1130,17 @@ func _butcher_step() -> void:
 	finished.emit("")
 
 
+func _wood_out(id: String, n: int, world: Node) -> void:
+	## What a job on a log gives: to you, or from a big hardwood log, too much
+	## to hold, in a pile of its own beside the log, spaced by the log's width.
+	if not wood.hardwood() or world == null or not world.has_method("pile_item"):
+		_give(id, n, 0.0)
+		return
+	var side: Vector3 = wood.global_basis.z.normalized()
+	var k := ["board", "firewood", "bark", "branch"].find(id.get_slice("_", 0))
+	world.pile_item(id, n, wood.global_position + side * (wood.radius() + 0.55 + maxi(k, 0) * 0.55))
+
+
 func _wood_step() -> void:
 	## One axe stroke into the wood. The last one fells the tree, cuts the log
 	## off the trunk, or finishes stripping, cutting, hewing or splitting it.
@@ -1155,7 +1194,7 @@ func _wood_step() -> void:
 					player.velocity = Vector3.ZERO
 		"strip":
 			for id in r.give:
-				_give(id, r.give[id], 0.0)
+				_wood_out(id, r.give[id], world)
 				Game.picked.emit(id)
 			wood.set_id(r.out)
 			Game.notify("You strip the log: %s." % r.label)
@@ -1179,7 +1218,7 @@ func _wood_step() -> void:
 				var gid: String = id
 				if id == "board" and Items.exists("board_" + String(wood.kind)):
 					gid = "board_" + String(wood.kind)
-				_give(gid, r.give[id], 0.0)
+				_wood_out(gid, r.give[id], world)
 				Game.picked.emit(gid)
 				got.append("%s x%d" % [Items.item_name(gid), r.give[id]])
 			wood.queue_free()
@@ -1199,8 +1238,7 @@ func _begin_house(r: Dictionary) -> bool:
 	## Starts building the house's next part: its materials come out of your
 	## bag (a stilt's log is the one you carried here).
 	for id in r.in:
-		Game.inventory.remove(id, r.in[id])
-		used.append({"id": id, "n": r.in[id], "age": 0.0})
+		used.append_array(_take_as(id, r.in[id]))
 	recipe = r
 	steps = 0
 	house.set_working(r.house, 0)
@@ -1208,6 +1246,23 @@ func _begin_house(r: Dictionary) -> bool:
 	_rebuild_work()
 	changed.emit()
 	return true
+
+
+func _take_as(want: String, n: int) -> Array:
+	## Takes n of what will do for `want` from the bag (the exact item first,
+	## then copper or iron nails, any tree's boards...), as [{id, n, age}].
+	var out := []
+	var inv = Game.inventory
+	for exact in [true, false]:
+		for i in inv.SIZE:
+			var s = inv.slots[i]
+			if n <= 0 or s == null or (s.id == want) != exact or not Items.counts_as(s.id, want):
+				continue
+			var k: int = mini(n, s.n)
+			out.append({"id": s.id, "n": k, "age": float(s.get("age", 0.0))})
+			inv.take(i, k)
+			n -= k
+	return out
 
 
 func _cancel_house() -> void:
@@ -1273,7 +1328,7 @@ func _wood_mark(k: int, n: int) -> Vector3:
 		"buck":
 			return wood.cut_point() + Vector3(0, wood.radius(), 0)
 	var axis: Vector3 = wood.global_basis.x.normalized()
-	var top: Vector3 = wood.global_position + Vector3(0, Assets.LOG_R * 2.0, 0)
+	var top: Vector3 = wood.global_position + Vector3(0, wood.radius() * 2.0, 0)
 	match recipe.wood:
 		"shorten":
 			# Two strokes for each of three cuts.
@@ -2421,6 +2476,9 @@ func _rebuild_work() -> void:
 				b.tube([Vector3(-0.1, 0.2, -0.05), Vector3(0.0, 0.24, -0.05), Vector3(0.12, 0.06, -0.05)], [0.01, 0.01, 0.01], 4, [COPPER])
 			else:
 				b.cylinder(Vector3(0.25, 0, 0.2), Vector3(0.25, 0.1, 0.2), 0.1, 0.1, 8, COPPER)
+	if b.is_empty() and recipe.get("act", "") == "steps" and not recipe.has("wood") and not recipe.has("butcher") \
+			and not recipe.get("cast", false) and not recipe.has("melt"):
+		_assembly_work(b, k, n)
 	_work.mesh = b.commit(Assets.materials) if not b.is_empty() else null
 	_fit_to_ground()
 	if _on_anvil():
@@ -2488,6 +2546,17 @@ static func _clamp_clay(k: int, n: int) -> int:
 	## Patches of clay plastered on a charcoal clamp after k of its n steps.
 	var start := maxi(n - CLAMP_CLAY_STEPS, 2)
 	return 0 if k <= start else mini(CLAMP_PATCHES, ceili(float(CLAMP_PATCHES) * (k - start) / CLAMP_CLAY_STEPS))
+
+
+func _assembly_work(b: MeshBuilder, k: int, n: int) -> void:
+	## Something put together piece by piece: one more strip of it laid side
+	## by side each step, in the colour of what it will be.
+	var col: Color = Items.def(recipe.out).get("color", Assets.CUT_WOOD)
+	var count := maxi(n, 1)
+	var width := 0.5 / count
+	for i in mini(k + 1, count):
+		var x := -0.25 + width * (i + 0.5)
+		b.box(Vector3(x, 0.015, 0), Vector3(width * 0.86, 0.03, 0.34), col * (0.92 + 0.08 * (i % 2)))
 
 
 static func _clamp_log(i: int) -> Vector2:

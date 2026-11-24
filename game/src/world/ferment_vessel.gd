@@ -31,7 +31,7 @@ extends StaticBody3D
 const SoupPot := preload("res://src/world/soup_pot.gd")
 const Preserves := preload("res://src/core/preserves.gd")
 
-const CAP := 10
+const CAP := 10                     # a clay vessel; a barrel says its own (`holds`)
 const FERMENT_TIME := 24.0 * 60.0   # a game day
 const MEAT_SHARE := 0.3
 const HEAT_TIME := 60.0
@@ -131,6 +131,16 @@ func _ready() -> void:
 
 func sealed() -> bool:
 	return item_id.begins_with("vessel_sealed")
+
+
+func cap() -> int:
+	## How much it holds of each of food, water and salt.
+	return int(Items.def(item_id).get("holds", CAP))
+
+
+func wooden() -> bool:
+	## A barrel: never goes on a fire, so swamp water can't be boiled in it.
+	return Items.def(item_id).get("wooden", false)
 
 
 func fired_pot() -> bool:
@@ -249,8 +259,8 @@ func add_food(id: String, age := 0.0) -> String:
 		return "Boil the water first: swamp water would spoil it."
 	if not cool():
 		return "Let it cool down before you put food in."
-	if items.size() >= CAP:
-		return "The vessel holds no more food (%d)." % CAP
+	if items.size() >= cap():
+		return "The vessel holds no more food (%d)." % cap()
 	items.append({"id": id, "t": 0.0, "age": age})
 	_check()
 	return ""
@@ -263,8 +273,8 @@ func add_salt() -> String:
 		return "Salting needs the sealed vessel."
 	if rancid:
 		return "It has gone rancid. Fill it at the water to wash it out."
-	if salt >= CAP:
-		return "It holds no more salt (%d)." % CAP
+	if salt >= cap():
+		return "It holds no more salt (%d)." % cap()
 	salt += 1
 	_check()
 	return ""
@@ -276,8 +286,8 @@ func pour(clean: bool) -> String:
 		return "Fire the vessel before you use it."
 	if rancid:
 		return "It has gone rancid. Fill it at the water to wash it out."
-	if water >= CAP:
-		return "It holds no more water (%d)." % CAP
+	if water >= cap():
+		return "It holds no more water (%d)." % cap()
 	if not clean and not items.is_empty():
 		return "Swamp water would spoil the food in it."
 	water += 1
@@ -290,9 +300,9 @@ func pour(clean: bool) -> String:
 func catch_rain(dt: float) -> void:
 	## dt seconds of rain on it (swamp._update_weather): standing open, out
 	## from under a roof, it gains a serving of clean rain water every
-	## RAIN_EVERY seconds, never past CAP. Swamp water already in it stays
+	## RAIN_EVERY seconds, never past cap(). Swamp water already in it stays
 	## swamp water. The sealed vessel's lid keeps the rain out.
-	if sealed() or not fired_pot() or rancid or hauled_by != null or water >= CAP or Game.sheltered(global_position):
+	if sealed() or not fired_pot() or rancid or hauled_by != null or water >= cap() or Game.sheltered(global_position):
 		_rain_t = 0.0
 		return
 	_rain_t += dt
@@ -300,10 +310,10 @@ func catch_rain(dt: float) -> void:
 		return
 	if water == 0:
 		dirty = false
-	while _rain_t >= RAIN_EVERY and water < CAP:  # a long step (sleep) adds every serving it earned
+	while _rain_t >= RAIN_EVERY and water < cap():  # a long step (sleep) adds every serving it earned
 		_rain_t -= RAIN_EVERY
 		water += 1
-	if water >= CAP:
+	if water >= cap():
 		_rain_t = 0.0
 	_check()
 
@@ -343,7 +353,7 @@ func fill_dirty() -> bool:
 	salt = 0
 	rancid = false
 	brew_t = 0.0
-	water = CAP
+	water = cap()
 	dirty = true
 	heat = 0.0
 	_had_meat = false
@@ -444,9 +454,10 @@ func _refresh() -> void:
 	_liquid.visible = water > 0 and not sealed() and fired_pot()
 	if not _liquid.visible:
 		return
-	var f := clampf(water / float(CAP), 0.0, 1.0)
-	_liquid.position = Vector3(0, lerpf(LIQUID_Y[0], LIQUID_Y[1], f), 0)
-	var r := lerpf(0.2, 0.25, sin(f * PI))
+	var f := clampf(water / float(cap()), 0.0, 1.0)
+	var top: float = 0.8 if wooden() else LIQUID_Y[1]
+	_liquid.position = Vector3(0, lerpf(LIQUID_Y[0], top, f), 0)
+	var r := lerpf(0.22, 0.27, sin(f * PI)) if wooden() else lerpf(0.2, 0.25, sin(f * PI))
 	_liquid.scale = Vector3(r, 1.0, r)
 	_liquid_mat.albedo_color = liquid_color()
 
@@ -497,6 +508,8 @@ func set_hauled(by: Node3D) -> void:
 
 
 func fire_near(pos: Vector3) -> Node3D:
+	if wooden():
+		return null
 	var best: Node3D = null
 	var best_d := HANG_R
 	for f in Game.fires:
@@ -536,6 +549,16 @@ func haul_interact(player: Node) -> bool:
 	var had := not is_empty()
 	var bloody := fill_dirty()
 	Sfx.play("splash", -4.0)
+	if wooden():
+		# It can't be boiled, so swamp water is no use in it: rinsed and tipped out.
+		water = 0
+		dirty = false
+		_refresh()
+		Game.notify("You rinse out the barrel and tip it empty. Swamp water can't be boiled in it: pour in clean water, or leave an unsealed one out in the rain." if had
+				else "A barrel can't be boiled clean, so swamp water is no use in it. Pour in clean water, or leave an unsealed one out in the rain.")
+		if bloody and world and world.has_method("blood_in_water"):
+			world.blood_in_water(player.water_point(), player)
+		return true
 	Game.notify("You wash out the vessel and fill it with swamp water." if had else "You fill the vessel with swamp water.")
 	if bloody and world and world.has_method("blood_in_water"):
 		world.blood_in_water(player.water_point(), player)
@@ -600,9 +623,9 @@ func tooltip(_player: Node) -> String:
 		var pct := roundi(fired / FIRE_TIME * 100.0)
 		return "%s\nSet it in a lit campfire to fire it%s" % [name, "  (%d%% fired)" % pct if pct > 0 else ""]
 	var lines := ["%s: %s" % [name, status()]]
-	var parts := ["Water %d/%d%s" % [water, CAP, " (swamp)" if dirty and water > 0 else ""], "Food %d/%d" % [items.size(), CAP]]
+	var parts := ["Water %d/%d%s" % [water, cap(), " (swamp)" if dirty and water > 0 else ""], "Food %d/%d" % [items.size(), cap()]]
 	if sealed():
-		parts.append("Salt %d/%d" % [salt, CAP])
+		parts.append("Salt %d/%d" % [salt, cap()])
 	lines.append("   ".join(parts))
 	if rancid:
 		lines.append("Rancid: wash it out at the water")
@@ -734,9 +757,9 @@ func to_dict() -> Dictionary:
 func from_dict(d: Dictionary) -> void:
 	item_id = String(d.get("id", item_id))
 	rotation.y = float(d.get("yaw", 0.0))
-	water = clampi(int(d.get("water", 0)), 0, CAP)
+	water = clampi(int(d.get("water", 0)), 0, cap())
 	dirty = bool(d.get("dirty", false))
-	salt = clampi(int(d.get("salt", 0)), 0, CAP)
+	salt = clampi(int(d.get("salt", 0)), 0, cap())
 	items.clear()
 	for it in d.get("items", []):
 		if Items.exists(String(it.get("id", ""))):

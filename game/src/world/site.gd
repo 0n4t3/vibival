@@ -294,7 +294,7 @@ func tear_down() -> void:
 		for item in got:
 			if Items.def(item).get("carry", false):
 				for k in got[item]:
-					world.add_log(item, at + Vector3(1.2 + 0.4 * k, 0, 0.6), rotation.y, "calamites")
+					world.add_log(item, at + Vector3(1.2 + 0.4 * k, 0, 0.6), rotation.y, log_kind_for(item))
 			elif world.has_method("pile_item"):
 				world.pile_item(item, got[item], at + Vector3(-1.0 + (spots % 4) * 0.7, 0.3, -1.0 - (spots / 4) * 0.7))
 				spots += 1
@@ -305,6 +305,10 @@ func tear_down() -> void:
 	Game.notify("You tear the %s down." % site_name() + (" Left beside you: " + ", ".join(list) + "." if not list.is_empty() else ""))
 	_on_torn_down()
 	queue_free()
+
+
+func log_kind_for(_item: String) -> String:
+	return "calamites"
 
 
 func _on_torn_down() -> void:

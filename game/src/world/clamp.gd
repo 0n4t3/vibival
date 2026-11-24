@@ -79,7 +79,7 @@ func prompt(_player: Node) -> String:
 	var mattock: bool = "dig" in Items.def(held).get("tags", [])
 	var tool := Items.tool_word(held)
 	if not lit():
-		if held in ["ember", "torch_lit"]:
+		if held in ["ember", "torch_lit", "fire_striker"]:
 			return "Light the charcoal clamp [E]"
 		return "Charcoal clamp: light it with an ember or a lit torch%s" % ("   (swing the %s to break it up)" % tool if mattock else "")
 	if done():
@@ -94,6 +94,8 @@ func interact(_player: Node) -> void:
 	var held: String = Game.inventory.held_id()
 	if held == "ember":
 		Game.inventory.take(Game.inventory.selected, 1)
+	elif held == "fire_striker":
+		Game.inventory.spark()
 	elif held != "torch_lit":
 		return
 	lit_at = Game.time

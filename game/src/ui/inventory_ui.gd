@@ -931,7 +931,7 @@ func _refresh_health() -> void:
 					_vitals_box.add_child(_small("  " + e.advice, Color(1, 1, 1, 0.7), 12))
 	_clear(_wound_box)
 	var have := {}
-	for kind in ["bandage", "wax", "clean", "alcohol"]:
+	for kind in ["bandage", "wax", "clean", "alcohol", "suture"]:
 		var c := 0
 		for s in Game.inventory.slots:
 			if s != null and Items.def(s.id).get("treat", "") == kind:
@@ -964,7 +964,7 @@ func _refresh_health() -> void:
 		var notes := []
 		if w.bleed > 0:
 			notes.append("%s bleeding%s" % [Survival.BLEED_NAMES[w.bleed], ", held back" if w.held > 0.0 else ""])
-		notes.append("covered with %s" % ("a bandage" if w.cover == "bandage" else "wax") if w.cover != "" else "open")
+		notes.append("covered with %s" % ("a bandage" if w.cover == "bandage" else ("stitches" if w.cover == "suture" else "wax")) if w.cover != "" else "open")
 		if w.inf != Survival.INF_NONE:
 			notes.append(Survival.INF_NAMES[w.inf].to_lower())
 		cb.add_child(_small(", ".join(notes)))
@@ -989,6 +989,10 @@ func _refresh_health() -> void:
 		var wax := _button("Seal with wax", _treat_with.bind("wax", i))
 		wax.disabled = w.cover != "" or have.wax == 0 or w.bleed > 0
 		br.add_child(wax)
+		if have.suture > 0:
+			var stitch := _button("Stitch", _treat_with.bind("suture", i))
+			stitch.disabled = w.cover == "suture"
+			br.add_child(stitch)
 
 
 # --- Fermentation vessel ----------------------------------------------------------------
@@ -1332,6 +1336,8 @@ func _book_entry(r: Dictionary) -> Control:
 		lines.append("Tool (kept): " + Items.item_name(id))
 	if r.has("tool_tag"):
 		lines.append("Tool (kept): any %s" % Items.TAG_TOOLS.get(r.tool_tag, r.tool_tag))
+	for tag in r.get("tool_tags", []):
+		lines.append("Tool (kept, in your bag): any %s" % Items.TAG_TOOLS.get(tag, tag))
 	if r.has("wear"):
 		lines.append("Sharpening wears the %s: %d use%s off it" % [Items.item_name(r.wear).to_lower(), r.sharpen.size(), "" if r.sharpen.size() == 1 else "s"])
 	if r.has("rack"):

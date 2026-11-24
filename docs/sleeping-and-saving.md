@@ -41,6 +41,16 @@ Look at it and:
 
 If the house is torn down, the bedroll is left on the ground.
 
+### The bed
+
+A **Bed** lets you rest whenever you like, tired or not, for any time from 15
+minutes to 48 hours. Danger, bleeding and deep water still stop you lying down.
+You heal as fast as on a bedroll, and the odds of being bitten, attacked or
+flooded scale with how long you stay. Falling to very low food or water wakes
+you early. A rest under four hours doesn't count as a night's sleep: wildlife
+stays, traps wait, and tiredness and broken bones don't improve. Every rest saves
+when you wake.
+
 ## Saving
 
 Vibival has two kinds of save, and each world keeps its own.

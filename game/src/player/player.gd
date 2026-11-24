@@ -7,6 +7,8 @@ signal hurt_flash(amount: float)
 signal died
 signal escape_rolled(chance: float, roll: float, freed: bool)
 
+const HungLamp := preload("res://src/world/hung_lamp.gd")
+const EndHouse := preload("res://src/world/end_house.gd")
 const Survival := preload("res://src/core/survival.gd")
 const Inventory := preload("res://src/core/inventory.gd")
 const Preserves := preload("res://src/core/preserves.gd")
@@ -70,6 +72,7 @@ var _torch_flicker := 0.0
 var work_spot: Node3D = null    # where you kneel crafting on the ground
 var work_view := Vector3.ZERO   # camera yaw, pitch and extra fov that keep the work clear of the work UI's panels
 var work_back := 0.0            # and how much further back the camera stands when that isn't enough
+var _lamp_at := 0.0
 var hauling: Node3D = null      # a carcass or log carried (or a large carcass dragged) in front of you
 var focus: Object = null        # interactable under the crosshair
 var focus_water := false
@@ -273,6 +276,8 @@ func _physics_process(delta: float) -> void:
 	speed *= vitals.speed_mult()
 	if hauling and hauling.haul_mode() == "drag":
 		speed *= 0.5
+	elif hauling and hauling.has_method("haul_speed"):
+		speed *= hauling.haul_speed()
 	if hauling and vitals.arm_broken():
 		speed *= Survival.ARM_HAUL
 	if load > 1.0:
@@ -301,7 +306,7 @@ func _physics_process(delta: float) -> void:
 			Game.notify("Flying." if flying else "Landed.")
 		else:
 			_last_jump = now
-	climbing = _ladder(input if active else Vector2.ZERO) if not flying and not swimming else null
+	climbing = _ladder(input if active else Vector2.ZERO) if not flying and not swimming and not _too_big_for_ladder() else null
 	if climbing:
 		# On a rope ladder: up and down it, a little from side to side, held
 		# out from the edge of the porch until you are up level with it.
@@ -506,17 +511,19 @@ func _update_plan() -> void:
 			_plan = null
 		_plan_why = ""
 		return
-	var spot: Dictionary = world.dock_spot(self) if kind == "dock" else world.house_spot(self)
+	var spot: Dictionary = world.dock_spot(self) if kind == "dock" else (world.end_house_spot(kind, self) if EndHouse.CFG.has(kind) else world.house_spot(self))
 	_plan_why = spot.why
 	if _plan == null:
-		_plan = Dock.new() if kind == "dock" else House.new()
+		_plan = Dock.new() if kind == "dock" else (EndHouse.new().setup(kind, world, float(spot.get("walk", 8.0))) if EndHouse.CFG.has(kind) else House.new())
 		_plan.set_meta("kind", kind)
 		_plan.preview = true
 		_plan.world = world
 		world.add_child(_plan)
+	if _plan is EndHouse and absf(_plan.walk_len - float(spot.get("walk", _plan.walk_len))) > 0.01:
+		_plan.setup(kind, world, float(spot.walk))
 	_plan.show_plan(spot.at, spot.yaw, spot.why == "")
 	if focus == null:
-		prompt = ("Mark out the %s site here [Right-click]" % ("dock" if kind == "dock" else "house")) if _plan_why == "" else "Can't build here: " + _plan_why.trim_suffix(".").to_lower()
+		prompt = ("Mark out the %s site here [Right-click]" % ("dock" if kind == "dock" else (EndHouse.CFG[kind].name if EndHouse.CFG.has(kind) else "house"))) if _plan_why == "" else "Can't build here: " + _plan_why.trim_suffix(".").to_lower()
 
 
 func _hold_take(delta: float) -> void:
@@ -533,12 +540,13 @@ func _hold_take(delta: float) -> void:
 
 
 func _update_torch(delta: float) -> void:
+	_update_lamp()
 	## A held light (lit torch) flickers; rain makes it very dim.
 	var range_m: float = Items.def(_held_id).get("light", 0.0)
 	_torch_light.visible = range_m > 0.0 and not vitals.dead
 	if not _torch_light.visible:
 		return
-	var wet: bool = world != null and world.get("raining") == true
+	var wet: bool = world != null and world.get("raining") == true and not Items.def(_held_id).get("hooded", false)
 	_torch_flicker += delta * 11.0
 	var f := 0.85 + 0.15 * sin(_torch_flicker) * sin(_torch_flicker * 1.9 + 0.7)
 	_torch_light.omni_range = range_m * (0.4 if wet else 1.0)
@@ -752,6 +760,15 @@ func _use_held() -> void:
 		if why == "":
 			Sfx.play("rustle", -6.0, 0.3)
 		return
+	if def.get("lamp", false):
+		_use_lamp()
+		return
+	if id == "torch" and inv.count("fire_striker") > 0:
+		inv.spark()
+		inv.replace(inv.selected, "torch_lit")
+		Sfx.play("fire_start", -8.0)
+		Game.notify("You strike a spark and the torch catches.")
+		return
 	if def.has("blueprint"):
 		if world and world.has_method("place_blueprint") and world.place_blueprint(def.blueprint, self):
 			inv.take(inv.selected, 1)
@@ -920,6 +937,10 @@ func treat_slot(i: int, wound := -1) -> bool:
 				why = "You have no wounds that need washing." if not vitals.wounds.is_empty() else "You have no wounds that need that."
 			else:
 				Game.notify("You wash out your wounds with boiled water." if kind == "clean" else "You clean the wound with alcohol. It burns.")
+		"suture":
+			why = vitals.suture(wound)
+			if why == "":
+				Game.notify("You stitch the wound closed.")
 		"bandage", "wax":
 			why = vitals.cover(wound, kind)
 			if why == "":
@@ -1011,8 +1032,15 @@ func put_down() -> void:
 	if raft and not raft.has_room_for(c):
 		Game.notify("There's already a %s on the raft." % raft.cargo.haul_name())
 		return
+	var cart: Node3D = _cart_for(c) if is_instance_valid(c) and raft == null else null
+	if cart and not cart.has_room_for(c):
+		Game.notify("There's no room on the cart for the %s." % c.haul_name())
+		return
 	if raft:
 		c.global_position = raft.cargo_point()  # the middle of the deck
+	elif cart:
+		c.global_position = cart.cargo_point()
+		c.set_meta("cart_load", true)
 	elif c and is_instance_valid(c):
 		_keep_on_floor(c)  # first, so a workbench's room is checked where it will stand
 	if c and is_instance_valid(c) and c.has_method("can_put_down") and not c.can_put_down():
@@ -1023,7 +1051,22 @@ func put_down() -> void:
 	c.set_hauled(null)
 	if raft:
 		raft.stow(c)
+	elif cart:
+		cart.stow(c)
 	Sfx.play("step", -4.0)
+
+
+func _too_big_for_ladder() -> bool:
+	## A cart or a dragged log doesn't go up a rope ladder.
+	return hauling != null and is_instance_valid(hauling) and hauling.haul_mode() in ["pull", "drag"] and not "species" in hauling
+
+
+func _cart_for(c: Node3D) -> Node3D:
+	## The handcart this would be set down on: held out over its bed.
+	if world == null or not world.has_method("cart_near") or c.is_in_group("handcarts"):
+		return null
+	var cart: Node3D = world.cart_near(c.global_position, 1.5)
+	return cart if cart and cart.takes(c) else null
 
 
 func _raft_for(c: Node3D) -> Node3D:
@@ -1072,6 +1115,9 @@ func _hold_haul() -> void:
 		var out: Vector3 = climbing.global_basis.z
 		at = global_position + out * (r + 0.35) + Vector3(0, 0.5, 0)
 		c.rotation.y = climbing.rotation.y + c.haul_yaw()
+	elif c.haul_mode() == "pull":
+		c.haul_follow(self)
+		return
 	elif c.haul_mode() == "drag":
 		at = global_position + fwd * (r * 1.6 + 0.9)
 		var g: float = world.floor_height(Vector3(at.x, global_position.y, at.z)) if world and world.has_method("floor_height") else global_position.y
@@ -1081,6 +1127,77 @@ func _hold_haul() -> void:
 		at = global_position + fwd * (r + 0.55) + Vector3(0, c.haul_lift(), 0)
 		c.rotation.y = rotation.y + c.haul_yaw()
 	c.global_position = at
+
+
+# --- The metal lamp ------------------------------------------------------------------
+# Its fuel is in its slot's data, in game minutes (hung_lamp.gd WAX to a residue).
+
+func lamp_flame(at: Vector3) -> bool:
+	## Whether there's a flame to light a lamp from here, wearing a striker if
+	## that's what does it.
+	var inv = Game.inventory
+	if Game.nearest_fire(at, 3.0) or inv.count("torch_lit") > 0 or inv.count("ember") > 0:
+		return true
+	if inv.has_tag("fire"):
+		inv.spark()
+		return true
+	return false
+
+
+func _use_lamp() -> void:
+	## On a house wall or ceiling, hangs it. Otherwise it tops up from your
+	## wax, then lights; lit, it goes out, keeping its fuel.
+	var inv = Game.inventory
+	var i: int = inv.selected
+	var s: Dictionary = inv.slots[i]
+	if world and world.has_method("hang_lamp") and world.hang_lamp(self, s):
+		inv.take(i, 1)
+		return
+	var data: Dictionary = s.get("data", {}).duplicate()
+	var fuel: float = float(data.get("fuel", 0.0))
+	var base: String = Items.lantern_base(s.id)
+	if Items.lantern_is_lit(s.id):
+		inv.replace(i, base, 0.0, data)
+		Game.notify("You put out the lantern.")
+		return
+	var room := HungLamp.HELD - ceili(fuel / HungLamp.WAX)
+	var n: int = mini(inv.count("wax"), room)
+	if n > 0:
+		inv.remove("wax", n)
+		fuel += n * HungLamp.WAX
+		data["fuel"] = fuel
+		inv.replace(i, base, 0.0, data)
+		Game.notify("You fill the lantern: %d of %d wax." % [ceili(fuel / HungLamp.WAX), HungLamp.HELD])
+	if fuel <= 0.0:
+		Game.notify("The lantern is dry. It burns waxy residue.")
+	elif lamp_flame(global_position):
+		inv.replace(i, base + "_lit", 0.0, data)
+		Sfx.play("fire_start", -10.0)
+	elif n == 0:
+		Game.notify("You need a flame to light it: a striker, bow drill, torch, ember or a fire close by.")
+
+
+func _update_lamp() -> void:
+	## A lit lamp burns while it's in your hand; put away, it goes out.
+	var inv = Game.inventory
+	var now: float = Game.time
+	var dt: float = maxf(now - _lamp_at, 0.0)
+	_lamp_at = now
+	for i in inv.SIZE:
+		var s = inv.slots[i]
+		if s == null or not Items.lantern_is_lit(s.id):
+			continue
+		var base: String = Items.lantern_base(s.id)
+		var data: Dictionary = s.get("data", {}).duplicate()
+		if i != inv.selected:
+			inv.replace(i, base, 0.0, data)
+			continue
+		var fuel: float = maxf(float(data.get("fuel", 0.0)) - dt, 0.0)
+		data["fuel"] = fuel
+		s["data"] = data
+		if fuel <= 0.0:
+			inv.replace(i, base, 0.0, data)
+			Game.notify("Your lantern has burnt dry.")
 
 
 # --- Combat ---------------------------------------------------------------------
@@ -1182,6 +1299,9 @@ func hurt(amount: float, from: Vector3, dirt := 0.3, source := "", deep := 1.0) 
 	## enough hit perhaps a broken arm or leg. Otherwise just blood lost.
 	if vitals.dead:
 		return
+	if from != Vector3.ZERO and hauling and is_instance_valid(hauling) and hauling.haul_mode() == "pull":
+		put_down()
+		Game.notify("You let go of the handcart.")
 	stop_pressure()
 	if from != Vector3.ZERO and amount >= 3.0:
 		vitals.reopen()

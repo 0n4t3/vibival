@@ -331,7 +331,7 @@ func _start_wood_work(wood: Node3D, tree: Dictionary) -> void:
 			return
 	else:
 		centre = wood.global_position
-		r = Assets.LOG_R
+		r = wood.radius() if wood.has_method("radius") else Assets.LOG_R
 		axis = wood.global_basis.x
 	var side := Vector3(p.x - centre.x, 0, p.z - centre.z)
 	if axis != Vector3.ZERO:
@@ -482,7 +482,7 @@ func start_house_work(house: Node3D, carried: Node3D = null) -> void:
 	if p.is_empty():
 		return
 	if p.get("log", false) and carried == null:
-		Game.notify("Next: %s. Carry a Calamites log here in your arms and press E." % p.verb.to_lower())
+		Game.notify("Next: %s. Bring a %s here and press E." % [p.verb.to_lower(), house.log_word() if house.has_method("log_word") else "Calamites log"])
 		return
 	var stand: Vector3 = house.stand_point(p, player)
 	if stand.is_finite():

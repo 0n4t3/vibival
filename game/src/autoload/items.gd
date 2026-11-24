@@ -696,6 +696,82 @@ const ITEMS := {
 		"color": Color(0.60, 0.61, 0.63), "shape": "pencil_core"},
 	"iron_hammer_head": {"name": "Iron Hammer Head", "desc": "A heavy iron head hammered cold. Haft it to make an iron hammer.", "stack": 4, "w": 0.9,
 		"color": Color(0.60, 0.61, 0.63), "shape": "hammer_head", "head": Color(0.60, 0.61, 0.63)},
+	# --- End-game woodworking (construction.md) ---
+	# Never found: a recipe's "any_nail" takes copper or iron nails (`as`), and
+	# "hardwood_board" takes a Lepidodendron or Sigillaria board (counts_as).
+	"any_nail": {"name": "Nails (copper or iron)", "desc": "Copper or iron nails: either will do.", "stack": 50, "w": 0.02,
+		"color": Color(0.60, 0.61, 0.63), "shape": "nail"},
+	"hardwood_board": {"name": "Hardwood Board", "desc": "A Lepidodendron or Sigillaria board.", "stack": 10, "w": 1.5,
+		"color": Color(0.66, 0.55, 0.38), "shape": "plank", "fuel": 400.0},
+	"copper_nail": {"name": "Copper Nails", "desc": "Cast copper nails. Used up in anything nailed together.", "stack": 50, "w": 0.02,
+		"color": Color(0.80, 0.47, 0.24), "shape": "nail", "as": "any_nail"},
+	"iron_nail": {"name": "Iron Nails", "desc": "Cold-drawn iron nails. Used up in anything nailed together.", "stack": 50, "w": 0.02,
+		"color": Color(0.60, 0.61, 0.63), "shape": "nail", "as": "any_nail"},
+	"mould_nail_unfired": {"name": "Unfired Nail Mould", "desc": "Fire it in a campfire before use.", "stack": 2, "w": 1.6,
+		"color": Color(0.58, 0.56, 0.52), "shape": "mould", "cook": "mould_nail", "cook_time": 80.0},
+	"mould_nail": {"name": "Nail Mould", "desc": "A fired clay mould for six nails. Cast copper in it at the furnace.", "stack": 2, "w": 1.0,
+		"color": Color(0.70, 0.42, 0.28), "shape": "mould", "uses": 5},
+	"rough_iron_saw_blade": {"name": "Rough Iron Saw Blade", "desc": "Hammered to shape. Grind its teeth sharp at the anvil's whetstone.", "stack": 4, "w": 0.8,
+		"color": Color(0.36, 0.35, 0.34), "shape": "saw_blade"},
+	"iron_saw_blade": {"name": "Iron Saw Blade", "desc": "Its teeth ground sharp. Haft it with a stick and string.", "stack": 4, "w": 0.8,
+		"color": Color(0.60, 0.61, 0.63), "shape": "saw_blade"},
+	"iron_saw": {"name": "Iron Saw", "desc": "Saws any log into boards and holds its edge longer than copper.", "stack": 1, "w": 0.9,
+		"color": Color(0.50, 0.40, 0.28), "shape": "metal_saw", "damage": 6.0, "tier": "advanced", "reach": 2.0, "tags": ["saw"], "edge": 90, "head": Color(0.60, 0.61, 0.63)},
+	# `holds`: a vessel's capacity (10 without it). `wooden`: never goes on a fire.
+	"vessel_open_barrel": {"name": "Unsealed Barrel", "desc": "An open barrel for pickling: twice a clay vessel's room. It can't go on a fire.", "stack": 1, "w": 0.0,
+		"color": Color(0.56, 0.41, 0.25), "shape": "barrel", "carry": true, "holds": 20, "wooden": true},
+	"vessel_sealed_barrel": {"name": "Sealed Barrel", "desc": "A lidded barrel for brewing and salting: twice a clay vessel's room. It can't go on a fire.", "stack": 1, "w": 0.0,
+		"color": Color(0.50, 0.36, 0.22), "shape": "barrel", "carry": true, "holds": 20, "wooden": true},
+	"storage_crate": {"name": "Storage Crate", "desc": "A nailed crate that holds 150 kg set down. Carried in your arms while empty.", "stack": 1, "w": 0.0,
+		"color": Color(0.60, 0.46, 0.28), "shape": "crate", "carry": true, "stash": 150.0},
+	"handcart": {"name": "Handcart", "desc": "A two-wheeled cart for moving logs, pots, stones and anything else too big for the bag.", "stack": 1, "w": 0.0,
+		"color": Color(0.62, 0.48, 0.30), "shape": "handcart", "carry": true},
+	"wooden_table": {"name": "Wooden Table", "desc": "A sturdy nailed table, for looks.", "stack": 1, "w": 0.0,
+		"color": Color(0.62, 0.48, 0.30), "shape": "table", "carry": true},
+	"wooden_chair": {"name": "Wooden Chair", "desc": "A plain nailed chair, for looks.", "stack": 1, "w": 0.0,
+		"color": Color(0.62, 0.48, 0.30), "shape": "chair", "carry": true},
+	"wall_rack": {"name": "Wall Tool Rack", "desc": "A pegged board for a house wall. Holds six tools, ready to grab.", "stack": 2, "w": 1.5,
+		"color": Color(0.62, 0.48, 0.30), "shape": "wall_rack", "place": "wall_rack"},
+	"copper_lantern": {"name": "Copper Lantern", "desc": "A round, hooded copper lantern that burns waxy residue. Holds 6 in hand, 24 hung up.", "stack": 1, "w": 0.9,
+		"color": Color(0.80, 0.47, 0.24), "shape": "lamp", "lamp": true},
+	"copper_lantern_lit": {"name": "Copper Lantern (lit)", "desc": "Burning steadily, even in the rain.", "stack": 1, "w": 0.9,
+		"color": Color(0.95, 0.68, 0.30), "shape": "lamp", "lamp": true, "light": 13.0, "hooded": true, "tags": ["fire"]},
+	"iron_lantern": {"name": "Iron Lantern", "desc": "A six-sided, hooded iron lantern that burns waxy residue. Holds 6 in hand, 24 hung up.", "stack": 1, "w": 0.9,
+		"color": Color(0.36, 0.37, 0.39), "shape": "lamp", "lamp": true},
+	"iron_lantern_lit": {"name": "Iron Lantern (lit)", "desc": "Burning steadily, even in the rain.", "stack": 1, "w": 0.9,
+		"color": Color(0.46, 0.43, 0.40), "shape": "lamp", "lamp": true, "light": 13.0, "hooded": true, "tags": ["fire"]},
+	"mattress": {"name": "Mattress", "desc": "A long cloth tick stuffed with plant fiber, ready to lay on a bed frame.", "stack": 1, "w": 4.0,
+		"color": Color(0.84, 0.79, 0.66), "shape": "mattress"},
+	"wooden_bed": {"name": "Bed", "desc": "A mattress on a nailed frame. Lie down and rest for as long as you choose.", "stack": 1, "w": 0.0,
+		"color": Color(0.62, 0.48, 0.30), "shape": "bed", "carry": true},
+	"pack_frame": {"name": "Pack Frame", "desc": "A nailed wooden frame to carry a cloth sack on your back.", "stack": 2, "w": 1.0,
+		"color": Color(0.62, 0.48, 0.30), "shape": "pack_frame"},
+	"framed_pack": {"name": "Framed Pack", "desc": "A cloth sack on a wooden frame. Carries 52 kg more, or set it down as a stash.", "stack": 1, "w": 1.5,
+		"color": Color(0.70, 0.60, 0.42), "shape": "framed_pack", "tags": ["sack"], "place": "sack", "carry_kg": 52.0, "stash": 100.0},
+	"whetstone_slip": {"name": "Whetstone Slip", "desc": "A thin sliver of whetstone, to fit a pocket case.", "stack": 10, "w": 0.1,
+		"color": Color(0.55, 0.57, 0.60), "shape": "pencil_core"},
+	"pocket_whetstone": {"name": "Pocket Whetstone", "desc": "A whetstone slip in a wooden case. Puts a full edge on a tool anywhere you can kneel.", "stack": 1, "w": 0.3,
+		"color": Color(0.55, 0.45, 0.32), "shape": "pocket_stone", "uses": 30},
+	"pocket_whetstone_case": {"name": "Empty Whetstone Case", "desc": "Its slip is worn away. A new slip fits it.", "stack": 2, "w": 0.2,
+		"color": Color(0.46, 0.36, 0.24), "shape": "pocket_stone"},
+	"iron_striker": {"name": "Iron Striker", "desc": "A curved bar of iron. Bind a chert nodule to it to throw sparks.", "stack": 2, "w": 0.2,
+		"color": Color(0.60, 0.61, 0.63), "shape": "striker"},
+	"fire_striker": {"name": "Fire Striker", "desc": "Iron and chert. Lights campfires, torches, lamps and charcoal clamps directly.", "stack": 1, "w": 0.35,
+		"color": Color(0.60, 0.61, 0.63), "shape": "striker", "tags": ["fire"], "uses": 40},
+	"rough_iron_needle": {"name": "Rough Iron Needle", "desc": "Hammered thin. Grind it fine at the anvil's whetstone.", "stack": 10, "w": 0.02,
+		"color": Color(0.36, 0.35, 0.34), "shape": "needle"},
+	"iron_needle": {"name": "Iron Needle", "desc": "A fine ground needle, for a suture kit.", "stack": 10, "w": 0.02,
+		"color": Color(0.60, 0.61, 0.63), "shape": "needle"},
+	"suture_kit": {"name": "Suture Kit", "desc": "A needle and waxed thread: closes a wound, which then heals twice as fast. Wash it first.", "stack": 1, "w": 0.15,
+		"color": Color(0.82, 0.78, 0.66), "shape": "suture", "treat": "suture", "measures": 6, "drained": "suture_kit_used"},
+	"suture_kit_used": {"name": "Used Suture Kit", "desc": "The needle is fine, but the thread is gone. Refill it with string and wax.", "stack": 1, "w": 0.08,
+		"color": Color(0.62, 0.58, 0.48), "shape": "suture"},
+	"blueprint_outpost": {"name": "Outpost Blueprint", "desc": "Plans for a tiny hut on stone footings, for islands and long trips.", "stack": 1, "w": 0.05,
+		"color": Color(0.86, 0.84, 0.72), "shape": "house_plan", "blueprint": "outpost"},
+	"blueprint_hardwood_house": {"name": "Hardwood House Blueprint", "desc": "Plans for a big stilted house with a veranda, stairs and two rooms.", "stack": 1, "w": 0.05,
+		"color": Color(0.86, 0.84, 0.72), "shape": "house_plan", "blueprint": "hardwood_house"},
+	"blueprint_dock_house": {"name": "Dock House Blueprint", "desc": "Plans for a house on tall piles out in the water, with a walkway to shore.", "stack": 1, "w": 0.05,
+		"color": Color(0.86, 0.84, 0.72), "shape": "house_plan", "blueprint": "dock_house"},
 }
 
 ## Crafting tiers. Each tier is a place to work: by hand anywhere on the
@@ -722,7 +798,7 @@ const BOOK_GROUPS := {
 ## rack, shown apart from their categories once you know the tool.
 const ADVANCED := "Rack tools"
 ## What a recipe's `tool_tag` asks for, in words.
-const TAG_TOOLS := {"cut": "blade", "chop": "axe or mattock", "dig": "shovel or mattock", "saw": "saw", "hammer": "copper hammer", "chisel": "copper chisel", "pole": "raft pole"}
+const TAG_TOOLS := {"cut": "blade", "chop": "axe or mattock", "dig": "shovel or mattock", "saw": "saw", "hammer": "hammer", "chisel": "copper chisel", "pole": "raft pole"}
 
 ## Crafting recipes. `where` limits a recipe to the lab or the swamp, `tier`
 ## says where it is made, `cat` is its recipe book category, `act` the
@@ -1216,6 +1292,103 @@ const RECIPES := [
 	{"out": "iron_hammer_head", "n": 1, "in": {"refined_iron_bar": 1}, "tool_tag": "hammer", "tool_why": "a copper hammer (stone just bounces off iron)", "fast_tool": "iron_hammer", "hammer_wear": true,
 		"at": "anvil", "where": "swamp", "tier": "metal", "cat": "Metal", "act": "steps", "steps": 24, "verb": "Hammer out a hammer head",
 		"how": "Click the glowing spots to strike the cold iron, moving round the piece: drawing out the edge, spreading the blade. Cold iron moves slowly."},
+
+	# --- End-game woodworking (construction.md) ---
+	{"out": "mould_nail_unfired", "n": 1, "in": {"clay": 3, "ash": 1}, "tool_tag": "cut", "where": "swamp", "tier": "bench", "rack": "clay_platter",
+		"cat": "Metal", "act": "steps", "steps": 4, "verb": "Press a nail mould",
+		"how": "Click to knead the ash into the clay, press it into a thick slab on the platter and cut six nail hollows with your blade. Fire it in a campfire."},
+	{"out": "copper_nail", "n": 6, "in": {"copper": 1, "charcoal": 1}, "tools": {"mould_nail": 1}, "wear": "mould_nail", "sharpen": [0], "cast": true, "melt": [3, 8], "at": "furnace",
+		"where": "swamp", "tier": "metal", "cat": "Metal", "act": "steps", "steps": 10, "verb": "Cast six nails",
+		"wear_how": "Click to fill the mould with copper (each casting wears it: it cracks after 5).",
+		"step_how": ["Click to fill the mould with copper.", "Click to bed the mould down in the charcoal.", "Click to blow the furnace up to heat.", "Blow: keep the furnace at full heat (orange) while the copper melts.", "Blow: keep it at full heat.", "Blow: keep it at full heat.", "Blow: keep it at full heat.", "Blow: keep it at full heat.", "Click to rake the mould out with a stick and let it cool.", "Click to break the casting out."],
+		"how": "Fill the mould with copper, bed it in the charcoal, blow the furnace up to full heat and hold it there, then rake it out and break the nails out."},
+	{"out": "iron_nail", "n": 10, "in": {"refined_iron": 1}, "tool_tag": "hammer", "tool_why": "a copper hammer (stone just bounces off iron)", "fast_tool": "iron_hammer", "hammer_wear": true,
+		"at": "anvil", "where": "swamp", "tier": "metal", "cat": "Metal", "act": "steps", "steps": 12, "verb": "Draw out ten nails",
+		"how": "Click the glowing spots to draw the cold iron out into a rod and cut and head ten nails from it."},
+	{"out": "rough_iron_saw_blade", "n": 1, "in": {"refined_iron_bar": 1}, "tool_tag": "hammer", "tool_why": "a copper hammer (stone just bounces off iron)", "fast_tool": "iron_hammer", "hammer_wear": true,
+		"at": "anvil", "where": "swamp", "tier": "metal", "cat": "Metal", "act": "steps", "steps": 26, "verb": "Hammer out a saw blade",
+		"how": "Click the glowing spots to strike the cold iron, moving round the piece. Cold iron moves slowly."},
+	{"out": "iron_saw_blade", "n": 1, "in": {"rough_iron_saw_blade": 1}, "at": "anvil", "whetstone": true, "where": "swamp", "tier": "metal",
+		"cat": "Metal", "act": "steps", "steps": 5, "verb": "Grind the saw's teeth", "step_how": ["Click to wet the whetstone.", "Click to draw the edge along the stone.", "Click to draw it along again.", "Click to turn it and grind the other side.", "Click to hone the edge fine."],
+		"how": "Grind the saw's teeth sharp on the anvil's whetstone."},
+	{"out": "iron_saw", "n": 1, "in": {"iron_saw_blade": 1, "stick": 1, "string": 1}, "where": "swamp", "tier": "hand",
+		"cat": "Metal", "act": "steps", "steps": 5, "verb": "Haft the iron saw",
+		"how": "Click the binding again and again to lash the blade into its handle."},
+	{"out": "vessel_open_barrel", "n": 1, "in": {"board": 6, "any_nail": 8, "wax": 2}, "tool_tags": ["saw", "hammer"], "no_hammer_wear": true, "where": "swamp", "tier": "bench",
+		"cat": "Containers", "act": "steps", "steps": 10, "verb": "Build an unsealed barrel",
+		"how": "Click to saw the staves, stand them in a ring, nail the hoops round them and wax the seams. It is left beside the bench."},
+	{"out": "vessel_sealed_barrel", "n": 1, "in": {"board": 7, "any_nail": 8, "wax": 4}, "tool_tags": ["saw", "hammer"], "no_hammer_wear": true, "where": "swamp", "tier": "bench",
+		"cat": "Containers", "act": "steps", "steps": 12, "verb": "Build a sealed barrel",
+		"how": "Click to saw the staves, stand them in a ring, nail the hoops, fit a lid and wax every seam. It is left beside the bench."},
+	{"out": "storage_crate", "n": 1, "in": {"board": 4, "any_nail": 8}, "tool_tags": ["hammer"], "no_hammer_wear": true, "where": "swamp", "tier": "bench",
+		"cat": "Containers", "act": "steps", "steps": 8, "verb": "Nail a storage crate",
+		"how": "Click to nail the boards into a box. It is left beside the bench."},
+	{"out": "handcart", "n": 1, "in": {"board": 6, "stick": 2, "any_nail": 12, "cordage": 2}, "tool_tags": ["saw", "hammer"], "no_hammer_wear": true, "where": "swamp", "tier": "bench",
+		"cat": "Gear", "act": "steps", "steps": 14, "verb": "Build a handcart",
+		"how": "Click to saw and nail two wheels, an axle, a flat bed and a pair of handles, and lash the handles on. It is left beside the bench."},
+	{"out": "wooden_table", "n": 1, "in": {"board": 4, "any_nail": 8}, "tool_tags": ["saw", "hammer"], "no_hammer_wear": true, "where": "swamp", "tier": "bench",
+		"cat": "Gear", "act": "steps", "steps": 8, "verb": "Build a table",
+		"how": "Click to saw the top and legs and nail them together. It is left beside the bench."},
+	{"out": "wooden_chair", "n": 1, "in": {"board": 2, "any_nail": 4}, "tool_tags": ["saw", "hammer"], "no_hammer_wear": true, "where": "swamp", "tier": "bench",
+		"cat": "Gear", "act": "steps", "steps": 6, "verb": "Build a chair",
+		"how": "Click to saw the seat, legs and back and nail them together. It is left beside the bench."},
+	{"out": "wall_rack", "n": 1, "in": {"board": 2, "any_nail": 6}, "tool_tags": ["hammer"], "no_hammer_wear": true, "where": "swamp", "tier": "bench",
+		"cat": "Gear", "act": "steps", "steps": 6, "verb": "Make a wall tool rack",
+		"how": "Click to nail a row of six pegs along a backing board. Hold it and use it on a house wall to hang it."},
+	{"out": "copper_lantern", "n": 1, "in": {"copper_bar": 2, "string": 1}, "tool_tag": "hammer", "tool_why": "a hammer to raise the copper", "no_hammer_wear": true,
+		"at": "anvil", "where": "swamp", "tier": "metal", "cat": "Metal", "act": "steps", "steps": 8, "verb": "Raise a copper lantern",
+		"how": "Click to beat the bars into a small font and a hood, fold them together and thread a wick of string through."},
+	{"out": "iron_lantern", "n": 1, "in": {"refined_iron_bar": 2, "string": 1}, "tool_tag": "hammer", "tool_why": "a copper hammer (stone just bounces off iron)", "fast_tool": "iron_hammer", "hammer_wear": true,
+		"at": "anvil", "where": "swamp", "tier": "metal", "cat": "Metal", "act": "steps", "steps": 8, "verb": "Forge an iron lantern",
+		"how": "Click to beat the bars into a six-sided font and a hood, fold them together and thread a wick of string through."},
+	{"out": "mattress", "n": 1, "in": {"string": 8, "plant_fiber": 20}, "needs_endgame": true, "where": "swamp", "tier": "hand",
+		"cat": "Gear", "act": "steps", "steps": 8, "verb": "Stuff a mattress",
+		"how": "Click to weave the long cloth tick, pack it with plant fiber and stitch it shut."},
+	{"out": "wooden_bed", "n": 1, "in": {"board": 6, "any_nail": 12, "mattress": 1}, "tool_tags": ["saw", "hammer"], "no_hammer_wear": true, "where": "swamp", "tier": "bench",
+		"cat": "Gear", "act": "steps", "steps": 12, "verb": "Build a bed",
+		"how": "Click to saw the rails, slats and headboard, nail them together and lay the mattress on. It is left beside the bench."},
+	{"out": "pack_frame", "n": 1, "in": {"board": 2, "any_nail": 4}, "tool_tags": ["saw", "hammer"], "no_hammer_wear": true, "where": "swamp", "tier": "bench",
+		"cat": "Gear", "act": "steps", "steps": 8, "verb": "Build a pack frame",
+		"how": "Click to saw two rails and crosspieces and nail them into a frame."},
+	{"out": "framed_pack", "n": 1, "in": {"pack_frame": 1, "cloth_sack": 1, "cordage": 2}, "where": "swamp", "tier": "hand",
+		"cat": "Gear", "act": "steps", "steps": 6, "verb": "Lash on the pack",
+		"how": "Click to lash the cloth sack onto the frame and tie on shoulder straps."},
+	{"out": "whetstone_slip", "n": 2, "in": {"whetstone": 1}, "tool_tags": ["chisel", "hammer"], "no_hammer_wear": true, "at": "anvil", "where": "swamp", "tier": "metal",
+		"cat": "Metal", "act": "steps", "steps": 6, "verb": "Split a whetstone",
+		"how": "Click to set the chisel along the whetstone's grain and tap it into two thin slips."},
+	{"out": "pocket_whetstone", "n": 1, "in": {"whetstone_slip": 1, "board": 1, "any_nail": 2}, "tool_tags": ["saw", "hammer"], "no_hammer_wear": true, "where": "swamp", "tier": "bench",
+		"cat": "Gear", "act": "steps", "steps": 5, "verb": "Case a pocket whetstone",
+		"how": "Click to saw a small case, seat the slip in it and nail it shut."},
+	{"out": "pocket_whetstone", "n": 1, "in": {"pocket_whetstone_case": 1, "whetstone_slip": 1}, "where": "swamp", "tier": "hand",
+		"cat": "Gear", "act": "steps", "steps": 2, "verb": "Refit the whetstone case",
+		"how": "Click to seat a new slip in the case."},
+	{"out": "iron_striker", "n": 1, "in": {"refined_iron": 1}, "tool_tag": "hammer", "tool_why": "a copper hammer (stone just bounces off iron)", "fast_tool": "iron_hammer", "hammer_wear": true,
+		"at": "anvil", "where": "swamp", "tier": "metal", "cat": "Metal", "act": "steps", "steps": 10, "verb": "Hammer out a striker",
+		"how": "Click the glowing spots to strike the cold iron, moving round the piece. Cold iron moves slowly."},
+	{"out": "fire_striker", "n": 1, "in": {"iron_striker": 1, "flint": 1, "cordage": 1}, "where": "swamp", "tier": "hand",
+		"cat": "Fire", "act": "steps", "steps": 4, "verb": "Bind a fire striker",
+		"how": "Click to bind the chert nodule against the iron striker."},
+	{"out": "rough_iron_needle", "n": 2, "in": {"refined_iron": 1}, "tool_tag": "hammer", "tool_why": "a copper hammer (stone just bounces off iron)", "fast_tool": "iron_hammer", "hammer_wear": true,
+		"at": "anvil", "where": "swamp", "tier": "metal", "cat": "Metal", "act": "steps", "steps": 8, "verb": "Hammer out two needles",
+		"how": "Click the glowing spots to strike the cold iron, moving round the piece. Cold iron moves slowly."},
+	{"out": "iron_needle", "n": 1, "in": {"rough_iron_needle": 1}, "at": "anvil", "whetstone": true, "where": "swamp", "tier": "metal",
+		"cat": "Metal", "act": "steps", "steps": 4, "verb": "Grind a needle",
+		"how": "Click to draw the needle along the wet whetstone until it is fine and sharp."},
+	{"out": "suture_kit", "n": 1, "in": {"iron_needle": 1, "string": 3, "wax": 1}, "where": "swamp", "tier": "hand",
+		"cat": "Medicine", "act": "steps", "steps": 4, "verb": "Make a suture kit",
+		"how": "Click to wax the thread and wind it onto the needle."},
+	{"out": "suture_kit", "n": 1, "in": {"suture_kit_used": 1, "string": 2, "wax": 1}, "where": "swamp", "tier": "hand",
+		"cat": "Medicine", "act": "steps", "steps": 3, "verb": "Refill the suture kit",
+		"how": "Click to wax fresh thread and wind it onto the needle."},
+	{"out": "blueprint_outpost", "n": 1, "in": {"paper_sheet": 1}, "tools": {"ash_pencil": 1}, "tool_tag": "cut", "wear": "ash_pencil", "sharpen": [0], "needs_endgame": true,
+		"where": "swamp", "tier": "bench", "cat": "Writing", "act": "steps", "steps": 8, "verb": "Draw an outpost blueprint",
+		"how": "Click the glowing spots to draw the outpost on the sheet, sharpening the pencil with your blade as you go (each wears one use off it)."},
+	{"out": "blueprint_dock_house", "n": 1, "in": {"paper_sheet": 2}, "tools": {"ash_pencil": 1}, "tool_tag": "cut", "wear": "ash_pencil", "sharpen": [0, 7], "needs_endgame": true,
+		"where": "swamp", "tier": "bench", "cat": "Writing", "act": "steps", "steps": 14, "verb": "Draw a dock house blueprint",
+		"how": "Click the glowing spots to draw the dock house on the sheet, sharpening the pencil with your blade as you go (each wears one use off it)."},
+	{"out": "blueprint_hardwood_house", "n": 1, "in": {"paper_sheet": 2}, "tools": {"ash_pencil": 1}, "tool_tag": "cut", "wear": "ash_pencil", "sharpen": [0, 6, 12], "needs_endgame": true,
+		"where": "swamp", "tier": "bench", "cat": "Writing", "act": "steps", "steps": 18, "verb": "Draw a hardwood house blueprint",
+		"how": "Click the glowing spots to draw the hardwood house on the sheet, sharpening the pencil with your blade as you go (each wears one use off it)."},
 ]
 
 ## Butchering a medium or large carcass where it lies (see work_spot.gd), one
@@ -1565,12 +1738,64 @@ func counts_as(id: String, want: String) -> bool:
 		return true
 	if want == "any_water":
 		return id in ANY_WATER
+	if want == "hardwood_board":
+		return id in ["board_lepidodendron", "board_sigillaria"]
 	return def(id).get("as", "") == want
+
+
+## How much more a log of each hardwood gives, and how long it takes (the rest
+## of its jobs are as a soft log's). `r` is the log's radius in metres.
+const HARD_LOGS := {
+	"lepidodendron": {"r": 0.40, "board": 12, "firewood": 10, "bark": 15,
+		"steps": {"buck": 5, "strip": 6, "saw": 14, "shorten": 10, "split": 5}},
+	"sigillaria": {"r": 0.54, "board": 17, "firewood": 14, "bark": 20,
+		"steps": {"buck": 7, "strip": 8, "saw": 18, "shorten": 14, "split": 6}},
+}
+
+
+func wood_job(r: Dictionary, kind: String) -> Dictionary:
+	## A WOODWORK job as it goes on this kind of tree: bigger hardwood logs
+	## give more and take longer.
+	var big: Dictionary = HARD_LOGS.get(kind, {})
+	if big.is_empty() or r.wood in ["fell", "hew", "poles"]:
+		return r
+	var out := r.duplicate(true)
+	if big.steps.has(r.wood):
+		out.steps = int(big.steps[r.wood])
+		if r.wood == "saw" and r.on == "log_stripped":
+			out.steps = maxi(out.steps - 2, 1)
+	var parts := []
+	for id in out.get("give", {}):
+		if big.has(id):
+			out.give[id] = int(big[id])
+		parts.append("%s x%d" % [item_name(id), out.give[id]])
+	if not parts.is_empty():
+		out.label = ", ".join(parts) + ", left in a pile beside it"
+	return out
 
 
 func woodwork(on: String) -> Array:
 	## The woodcutting jobs that can be done to a tree, a felled tree or a log.
 	return WOODWORK.filter(func(r): return r.on == on)
+
+
+func lantern_base(id: String) -> String:
+	## The unlit lantern this is, lit or not.
+	return id.trim_suffix("_lit")
+
+
+func lantern_is_lit(id: String) -> bool:
+	return def(id).get("lamp", false) and id.ends_with("_lit")
+
+
+func hangs_on_rack(id: String) -> bool:
+	## Whether a wall rack will display this: tools and weapons, not materials,
+	## food, sacks or anything carried in your arms.
+	var d: Dictionary = def(id)
+	var tags: Array = d.get("tags", [])
+	if d.get("carry", false) or is_food(id) or tags.has("sack"):
+		return false
+	return d.has("edge") or d.has("damage") or not tags.is_empty()
 
 
 func is_food(id: String) -> bool:

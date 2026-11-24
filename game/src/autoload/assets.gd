@@ -1432,8 +1432,242 @@ func _item_mesh(b, rng: RandomNumberGenerator, id: String) -> void:
 		"segment", "injector":
 			b.cylinder(Vector3(-0.4, 0.1, 0), Vector3(0.4, 0.1, 0), 0.08, 0.08, 8, Color(0.75, 0.77, 0.80), Color(-1, 0, 0), "metal")
 			b.box(Vector3(0, 0.1, 0), Vector3(0.25, 0.25, 0.25), col)
+		"nail":
+			for i in 5:
+				var a := i * 1.3
+				var at := Vector3(cos(a) * 0.035, 0.006, sin(a) * 0.035)
+				var tip := at + Vector3(cos(a + 1.1) * 0.08, 0.0, sin(a + 1.1) * 0.08)
+				b.cylinder(at, tip, 0.005, 0.0015, 5, col, Color(-1, 0, 0), "metal")
+				b.cylinder(at - (tip - at).normalized() * 0.003, at, 0.012, 0.012, 6, col, Color(-1, 0, 0), "metal")
+		"needle":
+			b.cylinder(Vector3(-0.07, 0.004, 0), Vector3(0.07, 0.004, 0), 0.003, 0.0008, 5, col, Color(-1, 0, 0), "metal")
+		"striker":
+			b.tube([Vector3(-0.07, 0.012, 0.02), Vector3(-0.05, 0.012, -0.025), Vector3(0.05, 0.012, -0.025), Vector3(0.07, 0.012, 0.02)],
+					[0.009, 0.011, 0.011, 0.009], 6, [col])
+			if id == "fire_striker":
+				b.blob(Vector3(0, 0.022, 0.012), Vector3(0.03, 0.018, 0.024), 1, 5, Items.def("flint").color, rng, 0.2)
+				lashing(b, Vector3(-0.012, 0.018, -0.012), Vector3(0.012, 0.018, -0.012), 0.024, 3)
+		"suture":
+			b.box(Vector3(0, 0.012, 0), Vector3(0.11, 0.024, 0.07), col * 0.75, Basis(), "fiber")
+			if id == "suture_kit":
+				b.cylinder(Vector3(-0.03, 0.03, 0), Vector3(0.03, 0.03, 0), 0.016, 0.016, 8, Color(0.92, 0.88, 0.74), Color(-1, 0, 0), "fiber")
+			b.cylinder(Vector3(-0.05, 0.028, 0.026), Vector3(0.05, 0.028, 0.026), 0.002, 0.001, 4, Items.def("iron_needle").color, Color(-1, 0, 0), "metal")
+		"pocket_stone":
+			b.box(Vector3(0, 0.012, 0), Vector3(0.13, 0.024, 0.045), col, Basis(), "wood")
+			if id == "pocket_whetstone":
+				b.box(Vector3(0, 0.027, 0), Vector3(0.11, 0.008, 0.03), Items.def("whetstone_slip").color, Basis(), "stone")
+		"barrel":
+			barrel(b, col, id == "vessel_sealed_barrel")
+		"crate":
+			crate(b, col)
+		"handcart":
+			handcart(b, col)
+		"table":
+			table(b, col)
+		"chair":
+			chair(b, col)
+		"wall_rack":
+			b.box(Vector3(0, 0.02, 0), Vector3(1.1, 0.03, 0.16), col, Basis(), "wood")
+			for i in 6:
+				b.cylinder(Vector3(-0.45 + i * 0.18, 0.03, 0), Vector3(-0.45 + i * 0.18, 0.09, 0), 0.012, 0.012, 6, col * 0.8, Color(-1, 0, 0), "wood")
+		"lamp":
+			lamp(b, col, id.ends_with("_lit"), id.begins_with("iron_"))
+		"framed_pack":
+			framed_pack(b, col, rng)
+		"house_plan":
+			house_plan(b, col, String(Items.def(id).get("blueprint", "")))
+		"mattress":
+			mattress(b, col)
+		"bed":
+			bed(b, col)
+		"pack_frame":
+			for x in [-0.14, 0.14]:
+				b.box(Vector3(x, 0.02, 0), Vector3(0.04, 0.04, 0.7), col, Basis(), "wood")
+			for z in [-0.26, 0.0, 0.26]:
+				b.box(Vector3(0, 0.045, z), Vector3(0.36, 0.02, 0.05), col * 0.9, Basis(), "wood")
 		_:
 			b.blob(Vector3(0, 0.08, 0), Vector3(0.12, 0.08, 0.12), 2, 5, col, rng, 0.1)
+
+
+# --- End-game furniture and containers (construction.md) -----------------------
+
+func barrel(b, col: Color, lid: bool) -> void:
+	## Staves swelling at the middle, two iron hoops; a sealed one has a lid.
+	b.lathe([Vector2(0.0, 0.0), Vector2(0.27, 0.0), Vector2(0.33, 0.42), Vector2(0.27, 0.86), Vector2(0.23, 0.86), Vector2(0.27, 0.42), Vector2(0.22, 0.05), Vector2(0.0, 0.05)], 14, col, "wood")
+	for h in [0.14, 0.72]:
+		var r: float = 0.292 if h < 0.3 else 0.297
+		b.cylinder(Vector3(0, h, 0), Vector3(0, h + 0.035, 0), r, r, 14, Color(0.40, 0.40, 0.41), Color(-1, 0, 0), "metal")
+	if lid:
+		b.cylinder(Vector3(0, 0.82, 0), Vector3(0, 0.87, 0), 0.265, 0.265, 14, col * 0.9, col, "wood")
+
+
+func crate(b, col: Color) -> void:
+	b.box(Vector3(0, 0.34, 0), Vector3(0.92, 0.68, 0.66), col, Basis(), "wood")
+	for y in [0.05, 0.63]:
+		b.box(Vector3(0, y, 0), Vector3(0.95, 0.09, 0.69), col * 0.82, Basis(), "wood")
+	for x in [-0.42, 0.42]:
+		b.box(Vector3(x, 0.34, 0), Vector3(0.09, 0.68, 0.69), col * 0.82, Basis(), "wood")
+
+
+func handcart(b, col: Color) -> void:
+	## Bed along Z, wheels on the axle, handles reaching to -Z (you pull it).
+	b.box(Vector3(0, 0.56, 0.1), Vector3(1.0, 0.07, 1.5), col, Basis(), "wood")
+	for x in [-0.49, 0.49]:
+		b.box(Vector3(x, 0.66, 0.1), Vector3(0.05, 0.16, 1.5), col * 0.85, Basis(), "wood")
+		b.box(Vector3(x * 0.92, 0.6, -0.95), Vector3(0.06, 0.06, 0.8), col * 0.9, Basis(), "wood")
+		b.cylinder(Vector3(x * 1.2 - 0.04, 0.42, 0.2), Vector3(x * 1.2 + 0.04, 0.42, 0.2), 0.42, 0.42, 14, col * 0.72, col * 0.6, "wood")
+	b.cylinder(Vector3(-0.62, 0.42, 0.2), Vector3(0.62, 0.42, 0.2), 0.035, 0.035, 8, col * 0.6, Color(-1, 0, 0), "wood")
+	b.box(Vector3(0, 0.26, 0.8), Vector3(0.06, 0.52, 0.06), col * 0.8, Basis(), "wood")
+
+
+func table(b, col: Color) -> void:
+	b.box(Vector3(0, 0.74, 0), Vector3(1.4, 0.05, 0.8), col, Basis(), "wood")
+	for x in [-0.62, 0.62]:
+		for z in [-0.32, 0.32]:
+			b.box(Vector3(x, 0.36, z), Vector3(0.07, 0.72, 0.07), col * 0.85, Basis(), "wood")
+
+
+func chair(b, col: Color) -> void:
+	b.box(Vector3(0, 0.45, 0), Vector3(0.44, 0.04, 0.44), col, Basis(), "wood")
+	for x in [-0.19, 0.19]:
+		for z in [-0.19, 0.19]:
+			b.box(Vector3(x, 0.22, z), Vector3(0.045, 0.44, 0.045), col * 0.85, Basis(), "wood")
+		b.box(Vector3(x, 0.7, 0.2), Vector3(0.045, 0.5, 0.04), col * 0.85, Basis(), "wood")
+	b.box(Vector3(0, 0.88, 0.2), Vector3(0.42, 0.1, 0.03), col, Basis(), "wood")
+
+
+func lamp(b, col: Color, lit_flame: bool, iron := false) -> void:
+	## Copper is round with a smooth hood; iron is six-sided and heavier, with
+	## thicker bars, a band round its font and a ring to carry it by.
+	var sides := 6 if iron else 10
+	var bars := 6 if iron else 3
+	var bar_r := 0.008 if iron else 0.004
+	var skin := "solid" if iron else "metal"  # iron is dull, copper catches the light
+	b.lathe([Vector2(0.0, 0.0), Vector2(0.07, 0.0), Vector2(0.08, 0.04), Vector2(0.03, 0.08), Vector2(0.0, 0.08)], sides, col, skin)
+	for i in bars:
+		var a := (i + 0.5) * TAU / bars
+		b.cylinder(Vector3(cos(a) * 0.05, 0.06, sin(a) * 0.05), Vector3(cos(a) * 0.05, 0.17, sin(a) * 0.05), bar_r, bar_r, 4, col * 0.8, Color(-1, 0, 0), "metal")
+	b.lathe([Vector2(0.0, 0.22), Vector2(0.075, 0.17), Vector2(0.07, 0.16), Vector2(0.0, 0.205)], sides, col, skin)
+	if iron:
+		b.cylinder(Vector3(0, 0.032, 0), Vector3(0, 0.05, 0), 0.084, 0.084, 6, col * 0.62, Color(-1, 0, 0), "metal")
+		var ring := []
+		var radii := []
+		var tints := []
+		for k in 13:
+			var t := k * TAU / 12.0
+			ring.append(Vector3(cos(t) * 0.032, 0.25 + sin(t) * 0.032, 0))
+			radii.append(0.005)
+			tints.append(col * 0.75)
+		b.tube(ring, radii, 4, tints)
+	if lit_flame:
+		b.blob(Vector3(0, 0.115, 0), Vector3(0.018, 0.035, 0.018), 1, 5, Color(1.0, 0.76, 0.32), RandomNumberGenerator.new(), 0.0)
+
+
+func framed_pack(b, col: Color, rng: RandomNumberGenerator) -> void:
+	## A wooden back frame, standing proud of the cloth sack lashed onto it,
+	## with two shoulder straps and a tied-off neck.
+	var wood := Color(0.62, 0.48, 0.30)
+	for x in [-0.17, 0.17]:
+		b.box(Vector3(x, 0.03, 0), Vector3(0.045, 0.045, 0.78), wood, Basis(), "wood")
+	for z in [-0.33, -0.1, 0.14, 0.33]:
+		b.box(Vector3(0, 0.06, z), Vector3(0.43, 0.022, 0.05), wood * 0.88, Basis(), "wood")
+	b.blob(Vector3(0, 0.19, 0.0), Vector3(0.185, 0.135, 0.27), 3, 11, col, rng, 0.05, "fiber")
+	b.cylinder(Vector3(0, 0.2, -0.24), Vector3(0, 0.2, -0.335), 0.065, 0.04, 8, col * 0.88, Color(-1, 0, 0), "fiber")
+	lashing(b, Vector3(0, 0.2, -0.285), Vector3(0, 0.2, -0.305), 0.058, 2)
+	var strap := Color(0.36, 0.27, 0.17)
+	# Two bands holding the sack down onto the frame.
+	for z in [-0.1, 0.14]:
+		var band := []
+		var radii := []
+		var tints := []
+		for k in 11:
+			var t := PI * k / 10.0
+			band.append(Vector3(cos(t) * 0.195, 0.06 + sin(t) * 0.27, z))
+			radii.append(0.012)
+			tints.append(strap)
+		b.tube(band, radii, 4, tints)
+	# Shoulder straps, looped out from each rail.
+	for side in [-1.0, 1.0]:
+		var loop := []
+		var radii := []
+		var tints := []
+		for k in 11:
+			var t := PI * k / 10.0
+			loop.append(Vector3(side * (0.19 + sin(t) * 0.12), 0.035, -cos(t) * 0.22))
+			radii.append(0.014)
+			tints.append(strap)
+		b.tube(loop, radii, 4, tints)
+
+
+func _plan_line(b, a: Vector2, c: Vector2, ink: Color, w := 0.006) -> void:
+	## A pencil line on a plan sheet, in the sheet's (x, z) coordinates.
+	var d := c - a
+	var mid := (a + c) * 0.5
+	b.box(Vector3(mid.x, 0.0062, mid.y), Vector3(d.length() + w, 0.001, w), ink, Basis(Vector3.UP, -d.angle()), "solid")
+
+
+func house_plan(b, col: Color, kind: String) -> void:
+	## A sheet held half unrolled, a side view of its own house drawn on it.
+	b.box(Vector3(0, 0.003, 0.012), Vector3(0.42, 0.004, 0.3), col, Basis(), "solid")
+	b.cylinder(Vector3(-0.215, 0.022, -0.145), Vector3(0.215, 0.022, -0.145), 0.024, 0.024, 9, col * 0.94, col * 0.8, "solid")
+	lashing(b, Vector3(-0.012, 0.022, -0.145), Vector3(0.012, 0.022, -0.145), 0.026, 3)
+	var ink := Color(0.17, 0.22, 0.33)
+	var lines: Array = []
+	match kind:
+		"outpost":
+			# A tiny hut on stones, with its door and a chimney.
+			lines = [[-0.07, 0.09, 0.07, 0.09], [-0.07, 0.09, -0.07, -0.01], [0.07, 0.09, 0.07, -0.01], [-0.095, -0.005, 0.0, -0.08], [0.095, -0.005, 0.0, -0.08],
+				[-0.095, -0.005, 0.095, -0.005], [-0.018, 0.09, -0.018, 0.035], [0.018, 0.09, 0.018, 0.035], [-0.018, 0.035, 0.018, 0.035],
+				[0.04, -0.045, 0.04, -0.085], [0.065, -0.025, 0.065, -0.085], [0.04, -0.085, 0.065, -0.085], [-0.05, 0.105, -0.03, 0.105], [0.03, 0.105, 0.05, 0.105]]
+		"hardwood_house":
+			# Wide and tall on stilts, with a veranda and a long stair.
+			lines = [[-0.15, 0.03, 0.1, 0.03], [-0.15, 0.03, -0.15, -0.045], [0.1, 0.03, 0.1, -0.045], [-0.18, -0.04, -0.01, -0.105], [0.14, -0.04, -0.01, -0.105],
+				[-0.18, -0.04, 0.14, -0.04], [-0.14, 0.03, -0.14, 0.125], [-0.04, 0.03, -0.04, 0.125], [0.09, 0.03, 0.09, 0.125], [-0.175, 0.125, 0.0, 0.125],
+				[0.1, 0.03, 0.17, 0.03], [0.17, 0.03, 0.17, 0.125], [0.1, 0.03, 0.19, 0.125], [0.125, 0.06, 0.145, 0.06], [0.15, 0.09, 0.17, 0.09],
+				[-0.14, 0.03, -0.04, 0.125], [-0.04, 0.03, -0.14, 0.125], [-0.1, -0.02, -0.06, -0.02], [-0.1, 0.01, -0.06, 0.01], [-0.1, -0.02, -0.1, 0.01], [-0.06, -0.02, -0.06, 0.01]]
+		"dock_house":
+			# Up on tall piles over wavy water, a long walkway running to shore.
+			lines = [[-0.16, 0.0, -0.02, 0.0], [-0.16, 0.0, -0.16, -0.055], [-0.02, 0.0, -0.02, -0.055], [-0.185, -0.05, -0.09, -0.11], [0.005, -0.05, -0.09, -0.11],
+				[-0.185, -0.05, 0.005, -0.05], [-0.15, 0.0, -0.15, 0.13], [-0.09, 0.0, -0.09, 0.13], [-0.03, 0.0, -0.03, 0.13], [-0.02, 0.005, 0.19, 0.03],
+				[0.05, 0.012, 0.05, 0.13], [0.12, 0.022, 0.12, 0.13], [0.185, 0.03, 0.185, 0.13], [-0.19, 0.09, -0.15, 0.08], [-0.15, 0.08, -0.11, 0.09], [-0.11, 0.09, -0.07, 0.08],
+				[-0.07, 0.08, -0.03, 0.09], [-0.03, 0.09, 0.01, 0.08], [0.01, 0.08, 0.05, 0.09], [0.05, 0.09, 0.09, 0.08], [0.09, 0.08, 0.13, 0.09], [0.13, 0.09, 0.19, 0.08]]
+	for q in lines:
+		_plan_line(b, Vector2(q[0], q[1]), Vector2(q[2], q[3]), ink)
+
+
+func mattress(b, col: Color) -> void:
+	## A stuffed cloth tick, puffed between rows of stitching, rolled loosely.
+	b.box(Vector3(0, 0.07, 0), Vector3(0.72, 0.14, 0.44), col, Basis(), "fiber")
+	for x in [-0.24, 0.0, 0.24]:
+		b.box(Vector3(x, 0.142, 0), Vector3(0.018, 0.006, 0.45), col * 0.72, Basis(), "fiber")
+	for z in [-0.11, 0.11]:
+		b.box(Vector3(0, 0.142, z), Vector3(0.73, 0.006, 0.016), col * 0.78, Basis(), "fiber")
+
+
+func bed(b, col: Color) -> void:
+	## A nailed frame with a tall headboard and low footboard, slats, a
+	## stuffed mattress, a pillow and a blanket turned back. Runs along X.
+	var dark := col * 0.72
+	for z in [-0.48, 0.48]:
+		b.box(Vector3(0, 0.25, z), Vector3(2.0, 0.14, 0.07), col, Basis(), "wood")
+	for x in [-0.98, 0.98]:
+		for z in [-0.48, 0.48]:
+			b.box(Vector3(x, 0.17 if x > 0.0 else 0.36, z), Vector3(0.09, 0.34 if x > 0.0 else 0.72, 0.09), dark, Basis(), "wood")
+	b.box(Vector3(-0.98, 0.5, 0), Vector3(0.05, 0.42, 0.9), col, Basis(), "wood")
+	b.box(Vector3(-0.98, 0.72, 0), Vector3(0.09, 0.05, 1.05), dark, Basis(), "wood")
+	b.box(Vector3(0.98, 0.34, 0), Vector3(0.05, 0.2, 0.9), col, Basis(), "wood")
+	for i in 7:
+		b.box(Vector3(-0.78 + i * 0.26, 0.3, 0), Vector3(0.09, 0.02, 0.9), dark, Basis(), "wood")
+	var tick := Color(0.84, 0.79, 0.66)
+	b.box(Vector3(0, 0.39, 0), Vector3(1.86, 0.17, 0.9), tick, Basis(), "fiber")
+	for x in [-0.6, -0.2, 0.2, 0.6]:
+		b.box(Vector3(x, 0.477, 0), Vector3(0.012, 0.005, 0.91), tick * 0.76, Basis(), "fiber")
+	b.blob(Vector3(-0.68, 0.52, 0), Vector3(0.2, 0.065, 0.32), 2, 8, Color(0.92, 0.89, 0.80), RandomNumberGenerator.new(), 0.03, "fiber")
+	var wool := Color(0.42, 0.34, 0.27)
+	b.box(Vector3(0.3, 0.49, 0), Vector3(1.26, 0.035, 0.96), wool, Basis(), "fiber")
+	b.box(Vector3(-0.28, 0.512, 0), Vector3(0.14, 0.02, 0.96), wool * 1.3, Basis(), "fiber")
+	for z in [-0.485, 0.485]:
+		b.box(Vector3(0.3, 0.42, z), Vector3(1.26, 0.15, 0.02), wool * 0.92, Basis(), "fiber")
 
 
 # --- Shared item parts (also used by the crafting work spot) -------------------
@@ -1549,13 +1783,19 @@ func log_mesh(id: String, kind: String) -> Mesh:
 	return m
 
 
+static func log_radius(kind: String) -> float:
+	## A hardwood log is as thick as its big tree (Items.HARD_LOGS).
+	return float(Items.HARD_LOGS.get(kind, {}).get("r", LOG_R))
+
+
 func _log_of(b, rng: RandomNumberGenerator, id: String, kind: String) -> void:
 	var look: Dictionary = LOG_LOOKS.get(kind, LOG_LOOKS[LOG_KIND])
 	var length := SHORT_LOG_LEN if id == "short_log" else LOG_LEN
+	var r := log_radius(kind)
 	if id == "log_stripped":
-		log_piece(b, rng, length, LOG_R, look.wood, false, Vector3.ZERO, kind)
+		log_piece(b, rng, length, r, look.wood, false, Vector3.ZERO, kind)
 	else:
-		log_piece(b, rng, length, LOG_R, look.bark, true, Vector3.ZERO, kind)
+		log_piece(b, rng, length, r, look.bark, true, Vector3.ZERO, kind)
 
 
 func log_piece(b, rng: RandomNumberGenerator, length: float, r: float, col: Color, bark: bool, at := Vector3.ZERO, kind := "") -> void:
@@ -1621,18 +1861,19 @@ func log_piece(b, rng: RandomNumberGenerator, length: float, r: float, col: Colo
 				b.cone(out, out + d * 0.06 + Vector3(0.04, 0, 0), r * 0.16, 4, col * rng.randf_range(0.75, 0.95), "solid")
 
 
-func rotten_log(id: String) -> Mesh:
+func rotten_log(id: String, kind := "") -> Mesh:
 	## A log gone soft and black in the water, furred with moss.
-	var key := "rotten_" + id
+	var big: float = log_radius(kind)
+	var key := "rotten_" + id + ("_" + kind if big != LOG_R else "")
 	if _cache.has(key):
 		return _cache[key]
 	var b := MeshBuilder.new()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(key)
 	var length := SHORT_LOG_LEN if id == "short_log" else LOG_LEN
-	log_piece(b, rng, length, LOG_R * 0.95, Color(0.20, 0.16, 0.11), false)
+	log_piece(b, rng, length, big * 0.95, Color(0.20, 0.16, 0.11), false)
 	for i in maxi(int(length * 2.0), 1):
-		b.blob(Vector3(rng.randf_range(-length * 0.4, length * 0.4), LOG_R * 1.85, rng.randf_range(-0.05, 0.05)),
+		b.blob(Vector3(rng.randf_range(-length * 0.4, length * 0.4), big * 1.85, rng.randf_range(-0.05, 0.05)),
 				Vector3(0.14, 0.05, 0.11), 2, 5, Color(0.25, 0.40, 0.15), rng, 0.2, "foliage")
 	var m: Mesh = b.commit(materials)
 	_cache[key] = m
@@ -1870,6 +2111,11 @@ static func mould_hollow(kind: String) -> Array:
 			# A single-edged blade and its tang.
 			out.append([Vector2(-0.05, -0.016), Vector2(0.07, -0.016), Vector2(0.105, 0.004), Vector2(0.06, 0.022), Vector2(-0.05, 0.022)])
 			out.append([Vector2(-0.105, -0.006), Vector2(-0.05, -0.006), Vector2(-0.05, 0.012), Vector2(-0.105, 0.012)])
+		"nail":
+			# Six slim nails side by side.
+			for i in 6:
+				var x := -0.075 + i * 0.03
+				out.append([Vector2(x - 0.006, -0.055), Vector2(x + 0.006, -0.055), Vector2(x + 0.003, 0.06), Vector2(x - 0.003, 0.06)])
 		"spear":
 			# A leaf-shaped head on its socket.
 			out.append([Vector2(-0.035, 0), Vector2(-0.005, -0.032), Vector2(0.045, -0.026), Vector2(0.11, 0), Vector2(0.045, 0.026), Vector2(-0.005, 0.032)])

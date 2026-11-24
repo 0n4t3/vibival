@@ -43,7 +43,7 @@ func carried() -> bool:
 	return Items.def(item_id).get("carry", false)
 
 
-static func layout(id: String, n: int) -> Array:
+static func layout(id: String, n: int, kind := "") -> Array:
 	## Where each of the first n items sits: [Transform3D], bottom up.
 	var out := []
 	var def := Items.def(id)
@@ -53,7 +53,7 @@ static func layout(id: String, n: int) -> Array:
 		"log", "short_log", "firewood":
 			# Rows of rounds lying side by side, each row in the grooves of
 			# the one below: 5, 4, 3...
-			var w := Assets.LOG_R * 2.0 if def.shape != "firewood" else 0.2
+			var w := Assets.log_radius(kind) * 2.0 if def.shape != "firewood" else 0.2
 			var row := 0
 			var in_row := 0
 			var per := 5
@@ -90,7 +90,7 @@ func rebuild() -> void:
 	for c in _body.get_children():
 		c.queue_free()
 	var mesh: Mesh = Assets.log_mesh(item_id, kind) if carried() else Assets.mesh("item_" + item_id)
-	var spots := layout(item_id, mini(count, SHOWN))
+	var spots := layout(item_id, mini(count, SHOWN), kind)
 	var aabb := AABB()
 	for k in spots.size():
 		var mi := MeshInstance3D.new()
@@ -128,7 +128,7 @@ func take_one(player: Node) -> bool:
 	if carried():
 		if player.hauling or player.world == null or not player.world.has_method("add_log") or player.carry_blocked():
 			return false
-		var top: Transform3D = layout(item_id, mini(count, SHOWN)).back()
+		var top: Transform3D = layout(item_id, mini(count, SHOWN), kind).back()
 		var lg: Node3D = player.world.add_log(item_id, global_transform * top.origin, rotation.y, kind)
 		player.start_haul(lg)
 	elif Game.inventory.add(item_id, 1) > 0:

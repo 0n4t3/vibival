@@ -368,6 +368,17 @@ func use_tag(tag: String) -> String:
 	return use_tool(i) if i >= 0 else ""
 
 
+func spark() -> void:
+	## A fire lit with what you carry: a fire striker's chert wears a little.
+	## Worn out, the chert is gone and the iron striker is left, to rebind.
+	var i := tool_slot("fire")
+	if i < 0 or slots[i].id != "fire_striker":
+		return
+	if wear("fire_striker") == 0:
+		add("iron_striker", 1, 0.0, true)
+		Game.notify("The chert on your fire striker is worn away. The iron is still good: bind on another nodule.")
+
+
 func count_as(want: String) -> int:
 	## How many will do in a recipe for `want` (see Items.counts_as).
 	var total := 0
