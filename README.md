@@ -34,12 +34,12 @@ As time goes on you’ll be able to do a bit more. Make a mattok to start replan
 ---
 
 Finally, there's some misc changes I plan on as long as tokens remain cheap, including:
-* Food & Stamina Overhaul
-* Combat overhaul
+* ~~Food & Stamina Overhaul~~ ✔
+* ~~Combat overhaul~~ ✔
 * ~~A much better (and funnier) tutorial~~ ✔
 * ~~Maps~~ ✔
 * ~~Boats~~ ✔
-* Multiplayer
-* More animal variety
-* A hard and hardcore mode
-* Variable water levels
+* Multiplayer ?
+* ~~More animal variety~~
+* Difficulty Modes
+* Variable water levels ?
