@@ -1343,6 +1343,7 @@ func _book_entry(r: Dictionary) -> Control:
 	if r.has("rack"):
 		lines.append("On the workbench rack: " + Items.item_name(r.rack) + (" (or in your bag)" if r.get("rack_or_bag", false) else ""))
 	lines.append("%s: %s" % [g.get("verb", r.verb), Settings.hint(g.get("how", r.how))])
+	lines.append(Items.EFFORT_WORDS[Items.effort(r)] + ("" if Items.effort(r) == "light" else ": it makes you hungry and thirsty"))
 	var body := Label.new()
 	body.text = "\n".join(lines)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

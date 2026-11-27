@@ -35,7 +35,7 @@ const BINDABLE := [
 	["move_left", "Move left"], ["move_right", "Move right"],
 	["look_up", "Look up"], ["look_down", "Look down"],
 	["look_left", "Look left"], ["look_right", "Look right"],
-	["jump", "Jump"], ["sprint", "Sprint"],
+	["jump", "Jump"], ["sprint", "Sprint"], ["sneak", "Sneak (toggle)"],
 	["attack", "Attack"], ["use", "Use"],
 	["interact", "Interact"], ["drop", "Drop"],
 	["craft", "Kneel / craft"], ["inventory", "Inventory"],
@@ -59,6 +59,9 @@ const DEFAULT_BINDINGS := {
 	"look_right": [{}, {}, {"axis": JOY_AXIS_RIGHT_X, "dir": 1}],
 	"jump": [{"key": KEY_SPACE}, {}, {"button": JOY_BUTTON_A}],
 	"sprint": [{"key": KEY_SHIFT}, {}, {"button": JOY_BUTTON_LEFT_STICK}],
+	# Ctrl on the web is X instead (default_bindings): with W held, the
+	# browser takes Ctrl+W and closes the tab.
+	"sneak": [{"key": KEY_CTRL}, {}, {"button": JOY_BUTTON_RIGHT_STICK}],
 	"attack": [{"mouse": MOUSE_BUTTON_LEFT}, {}, {"axis": JOY_AXIS_TRIGGER_RIGHT, "dir": 1}],
 	"use": [{"mouse": MOUSE_BUTTON_RIGHT}, {}, {"axis": JOY_AXIS_TRIGGER_LEFT, "dir": 1}],
 	"interact": [{"key": KEY_E}, {}, {"button": JOY_BUTTON_X}],
@@ -80,7 +83,12 @@ const DEFAULT_BINDINGS := {
 	"debug_panel": [{"key": KEY_F1}, {}, {}],
 	"fly_down": [{"key": KEY_CTRL}, {}, {}],
 }
-const TOUCH_NAMES := {"craft": "Craft", "use": "Use", "interact": "Act", "attack": "Hit", "drop": "Drop",
+## Keys the web build can't keep from the browser while you play: Ctrl, Alt
+## and Meta (Ctrl with W, T or N closes or opens tabs and windows; Alt and Meta
+## open menus and system shortcuts). Binding one there warns first
+## (controls_panel.gd).
+const WEB_RISKY_KEYS := [KEY_CTRL, KEY_ALT, KEY_META]
+const TOUCH_NAMES := {"craft": "Craft", "use": "Use", "interact": "Act", "attack": "Hit", "drop": "Drop", "sneak": "Sneak",
 		"jump": "Jump", "sprint": "Run", "inventory": "Bag", "pause": "II", "waypoint": "Mark", "sleep": "Sleep"}
 const PAD_BUTTON_NAMES := {
 	JOY_BUTTON_A: "A", JOY_BUTTON_B: "B", JOY_BUTTON_X: "X", JOY_BUTTON_Y: "Y",
@@ -149,7 +157,7 @@ func hint(text: String) -> String:
 	## On a gamepad the rest of the wording follows too (pad_words).
 	if text.contains("[Right-click / Q]"):
 		text = text.replace("[Right-click / Q]", "[%s / %s]" % [_cap(button_name("use")), _cap(button_name("drop"))])
-	for pair in [["[E]", "interact"], ["[C]", "craft"], ["[Q]", "drop"], ["[W]", "move_forward"], ["[Z]", "sleep"], ["[Right-click]", "use"]]:
+	for pair in [["[E]", "interact"], ["[C]", "craft"], ["[Q]", "drop"], ["[W]", "move_forward"], ["[Z]", "sleep"], ["[Right-click]", "use"], ["[Left-click]", "attack"]]:
 		if text.contains(pair[0]):
 			text = text.replace(pair[0], "[%s]" % _cap(button_name(pair[1])))
 	if text.contains("Q puts it down"):
@@ -290,7 +298,7 @@ func load_settings() -> void:
 	volume = cfg.get_value("audio", "volume", volume)
 	music_volume = clampf(cfg.get_value("audio", "music_volume", music_volume), 0.0, 1.0)
 	music_frequency = clampi(cfg.get_value("audio", "music_frequency", music_frequency), 0, MusicFrequency.OFF)
-	for action in DEFAULT_BINDINGS:
+	for action in default_bindings():
 		var saved = cfg.get_value("bindings", action, null)
 		if saved is Array and saved.size() == 3 and saved.all(func(b): return b is Dictionary):
 			bindings[action] = saved
@@ -309,8 +317,9 @@ func save_settings() -> void:
 	cfg.set_value("audio", "volume", volume)
 	cfg.set_value("audio", "music_volume", music_volume)
 	cfg.set_value("audio", "music_frequency", music_frequency)
+	var defaults := default_bindings()
 	for action in bindings:
-		if bindings[action] != DEFAULT_BINDINGS[action]:
+		if bindings[action] != defaults.get(action, []):
 			cfg.set_value("bindings", action, bindings[action])
 	cfg.save(PATH)
 
@@ -330,8 +339,21 @@ func apply() -> void:
 
 # --- Input ------------------------------------------------------------------
 
+static func default_bindings() -> Dictionary:
+	## DEFAULT_BINDINGS for this platform: on the web, Sneak is on X, not Ctrl.
+	var out: Dictionary = DEFAULT_BINDINGS.duplicate(true)
+	if OS.has_feature("web"):
+		out.sneak[0] = {"key": KEY_X}
+	return out
+
+
+static func web_risky(b: Dictionary) -> bool:
+	## Whether a keyboard binding is one the web build can't keep from the browser.
+	return b.has("key") and int(b.key) in WEB_RISKY_KEYS
+
+
 func _setup_input() -> void:
-	bindings = DEFAULT_BINDINGS.duplicate(true)
+	bindings = default_bindings()
 	apply_bindings()
 	# Godot gives no pad button to accept or cancel in menus: A presses the
 	# button in focus, B backs out of a pop-up.
@@ -358,7 +380,7 @@ func apply_bindings() -> void:
 	## bindings are left out: every first finger down is also sent as a left
 	## click (so menus take taps), and a finger held to look or walk would
 	## otherwise hold attack. The on-screen buttons send the actions instead.
-	for action in DEFAULT_BINDINGS:
+	for action in bindings:
 		if InputMap.has_action(action):
 			InputMap.action_erase_events(action)
 		else:
@@ -429,5 +451,5 @@ func set_binding(action: String, slot: int, b: Dictionary) -> String:
 
 
 func reset_bindings() -> void:
-	bindings = DEFAULT_BINDINGS.duplicate(true)
+	bindings = default_bindings()
 	apply_bindings()

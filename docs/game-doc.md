@@ -173,10 +173,11 @@ waking.
 ## Survival (`src/core/survival.gd`)
 
 There is no health. Energy (0–`MAX_ENERGY`, 200), water and stamina (0–100)
-and the nutrients protein, greens and starch work as before: energy drains 100 per 3000 s
-(so full to empty takes 6000 s; food gives the same `energy` as ever),
-water 100 per 1800 s, each nutrient 100 per 4500 s; sleeping drains energy
-and water at 0.6×; sickness and fever speed thirst up. A nutrient under `LOW`
+and the nutrients protein, greens and starch. Awake, energy drains
+`ENERGY_DRAIN` (0.05/s) and water `WATER_DRAIN` (0.061/s) on a timer (food
+gives the same `energy` as ever), each nutrient 100 per 4500 s; sleeping
+drains energy and water at 0.6×; sickness (`SICK_THIRST` 2.5×), fever and
+drink speed thirst up. A nutrient under `LOW`
 (25) is a craving: low protein caps stamina at 70 and slows healing, low
 greens doubles infection risk and speeds it 1.5×; `nutrition()` (0.2–1)
 scales healing and blood regrowth.
@@ -195,6 +196,54 @@ gets worse into level 2 or more. Levels 2+ are in `problems()` with `need`
 set, which `status_words()` leaves out (the HUD has their own lines). Saves
 store `energy_max`; a save without it had energy out of 100, and `from_dict`
 scales it to keep how full it was.
+
+### What you do (`vitals-brainstorm.md`, action costs)
+
+On top of the timer, actions cost food and water ([energy, water]):
+
+- **In `tick`**, per second: sprinting `SPRINT_COST` [0.10, 0.05], swimming
+  `SWIM_COST` [0.08, 0.015], wading `WADE_COST` [0.02, 0.005] (none asleep).
+- **Through `spend(e, w)`** from the player (`player.gd`, `COST_*`), per
+  second: walking overloaded [0.05, 0.015], carrying something big [0.06,
+  0.015], dragging (or pulling a cart) [0.10, 0.02], climbing a ladder [0.06,
+  0.015], poling a raft [0.04, 0.01]; per action: a jump [0.10, 0.02], a quick
+  thrust or any swing or stab [0.15, 0.03], a charged thrust [0.25, 0.05], a
+  blocked hit [0.05, 0.01], a throw [0.05, 0.01], a swing that digs or hacks
+  (a hole, a plant, a stump) Heavy work [0.5, 0.12] in all.
+- **Work** costs per step by `Items.effort(recipe)` (`Items.EFFORT`): light
+  [0.05, 0.01], medium [0.15, 0.04], heavy [0.5, 0.12], hot (each breath at
+  the furnace) [0.1, 0.12]. `work_spot._effort_step` charges it on every step,
+  knapping strike and pecking blow; twisting has no steps and costs
+  `Items.TWIST_COST` [0.5, 0.1] per item made. The effort comes from the
+  recipe's `effort`, else its kind (`melt` hot; `wood` heavy, stripping
+  medium; `butcher` medium; house parts medium, stilts heavy; planting and
+  baiting light; knapping medium; pecking heavy), else its verb
+  (`EFFORT_BY_VERB`: Hammer, Crush, Chip, Raise… heavy; Grind, Carve, Shape,
+  Build… medium; otherwise light). A slow or blunt tool takes twice the steps,
+  so it costs twice. The work menu and the recipe book say **Light / Medium /
+  Heavy / Hot work** (`EFFORT_WORDS`), and "twice as long with this tool"
+  when a tool slows it.
+
+**The hidden reserve.** A new run (the swamp started with `intro_pending`,
+or dev `--reserve`) calls `start_reserve()`: `reserve_energy` 156 and
+`reserve_water` 70 (`START_RESERVE`), which every drain and `spend` takes
+from first. Nothing shows it; it never refills and is saved
+(`reserve_energy`, `reserve_water`; an old save has none).
+
+**Stamina.** `tire(x)` spends it: it doesn't come back for `REGEN_WAIT`
+(0.5 s), then refills at `REGEN_WALK` (10/s) or `REGEN_STILL` (18/s, standing
+still; 100/s asleep), scaled as before by hunger, thirst, starch, chill and
+fever. Reaching 0 you are `winded` until it is back to `WINDED_UNTIL` (25, or
+the cap): no sprinting or jumping (`can_sprint`), and for a spear no blocking,
+no charged thrust and half damage. Sprinting and swimming spend continuously.
+
+**The stomach (F2).** Food's energy fills `stomach`, which empties at
+`STOMACH_EMPTY` (0.5/s); energy still arrives at once. At `STOMACH_CAP` (60)
+you are Full (a `quiet` problem: not in the HUD corner); past it Stuffed: no
+sprinting and `STUFFED_SLOW` (0.85) speed. A bite taken while stuffed vomits
+with a chance from 0 at `VOMIT_FROM` (60) to 1 at `VOMIT_AT` (90): −12
+energy, −15 water, stomach down to 30. Food poisoning lasts `SICK_TIME`
+(180 s).
 
 ### Conditions
 
@@ -915,7 +964,13 @@ s to the boil, which cleans `dirty` water; `COOL_TIME` 180 s to cool;
 - Rain: `catch_rain(dt)`, called by `swamp._update_weather` while it rains
   for everything in "soup_pots" and "vessels", gives an unsealed, fired, set
   down vessel not under a roof (`Game.sheltered`) a serving of clean water
-  every `RAIN_EVERY` (60 s), never past `CAP`; swamp water stays dirty.
+  every `RAIN_EVERY` (60 s), never past `CAP` and at most `RAIN_DAY_CAP` (2)
+  servings a game day (`rain_day`, `rain_today`, saved); swamp water stays dirty.
+- Drawing clean water: E with an empty pot, canteen or flask
+  (`WATER_DRAWS`) takes one serving into it (`pot_clean`, `canteen_clean_1`,
+  `flask_clean_1`) when `water_drawable()`: only clean water in it, no food,
+  salt or brew. This is what makes a barrel a water store. A half-full
+  canteen or flask pours in, as before, rather than drawing.
   `_update_weather` passes only the rain that fell in its step: all of it if
   it rained throughout, up to when it stopped (`_weather_t` ran out), none if
   it only began, so a sleep (`_pass_time`, one step) counts right. A long
@@ -1020,8 +1075,9 @@ a house's fireplace it is `Assets.hearth_pot` instead (no tripod).
   refuse water.
 - **Rain**: `catch_rain(dt)` (from `swamp._update_weather`) adds
   `dt / RAIN_EVERY` (60 s) servings of clean water to a fired, set-down pot
-  not under a roof, never past `capacity()`; it thins soup, and swamp water
-  stays dirty.
+  not under a roof, never past `capacity()` and at most `RAIN_DAY_CAP` (2)
+  servings a game day (`rain_day`, `rain_caught`, saved); it thins soup, and
+  swamp water stays dirty.
 - **Contents**: `water` (servings of liquid, up to `SERVINGS` 16), `dirty`,
   `food` (items' worth, up to `MAX_FOOD` 12), `nut` (energy, protein,
   greens, starch totals), `risk`/`raw` (raw food since it last boiled),
@@ -1181,7 +1237,7 @@ large budgets are still separate constants in `swamp.gd`.
 | haptodus | hostile medium | hunter, scavenger | Night only. `skirmish`: bites, backs off, returns. `wound` 2.5. Flees fire. A compost pest. |
 | arthropleura | neutral medium | defensive, scavenger | Leaves you alone until hit (`_anger` 25 s). |
 | edaphosaurus | neutral medium | defensive | Sail-backed grazer. Runs below `flees_at` 35% hp. |
-| diadectes | neutral medium | defensive | `spawn` "ferns". Never flees, damage 20. |
+| diadectes | neutral medium | defensive | `spawn` "ferns". Never flees, damage 25: its hits are major bleeds. |
 | hibbertopterus | neutral medium | defensive | `spawn` "shore", `keeps_shore`. Slow, hp 220, 6 chitin. |
 | meganeura | predator insect | flyer | Circles, nips the player, snatches small prey and eats them where it lands. `share` 0.5 of the cap. |
 | meganeurula | predator insect | flyer | `hostile` false: ignores the player, still snatches prey. Own carcass and roast. |
@@ -1476,9 +1532,13 @@ thrown guts (`thrown_rock`) make a pile on land; in water they call
 
 Every `ROLL_EVERY` (300 real seconds) a pile within `ROLL_RANGE` (160 m) of
 the player rolls `ROLL_CHANCE` (25%) for `draw_to_guts(pile, "eogyrinus")`
-and 25% for `"medium"` (Arthropleura by day or before `_calm_until`,
-otherwise scorpion or Arthropleura 50/50). The animal spawns 30–50 m from the
-pile and 25–150 m from the player, with `drawn`, `bait` and `home` at the
+and 25% for `"medium"` (Arthropleura before `_calm_until`, otherwise
+Arthropleura or a hostile medium animal 50/50, by day as well as by night).
+A medium or large **carcass** left lying rolls the same way (`creature._smell`,
+its own `smell_t`, saved): not while something eats it, you carry or drag it,
+you butcher it (your work spot's `carcass`), or it has no cuts left. The animal
+spawns 30–50 m from the bait and 25–150 m from the player, with `drawn`,
+`bait` and `home` at the
 pile. `_think_drawn` runs before its behaviour:
 
 - A player within `DRAWN_NOTICE` (20 m) of it or the pile is attacked: a
@@ -1567,6 +1627,101 @@ plant-eaters and Hibbertopterus don't come to meat.
 stats and slots. `spawn_amphibian` rolls them. `setup(sp, pos, world, look)` merges
 the variant's name into that creature's own `def`. Its parts need their own mesh
 cache keys (`urap_*`), and `carcass_dict` saves `variant`. Dev: `--spawn=uranocentrodon:pale`.
+
+### Combat (`player.gd`, `creature.gd`; design in `combat.md`)
+
+**The spear thrusts** (any item with `shape` "spear"; every other tool keeps
+`_attack`'s swing and damage). `_spear_input` reads attack as press, hold and
+release: released before `CHARGE_HOLD` (0.5 s) it is a quick thrust, after it a
+charged one (`thrust(charged)`). Held past `CHARGE_TREMBLE` (2.5 s) the arms
+tremble and stamina drains 6/s. A hit while you draw back spoils the thrust.
+
+| | Quick | Charged |
+|---|---|---|
+| Damage | `damage` × `HIT_MULT` (1.25) | × `CHARGE_MULT` (2.0) on top |
+| Reach | the spear's `reach` (3.4 m) | `CHARGE_REACH` (3.8 m), and a lunge |
+| Stamina / recovery | 5 / 0.7 s | 12 / 0.8 s |
+| Stagger | `QUICK_STAGGER` 1 | `CHARGE_STAGGER` 3 |
+
+The lunge carries you `LUNGE_DIST` (0.8 m) over `LUNGE_TIME` forward, into
+water too (slowed while wading), half on a broken leg or sprained ankle; not
+swimming, on a raft or ladder, hauling or in the air. A miss costs the same.
+**Surprise:** on an animal that hasn't noticed you (`unaware()`: not chasing,
+attacking, fleeing, staggered…, no `_anger`, and you are beyond its `_sense`,
+which sneaking halves) a thrust does
+`SURPRISE_MULT` (2.5) instead of the charge's 2.0, whichever is larger, never
+both, and always staggers. **Winded**, a thrust does half and can't be
+charged. `thrust_damage(charged)` gives the figure (blunt halves it too).
+The hand's `_spear_pose` draws the spear back while charging, drives it out
+fast and back slower along −Z for a thrust, and holds it across you while
+blocking. Dev `--pose=block|charge|thrust` holds one for screenshots.
+
+**Blocking**: Use held with a spear (`blocking`, `can_block()`: not winded,
+grabbed, down, hauling, on a ladder or swimming, and the guard not broken).
+Walking is `BLOCK_SPEED` (0.5×) and you can't sprint or thrust. With a spear
+in hand Use does nothing else (`_use_held` returns): bedrolls, beds, crates,
+hung lamps and vessels can't be right-clicked, and `spear_prompt` rewrites
+their prompts ("Put the spear away to pick it up"). `player.hurt` puts a blow
+from within `BLOCK_ARC` of your facing on the guard (`_block`): 8 stamina, a
+use of the spear (`used_tool`), then `BLOCK_ROLL`: under 0.25 nothing comes
+through ("deflect": the attacker gets a stagger of `DEFLECT_STAGGER` 2), under
+0.55 half, otherwise all of it and the guard breaks for `GUARD_BREAK` (0.5 s).
+`hurt` returns "deflect", "half" or "full" (venom only on the latter two);
+tests force the roll with `next_block`.
+
+**Stagger** (`creature.take_damage(amount, attacker, stagger)`, default 1).
+Each animal has a `poise` (scorpion 1; Haptodus, Edaphosaurus, Arthropleura
+2; Diadectes, Hibbertopterus, Eogyrinus 3; Uranocentrodon −1, never). A blow
+whose stagger reaches it (`try_stagger`) cancels the windup: state "stagger"
+for `STAGGER_TIME` (0.6 s), sliding back `STAGGER_SLIDE` and rearing
+(`_reel`), then its cooldown is at least half `cooldown`. After a stagger
+`stagger_guard` is set until its next attack resolves, so the next windup
+can't be staggered. A blow that doesn't stagger leaves the windup and
+cooldown alone (the old 0.4 s cooldown cap is gone). A hunter's or defensive
+animal's blow only lands on a player within `ATTACK_ARC` (70°) of its front
+(`facing`). A lurker staggered recoils instead (below).
+
+**Eogyrinus and the spear**: charging into 2.2 m of a player who `fends` it
+(blocking, face on), it doesn't grab: `fended` puts its `bite` on the guard
+(through the block roll), it takes a quick thrust's damage, and it goes into
+"recoil": backing straight off at about 4× its speed while facing you, then
+`FEND_CALM` (3.5 s) of calm before it can charge again. Uranocentrodon's
+strike ignores blocking.
+
+**Tripping** (`_check_trip`, after `move_and_slide`): backing up (input more
+than half back, over 1 m/s) on your feet, or for `SHOVE_WINDOW` (0.3 s) after
+a hit of `SHOVE_FROM` (15) or more (after the block) shoves you, you trip if
+you run into something solid (a slide collision against the way you go), there
+is anything on layer 2 at your heels (`_loose_at`, a 0.2 m sphere
+`TRIP_LOOK` behind: stones, sticks, piles, logs, carcasses, stashes; not
+planting holes, ferns (`TRIP_PLANTS`) or a building site's outline), backing
+on ground steeper than 30° (`TRIP_SLOPE`), or stepping backwards off a drop of
+more than `TRIP_DROP` (0.4 m). Not in water over 0.25 m, flying, climbing,
+riding, dragging or pulling, or with vitals off (the lab). Tripped over
+something on the ground, you fall `TRIP_FALL` (0.6 m) back past it where
+there's room. Falling spills (`_spill`): an open pot in hand (`SPILLS`)
+becomes an empty pot, an unsealed pot of preserves drops its food, and
+something carried is dropped, an open soup pot or unsealed vessel emptied
+(`spill()`: its food tumbles out as pickups; a sealed vessel keeps its lid
+on). `trip()` puts you down for
+`TRIP_TIME` (1.5 s) plus `GETUP_TIME` (0.6 s): no moving, thrusting or
+blocking, the view on your back (`_down_k`). No damage, injury or stamina.
+Walking backwards is `BACK_SPEED` (0.6×).
+
+**Sneaking** (the `sneak` action, a toggle: `toggle_sneak`): half speed, eyes
+at `SNEAK_EYE` (1.1 m); ended by sprinting, jumping, swimming, climbing,
+hauling or tripping. Animals notice you from half as far (`creature._sense`),
+and from twice as far while you sprint. Bound to Ctrl, but X on the web
+(`Settings.default_bindings`: Ctrl+W closes the tab there), the right stick
+click on a gamepad, and a Sneak button on touch (`touch_controls`, lit while
+sneaking). On the web the controls panel warns before binding Ctrl, Alt or
+Meta (`Settings.WEB_RISKY_KEYS`, `controls_panel.web_warns`): a second press
+binds it anyway.
+
+**Large carcasses** are food for medium scavengers too (`_food_ok`): each
+feed (`FEED_TIME` × 4) takes `LARGE_GNAW` (half) of `cuts_left`, at least one,
+and leaves the rest; a lurker drawn to a carcass gnaws it the same way.
+Snatching one from an eater halves its cuts, as for a medium carcass.
 
 ### Grabs and the escape roll (`player.gd`)
 
@@ -2078,6 +2233,9 @@ copper hammer and its head use the `hammer` / `hammer_head` shapes
   floating stick (`Input.action_press` on the move actions, with strength);
   a drag anywhere else calls `player._look`. Buttons send `InputEventAction`s
   for the same actions as the keys, so nothing else needs to know about touch.
+  Hold Hit to draw back a spear thrust and let go to strike; hold Use to block.
+  Sneak is a plain button (the player toggles on the press) drawn lit while
+  `player.sneaking`.
   Under a menu only the pause button is shown, labelled Back, and taps reach
   the menu as Godot's emulated mouse clicks. Under the pause menu or death
   screen the overlay hides (it processes while paused for that). The mouse is
@@ -2138,7 +2296,11 @@ listed at the top of `game.gd` and in the README: `--start`, `--seed`,
 `--open-debug`, `--soup-pot`, `--house`, `--shot` and more. `--only=group,...` runs just those test
 groups (the first word of each printed group name). Boats, the islands and metals are
 `test_boats`, `test_tool_wear`, `test_metals`, `test_meteor_weather`,
-`test_copper_vessels` and `test_map` (`--only=boats,metals,map`).
+`test_copper_vessels` and `test_map` (`--only=boats,metals,map`). Spear
+combat, stagger, blocking, tripping, sneaking and scavengers drawn to kills are
+`test_combat`; the vitals rework (drain and action costs, the reserve, stamina,
+winded, food poisoning, the stomach, work effort, drawing water) is
+`test_vitals` (`--only=combat,vitals`).
 
 Web and Android builds: `tools/export.sh web|android` exports with the
 official editor in `.tools/godot/`, using `game/export_presets.cfg`, from a

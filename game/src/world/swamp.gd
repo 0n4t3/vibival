@@ -151,6 +151,11 @@ func _ready() -> void:
 	if not restore.is_empty():
 		_apply_restore(restore)
 		return
+	if Game.intro_pending or Game.dev.has("reserve"):
+		# A new run starts with twice its food and water, the extra hidden
+		# (vitals-brainstorm.md, starting buffer). Dev starts without the
+		# arrival don't, unless asked (--reserve).
+		player.vitals.start_reserve()
 	# A new world opens on a sunny day: the first rain can't come before dusk.
 	if Game.day() == 0:
 		_weather_t = maxf(DRY_UNTIL - Game.clock(), 0.0) + _rng.randf_range(0.0, 120.0)
@@ -1633,14 +1638,16 @@ func splat_guts(pos: Vector3) -> void:
 
 
 func draw_to_guts(pile: Node3D, kind: String) -> Node3D:
-	## The smell of a guts pile brings an animal: an Eogyrinus ("eogyrinus"), or
-	## ("medium") a scorpion or an Arthropleura (only Arthropleura by day or in
-	## the calm first minutes). It turns up 30-50 m from the pile, out of the
-	## player's sight if it can, and comes hungry.
+	## The smell of a guts pile or a carcass left lying (`pile`, either)
+	## brings an animal: an Eogyrinus ("eogyrinus"), or ("medium") an
+	## Arthropleura or, as likely, a hostile medium animal (Pulmonoscorpius or
+	## Haptodus), by day as well as by night. Only Arthropleura in the calm
+	## first minutes. It turns up 30-50 m from the bait, out of the player's
+	## sight if it can, and comes hungry.
 	var at: Vector3 = pile.global_position
 	var sp := kind
 	if kind == "medium":
-		sp = "arthropleura" if not Game.is_night() or Game.time < _calm_until or _rng.randf() < 0.5 else hostile_medium()
+		sp = "arthropleura" if Game.time < _calm_until or _rng.randf() < 0.5 else hostile_medium()
 	var p := player.global_position
 	var best := Vector3.INF
 	for attempt in 30:
@@ -2951,7 +2958,7 @@ func _wake_attack(species: String) -> void:
 		var c := Creature.new().setup(species, pos, self)
 		add_child(c)
 		c.state = "chase"
-		c.take_damage(0.0, player)
+		c.take_damage(0.0, player, 0)  # only to anger it: no stagger
 		player.hurt(c.def.damage, pos, 0.4, species, float(c.def.get("wound", 1.0)))
 		hud.show_message("You wake to something tearing at you!")
 

@@ -5,7 +5,9 @@ signal closed
 
 const ControlsPanel := preload("res://src/ui/controls_panel.gd")
 
-const SOURCE_URL := "https://github.com/0n4t3/vibival-game"
+const NGIT_URL := "https://gitworkshop.dev/nate@nate.mecca1.net/Vibival"
+const GITHUB_URL := "https://github.com/0n4t3/vibival"
+const RELEASES_URL := "https://github.com/0n4t3/vibival/releases"
 
 
 func _ready() -> void:
@@ -92,17 +94,36 @@ func _ready() -> void:
 	packs.modulate = Color(1, 1, 1, 0.6)
 	vb.add_child(packs)
 
-	var source := LinkButton.new()
-	source.text = "Source code"
-	source.uri = SOURCE_URL
-	source.add_theme_font_size_override("font_size", 12)
-	vb.add_child(source)
+	vb.add_child(_link_line(["Source Code:", ["NGit", NGIT_URL], "-", ["GitHub", GITHUB_URL]]))
+	var version := String(ProjectSettings.get_setting("application/config/version", ""))
+	vb.add_child(_link_line(["Current Version %s -" % version, ["Check for New Releases", RELEASES_URL]]))
 
 	var done := Button.new()
 	done.text = "Done"
 	done.pressed.connect(_on_done)
 	vb.add_child(done)
 	q.grab_focus.call_deferred()
+
+
+func _link_line(parts: Array) -> HBoxContainer:
+	## A line of small text: each string is plain text, each [text, url] a link.
+	var line := HBoxContainer.new()
+	for part in parts:
+		var c: Control
+		if part is Array:
+			var link := LinkButton.new()
+			link.text = part[0]
+			link.uri = part[1]
+			c = link
+		else:
+			var l := Label.new()
+			l.text = part
+			l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			l.modulate = Color(1, 1, 1, 0.6)
+			c = l
+		c.add_theme_font_size_override("font_size", 12)
+		line.add_child(c)
+	return line
 
 
 func _row(grid: GridContainer, label: String, control: Control) -> void:

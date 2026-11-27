@@ -38,6 +38,7 @@ const RAW_HEAT := 0.75                  # adding food knocks it off the boil to 
 const FIRE_TIME := 200.0                # seconds over a lit fire to fire the clay
 const HANG_R := 1.5                     # put down this close to a campfire, it hangs over it
 const RAIN_EVERY := 60.0                # seconds of rain that put a serving of water in it
+const RAIN_DAY_CAP := 2.0               # servings of rain it can catch in a game day
 const SOUP_WATER := 30.0                # water in a serving of soup
 const CLEAN_WATER := 40.0               # a serving of boiled water (a pot of boiled water)
 const DIRTY_WATER := 35.0
@@ -73,6 +74,8 @@ const HANG_Y := 0.6
 const RADIUS := 0.115 * SCALE
 const HEIGHT := 0.19 * SCALE
 
+var rain_day := -1                     # the game day rain_caught counts
+var rain_caught := 0.0                 # servings of rain caught that day (RAIN_DAY_CAP)
 var item_id := "soup_pot"
 var water := 0.0           # servings of liquid in it (up to SERVINGS)
 var dirty := false         # swamp water, not yet boiled
@@ -273,13 +276,30 @@ func catch_rain(dt: float) -> void:
 	## swamp water.
 	if not fired_pot() or hauled_by != null or water >= capacity() - 0.001 or Game.sheltered(global_position):
 		return
+	if Game.day() != rain_day:
+		rain_day = Game.day()
+		rain_caught = 0.0
+	if rain_caught >= RAIN_DAY_CAP:
+		return  # it has caught its two servings today
 	var was := servings()
 	if is_empty():
 		dirty = false
 		fresh_at = Game.time
-	water = minf(water + dt / RAIN_EVERY, capacity())
+	var add := minf(minf(dt / RAIN_EVERY, RAIN_DAY_CAP - rain_caught), capacity() - water)
+	water += add
+	rain_caught += add
 	if servings() != was:
 		_refresh()
+
+
+func spill() -> bool:
+	## Tipped over (the player tripped carrying it): whatever was in it is
+	## lost. True if anything was.
+	if is_empty():
+		return false
+	empty_out()
+	_refresh()
+	return true
 
 
 func fill_dirty() -> void:
@@ -754,7 +774,7 @@ func to_dict() -> Dictionary:
 	var p := global_position
 	return {"id": item_id, "pos": [p.x, p.y, p.z], "yaw": rotation.y, "water": water, "dirty": dirty,
 			"food": food, "nut": nut.duplicate(), "risk": risk, "raw": raw, "heat": heat,
-			"fresh_at": fresh_at, "fired": fired, "hung": hung()}
+			"fresh_at": fresh_at, "fired": fired, "hung": hung(), "rain_day": rain_day, "rain_caught": rain_caught}
 
 
 func from_dict(d: Dictionary) -> void:
@@ -770,6 +790,8 @@ func from_dict(d: Dictionary) -> void:
 	raw = bool(d.get("raw", false))
 	heat = float(d.get("heat", 0.0))
 	fresh_at = float(d.get("fresh_at", 0.0))
+	rain_day = int(d.get("rain_day", -1))
+	rain_caught = float(d.get("rain_caught", 0.0))
 	fired = float(d.get("fired", 0.0))
 	_was_boiling = boiling()
 	if is_inside_tree():

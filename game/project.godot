@@ -9,6 +9,7 @@ config_version=5
 
 config/name="Vibival"
 config/description="Survive a Carboniferous coal swamp with stone-age tools."
+config/version="0.2.3"
 run/main_scene="res://scenes/title.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/use_custom_user_dir=true

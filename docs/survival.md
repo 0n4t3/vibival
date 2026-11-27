@@ -39,13 +39,35 @@ less serious.
 
 | Vital | Falls by itself | Refill it with | When it runs out |
 |---|---|---|---|
-| Energy | Full to empty in about 100 minutes | Food | You are dying of starvation |
-| Water | Full to empty in about 30 minutes | Drinking | You are dying of thirst |
-| Stamina | Sprinting, swimming, throwing | Resting a moment | You cannot sprint (in deep water, you start drowning) |
+| Energy | Full to empty in about 67 minutes doing nothing, much faster working | Food | You are dying of starvation |
+| Water | Full to empty in about 27 minutes doing nothing, faster working | Drinking | You are dying of thirst |
+| Stamina | Sprinting, swimming, jumping, fighting, throwing | A moment's rest | You are winded (in deep water, you start drowning) |
 
-Energy holds twice as much food as it once did, so a full belly takes twice
-as many meals and lasts twice as long. Being sick makes you thirsty almost
-twice as fast, and so does a fever.
+**What you do costs food and water.** Sprinting, swimming, wading, carrying
+or dragging something big, climbing a ladder, poling a raft, jumping and
+every blow all make you hungrier and thirstier. So does work: every step of
+a recipe costs by how hard it is. Recipes say **Light work** (weaving,
+tying, hafting, drawing), **Medium work** (butchering, carving, grinding,
+building furniture and house parts, knapping), **Heavy work** (felling,
+cutting and splitting logs, digging, hacking stumps, crushing, hammering at
+the anvil) or **Hot work** (the furnace's blowpipe). A slow or blunt tool
+takes twice the steps, so it costs twice as much: a better tool pays for
+itself. Picking things up, gathering, eating, drinking and cooking are free.
+
+A new world starts you with a little extra food and water in you that you
+can't see, so the first day or two give you time to find your feet. Being
+sick makes you thirsty two and a half times as fast; a fever speeds it up too.
+
+**Stamina** stops coming back for half a second each time you spend it,
+then refills, fastest standing still. Run it right down and you are
+**winded** until it is back to a quarter: no sprinting, jumping, blocking or
+charged spear thrusts.
+
+**Your stomach** holds about two and a half cooked meats. Food still
+counts the moment you eat it, but the stomach takes about two hours to
+empty. Eat it full and you are **Full**; keep eating and you are
+**Stuffed**: no sprinting and slower, and each bite more may bring it all
+back up. Recovering from starvation takes several meals spread out.
 
 ### Hunger and thirst
 
@@ -113,6 +135,12 @@ Swamp water is everywhere, but it is risky in two ways:
    drink. Filling a pot once gives you 35–40 water, so one careful trip to the
    water beats many quick sips. A Soup Pot fills with 16 servings at once
    and boils them all together.
+
+Storing clean water: an open soup pot, clay vessel or barrel left out in the
+rain catches clean water, but only two servings a day each. A barrel holds 20
+servings: pour boiled water into it, and draw it off again a serving at a time
+with an empty pot, canteen or flask (E). Only plain clean water can be drawn,
+not water with food or salt in it.
 
 You drown if you stay under water too long.
 
@@ -199,8 +227,9 @@ you tipsy.
 
 ## Sickness and chill
 
-- **Sick**: from raw food, rotten food, and swamp water. Thirst rises faster
-  until it passes; rest helps.
+- **Sick**: from raw food, rotten food, and swamp water. It lasts three
+  minutes, and you dry out two and a half times as fast until it passes;
+  rest helps. A bad swamp sip costs more water than it gave you.
 - **Chilled**: sleeping in the rain. You tire faster and recover stamina
   slowly.
 

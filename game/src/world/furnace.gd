@@ -107,7 +107,7 @@ func blow(player: Node) -> bool:
 	var wet: bool = world != null and bool(world.get("raining"))
 	heat = minf(heat + BLOW / (WET if wet else 1.0), 1.0)
 	if player and player.get("vitals"):
-		player.vitals.stamina = maxf(player.vitals.stamina - 1.0, 0.0)
+		player.vitals.tire(1.0)
 	Sfx.play_at("rustle", global_position, -8.0, 0.4)
 	return heat >= HOT
 

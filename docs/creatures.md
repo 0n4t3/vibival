@@ -8,6 +8,7 @@ Everything you kill leaves a carcass you can butcher for meat (see
 [Butchering](#butchering)).
 
 The animals fall into groups. Animals in the same group act much the same way.
+How to fight them with a spear is under [Fighting](#fighting).
 
 | Group | Animals | What to expect |
 |---|---|---|
@@ -30,9 +31,12 @@ A large carnivorous amphibian, about 4–5 m long.
 - It charges anyone who comes close and seizes them in its jaws. **Stab fast**
   (left mouse) to break its grip; the grip bar shows how close you are. A
   better weapon breaks the grip faster.
+- **Block it with a spear** (hold right mouse, facing it): its charge meets
+  the point instead of you. Its bite still lands on your guard, it runs onto
+  the spear, and it backs off for a few seconds before it comes again.
 - Arriving in a Uranocentrodon's water, it is sometimes set upon and either
   eaten or chased out onto land.
-- Its carcass is dragged, and gives 8 raw meat.
+- Its carcass is dragged, and gives 12 raw meat.
 
 ### Uranocentrodon
 
@@ -59,7 +63,7 @@ meat, but is far easier to spot when basking on the bank.
   +45% with a copper one and +60% with an iron one. The odds show on screen
   while you are held. If it lets go, you are out in deep water where others
   may lie: swim for the bank.
-- Its carcass is dragged, and gives 14 raw meat.
+- Its carcass is dragged, and gives 21 raw meat.
 
 **Bait box.** A [bait box](crafting.md#the-bait-box) thrown into the water
 draws the Eogyrinus and Uranocentrodon round it to tear at it for half a
@@ -105,7 +109,8 @@ swamp.
 - It will not follow you into deeper water.
 - It hunts small prey too, when you are not nearby. If you walk right up to a
   feeding scorpion, it leaves its meal and goes for you.
-- Its carcass is carried, and gives 2 raw meat and a chitin plate.
+- A quick spear thrust staggers it.
+- Its carcass is carried, and gives 3 raw meat and a chitin plate.
 
 ### Haptodus
 
@@ -116,10 +121,11 @@ Dimetrodon. Out at night, like the scorpion.
   so running only works while your stamina lasts.
 - It sprints in, bites, backs off and circles round to come again. That gap is
   your chance to hit it.
-- Its bite does little damage but cuts deep, so expect to bleed.
+- Its bite does little damage but cuts deep, so expect to bleed. Blocking its
+  quick bites is worth it.
 - It fears fire, and hunts small prey and carcasses when you are not nearby.
 - Meat in a compost basket or a guts pile can draw one.
-- Its carcass is carried, and gives 3 raw meat.
+- Its carcass is carried, and gives 5 raw meat.
 
 ## Neutral medium creatures
 
@@ -132,7 +138,7 @@ tough.
   heavy bite for a while.
 - Preys on small prey: it chases down any that come within a few metres,
   kills them, and eats the whole body in about 5 seconds.
-- Its carcass is carried, and gives 5 raw meat and 4 chitin plates.
+- Its carcass is carried, and gives 8 raw meat and 4 chitin plates.
 
 ### Edaphosaurus
 
@@ -140,7 +146,7 @@ A stocky plant-eater with a tall ribbed sail on its back.
 
 - Wanders open ground and stops to graze. It ignores you unless you hit it.
 - Attacked, it turns and bites. Once badly hurt it breaks off and runs.
-- Its carcass is carried, and gives 6 raw meat.
+- Its carcass is carried, and gives 9 raw meat.
 
 ### Diadectes
 
@@ -148,8 +154,9 @@ A very broad, heavy plant-eater that browses in the fern thickets.
 
 - Slow to notice you, and ignores you unless you hit it.
 - Attacked, it never runs. Its slow lunges hit harder than any other neutral
-  animal's and can break a bone, but you can step away from them.
-- Its carcass is carried, and gives 7 raw meat, the most of any medium animal.
+  animal's, leave you bleeding heavily and can break a bone, but you can step
+  away from them. Only a charged thrust staggers it.
+- Its carcass is carried, and gives 11 raw meat, the most of any medium animal.
 
 ### Hibbertopterus
 
@@ -158,7 +165,8 @@ raking the mud with its front limbs.
 
 - Very slow and very tough. It leaves you alone unless you hit it.
 - It can barely chase you, but its long sweep reaches anyone beside it.
-- Its carcass is carried, and gives 3 raw meat and 6 chitin plates, the best
+- Only a charged thrust staggers it.
+- Its carcass is carried, and gives 5 raw meat and 6 chitin plates, the best
   source of chitin.
 
 ## Predator insects
@@ -246,18 +254,20 @@ like raw meat.
 
 ### Guts
 
-Guts piles lie for a day, are saved with the world, and draw scavengers. While
-you are within 160 m, every 5 minutes each pile has:
+Guts piles lie for a day, are saved with the world, and draw scavengers. So
+does a medium or large carcass left lying, unless you are butchering it or
+carrying it. While you are within 160 m, every 5 minutes each has:
 
 - a 25% chance of drawing an **Eogyrinus**, and
-- a 25% chance of drawing a **Pulmonoscorpius, Haptodus or Arthropleura** (only
-  Arthropleura by day).
+- a 25% chance of drawing a **Pulmonoscorpius, Haptodus or Arthropleura**, by
+  day as well as by night (only Arthropleura in your first few minutes).
 
 The animal turns up 30 to 50 m away and comes hungry. If you are near it or
 the pile, it attacks you, even an Arthropleura. Otherwise it eats the guts and
 hangs about there for 3 minutes, and attacks anyone who comes close. An
 Arthropleura or scorpion that wanders past a guts pile or a carcass eats it
-too.
+too. A large carcass is too big to finish: each one that feeds on it tears off
+half the meat left. Butcher by a fire: nothing drawn comes within 20 m of one.
 
 Press **E** at a pile to pick up a handful of **Guts**. Hold them and
 right-click to throw them. On land they make a new pile where they land (so do
@@ -271,6 +281,39 @@ carcass (E). You get **Gnawed Meat**, which must be cooked and is worth much
 less than fresh meat, and the animal turns on you at once. Snatch a medium
 carcass it is eating and you carry it off, but half its meat is gone. Once
 it has finished, nothing is left.
+
+## Fighting
+
+The **spear** is the weapon. Other tools still hit with a plain swing.
+
+- **Thrust:** tap left mouse for a quick thrust. Hold it and let go for a
+  **charged thrust**: twice as hard, a little further, and it lunges you a
+  step forward (into the water too). A miss still costs the breath and the
+  time. Held too long, your arms tremble and tire.
+- **Catch it unaware:** a thrust at an animal that hasn't noticed you
+  (grazing, feeding, wandering, and you're further off than it notices) does
+  two and a half times the damage, charged or not, and makes it reel. Walk up
+  in plain view and it has noticed you. **Sneak** (Ctrl, X in the browser, a
+  toggle) to get close: animals notice you from half as far, and from twice as
+  far while you sprint. A charged thrust's longer reach helps.
+- **Stagger:** a hard enough blow makes an animal reel back and lose its
+  attack. A quick thrust staggers a Pulmonoscorpius; a charged one staggers
+  anything but a Uranocentrodon. Once staggered, its next attack can't be.
+- **Block:** hold right mouse with a spear to raise it across you. A blow from
+  in front is turned aside (a quarter of the time: none of it gets through, and
+  a medium animal reels), halved, or comes through and knocks your guard down
+  for a moment. Each blocked blow costs breath and wears the spear. You walk
+  slowly and can't thrust while you block, nor block while winded. With a
+  spear in hand, right-click does nothing else: put it away to open a vessel or
+  pick up a bedroll.
+- **Don't back away while you fight.** Walking backwards is slow, and backing
+  into anything (a stone, a stick, a log, a carcass, a tree, a steep slope or a
+  drop) puts you on your back for a couple of seconds. So does being knocked
+  back into something by a hard hit. It doesn't hurt, but whatever you were
+  fighting gets its chance, and an open pot in your hand, or a pot or unsealed
+  vessel in your arms, spills. Fight or flee.
+- Animals only hit what is in front of them: a step aside or back in time
+  gets you clear.
 
 ## Thrown stones
 

@@ -490,7 +490,12 @@ func _refresh() -> void:
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.focus_mode = Control.FOCUS_NONE
 		var out: String = r.get("label", Items.item_name(r.out) + (" x%d" % r.n if r.n > 1 else ""))
-		b.text = "%s\n    %s" % [r.verb, out] if o.missing.is_empty() else "%s\n    needs %s" % [r.verb, ", ".join(o.missing)]
+		# How hard it is (food and water a step), and a slow or blunt tool's toll.
+		var work: String = Items.EFFORT_WORDS[Items.effort(r)]
+		var paced: Dictionary = spot._paced(r) if r.get("act", "") == "steps" else r
+		if paced.has("base_steps") and int(paced.get("steps", 0)) > int(paced.base_steps):
+			work += ", twice as long with this tool"
+		b.text = "%s\n    %s   (%s)" % [r.verb, out, work] if o.missing.is_empty() else "%s\n    needs %s" % [r.verb, ", ".join(o.missing)]
 		b.disabled = not o.missing.is_empty()
 		# How it is made shows in the instructions, not in a pop-up that would
 		# cover the recipes below it.

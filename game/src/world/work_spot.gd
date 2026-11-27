@@ -1418,7 +1418,17 @@ func press() -> void:
 		step()
 
 
+func _effort_step(r := {}) -> void:
+	## A step of work costs food and water by how hard the job is (Items.effort).
+	if player == null or not "vitals" in player:
+		return
+	var c: Array = Items.EFFORT[Items.effort(recipe if r.is_empty() else r)]
+	player.vitals.spend(c[0], c[1])
+
+
 func step() -> void:
+	if not recipe.is_empty():
+		_effort_step()
 	if recipe.has("house"):
 		_house_step()
 		return
@@ -1475,6 +1485,8 @@ func twist(amount: float) -> void:
 		return
 	progress = minf(progress + amount, 1.0)
 	if progress >= 1.0:
+		if player and "vitals" in player:
+			player.vitals.spend(Items.TWIST_COST[0] * int(recipe.get("n", 1)), Items.TWIST_COST[1] * int(recipe.get("n", 1)))
 		_finish()
 		return
 	# Rebuild often so the work visibly rolls under the hand, with a soft
@@ -1491,6 +1503,7 @@ func twist(amount: float) -> void:
 func strike(k: int) -> void:
 	if recipe.get("act", "") != "knap" or k < 0 or not knap_grid[k]:
 		return
+	_effort_step()
 	knap_grid[k] = false
 	knap_struck = true
 	for o in [Vector2i(0, 0), Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
@@ -1532,6 +1545,7 @@ func peck_cell(k: int) -> void:
 	## flat cell is wasted; once the face is flat it is a rough anvil.
 	if recipe.get("act", "") != "peck" or k < 0 or not _station_ok():
 		return
+	_effort_step()
 	var hit: bool = station.strike_cell(k)
 	_wasted = not hit
 	steps += 1

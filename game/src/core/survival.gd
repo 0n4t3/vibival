@@ -22,8 +22,24 @@ extends RefCounted
 ##
 ## Fractured arms and legs and sprained ankles mend after sleeping (slept()).
 ##
-## Energy, water and stamina, and the three nutrients, work as before:
-## protein heals wounds, greens fight infection, starch keeps stamina up.
+## Energy, water and stamina, and the three nutrients: protein heals wounds,
+## greens fight infection, starch keeps stamina up.
+##
+## Food and water drain on a timer (ENERGY_DRAIN, WATER_DRAIN) and with what
+## you do (vitals-brainstorm.md): sprinting, swimming and wading here in tick,
+## everything else through spend() (a jump, a blow, a step of hard work, carrying
+## or dragging something big). A new run also has a hidden reserve
+## (reserve_energy, reserve_water) that drains first.
+##
+## Stamina: spending it stops it coming back for REGEN_WAIT, then it refills
+## at REGEN_WALK (REGEN_STILL standing still). Run down to 0 you are winded
+## until it is back to WINDED_UNTIL: no sprinting, jumping, blocking or charged
+## thrusts (player.gd).
+##
+## The stomach (F2) holds STOMACH_CAP of food's energy and empties at
+## STOMACH_EMPTY a second; energy still arrives the moment you eat. Full at the
+## cap; past it you are Stuffed (no sprinting, STUFFED_SLOW), and each bite
+## while stuffed may make you vomit (VOMIT_FROM..VOMIT_AT).
 ##
 ## Hunger and thirst are shown as words, not bars (HUNGER_NAMES, THIRST_NAMES),
 ## by how full energy and water are: over 75% nothing, then mildly, then
@@ -35,12 +51,31 @@ signal died
 signal status(text: String)
 
 const MAX_ENERGY := 200.0               # holds twice what it did; food gives what it always has
-const ENERGY_DRAIN := 100.0 / 3000.0     # per second, unchanged: full to empty in ~4 days (100 min)
-const WATER_DRAIN := 100.0 / 1800.0      # ~30 min
+const ENERGY_DRAIN := 0.05               # per second awake (x1.5 of the old 100/3000): the rest comes from what you do
+const WATER_DRAIN := 0.061               # per second awake (x1.1 of the old 100/1800)
 const NUTRIENT_DRAIN := 100.0 / 4500.0   # ~3 days
 const LOW := 25.0                        # nutrient level that counts as deficient
 const SLEEP_DRAIN := 0.6                 # energy and water drain while asleep
 const BEDROLL_HEAL := 1.5                # asleep on a bedroll: blood, wounds, sickness and venom mend this much faster
+# Food and water a second by what you are doing, [energy, water], on top of
+# the drain (sprinting, swimming and wading are applied in tick).
+const SPRINT_COST := [0.10, 0.05]
+const SWIM_COST := [0.08, 0.015]
+const WADE_COST := [0.02, 0.005]
+const START_RESERVE := [156.0, 70.0]     # a new run's hidden extra food and water (reserve_*)
+# Stamina (S1, S2).
+const REGEN_WAIT := 0.5                  # seconds after spending before it comes back
+const REGEN_WALK := 10.0                 # a second, moving
+const REGEN_STILL := 18.0                # a second, standing still
+const WINDED_UNTIL := 25.0               # winded at 0 until it is back to this
+# The stomach (F2).
+const STOMACH_CAP := 60.0                # food energy it holds: Full there, Stuffed past it
+const STOMACH_EMPTY := 0.5               # food energy it passes on a second (empty in two game hours)
+const STUFFED_SLOW := 0.85               # walking speed while stuffed
+const VOMIT_FROM := 60.0                 # a bite while stuffed may come back up: 0% at this
+const VOMIT_AT := 90.0                   # up to certain at this
+const SICK_TIME := 180.0                 # seconds food poisoning lasts (W1)
+const SICK_THIRST := 2.5                 # and how much faster you dry out meanwhile
 
 ## How bad the worst condition is: harm at or over each of these is that tier.
 ## 1: no sprinting. 2: slow, carries less. 3: going blind. At 1.0, dead.
@@ -140,6 +175,11 @@ const DEBUG_CONDITIONS := [
 ]
 
 var energy := MAX_ENERGY * 0.78  # a new run starts just fed enough not to feel hungry yet
+var reserve_energy := 0.0  # hidden: drains before energy (only a new run gets any, START_RESERVE)
+var reserve_water := 0.0   # likewise for water
+var stomach := 0.0         # food energy still in your stomach (F2)
+var winded := false        # ran out of stamina: until it is back to WINDED_UNTIL
+var _regen_wait := 0.0     # seconds before stamina starts coming back
 var water := 70.0
 var stamina := 100.0
 var protein := 60.0
@@ -176,6 +216,52 @@ var no_needs := false   # never hungry, thirsty or out of breath (debug world)
 func max_stamina() -> float:
 	var cap: float = NEED_STAMINA_CAP[maxi(hunger_level(), thirst_level())]
 	return minf(70.0 if protein < LOW else 100.0, cap)
+
+
+func spend(e: float, w := 0.0) -> void:
+	## Food and water used by something you do (a step of work, a jump, a
+	## blow). The hidden reserve goes first.
+	if dead or no_needs:
+		return
+	_drain(e, w)
+
+
+func _drain(e: float, w: float) -> void:
+	if e > 0.0:
+		var from_reserve := minf(reserve_energy, e)
+		reserve_energy -= from_reserve
+		energy = maxf(energy - (e - from_reserve), 0.0)
+	if w > 0.0:
+		var from_reserve_w := minf(reserve_water, w)
+		reserve_water -= from_reserve_w
+		water = maxf(water - (w - from_reserve_w), 0.0)
+
+
+func tire(amount: float) -> void:
+	## Stamina spent (a blow, a jump, a block): it stops coming back for
+	## REGEN_WAIT, and running out leaves you winded.
+	if amount <= 0.0:
+		return
+	stamina = maxf(stamina - amount, 0.0)
+	_regen_wait = REGEN_WAIT
+	if stamina <= 0.0 and not no_needs:
+		if not winded:
+			status.emit("You are winded. Catch your breath.")
+		winded = true
+
+
+func is_full() -> bool:
+	return stomach >= STOMACH_CAP
+
+
+func stuffed() -> bool:
+	return stomach > STOMACH_CAP
+
+
+func start_reserve() -> void:
+	## A new run: the hidden extra food and water.
+	reserve_energy = START_RESERVE[0]
+	reserve_water = START_RESERVE[1]
 
 
 static func need_level(full: float) -> int:
@@ -308,11 +394,12 @@ func arm_broken() -> bool:
 
 
 func can_sprint() -> bool:
-	return tier() < 1 and not leg_hurt()
+	return tier() < 1 and not leg_hurt() and not winded and not stuffed()
 
 
 func speed_mult() -> float:
-	return SLOW[tier()] * (LEG_SLOW if leg_hurt() else 1.0) * (ALCOHOL_SLOW if drinks() >= 4 else 1.0)
+	return SLOW[tier()] * (LEG_SLOW if leg_hurt() else 1.0) * (ALCOHOL_SLOW if drinks() >= 4 else 1.0) \
+			* (STUFFED_SLOW if stuffed() else 1.0)
 
 
 func drinks() -> int:
@@ -379,13 +466,18 @@ func tick(delta: float, sprinting: bool, swimming: bool, wading := false, sleepi
 		sprinting = false
 		swimming = false
 	var rest := 3.0 * (BEDROLL_HEAL if on_bedroll else 1.0) if sleeping else (1.5 if still else 1.0)
-	var exertion := 1.6 if sprinting or swimming else 1.0
-	if sleeping:
-		exertion = SLEEP_DRAIN
+	var exertion := SLEEP_DRAIN if sleeping else 1.0
 	var energy_mult := (1.2 if starch < LOW else 1.0) * (1.4 if chill > 0.0 else 1.0)
-	var water_mult: float = (1.8 if sick > 0.0 else 1.0) * (1.6 if fever() else 1.0) * ALCOHOL_THIRST[mini(drinks(), 4)]
-	energy = maxf(energy - ENERGY_DRAIN * exertion * energy_mult * delta, 0.0)
-	water = maxf(water - WATER_DRAIN * exertion * water_mult * delta, 0.0)
+	var water_mult: float = (SICK_THIRST if sick > 0.0 else 1.0) * (1.6 if fever() else 1.0) * ALCOHOL_THIRST[mini(drinks(), 4)]
+	var e_use := ENERGY_DRAIN * exertion * energy_mult
+	var w_use := WATER_DRAIN * exertion * water_mult
+	# What you are doing costs on top (vitals-brainstorm.md, action costs).
+	var act: Array = SPRINT_COST if sprinting else (SWIM_COST if swimming else (WADE_COST if wading else [0.0, 0.0]))
+	if not sleeping:
+		e_use += act[0]
+		w_use += act[1]
+	_drain(e_use * delta, w_use * delta)
+	stomach = maxf(stomach - STOMACH_EMPTY * delta, 0.0)
 	var nd := NUTRIENT_DRAIN * (0.6 if sleeping else 1.0) * delta
 	protein = maxf(protein - nd, 0.0)
 	greens = maxf(greens - nd, 0.0)
@@ -397,9 +489,11 @@ func tick(delta: float, sprinting: bool, swimming: bool, wading := false, sleepi
 	var tl := thirst_level()
 
 	if sprinting or swimming:
-		stamina = maxf(stamina - (14.0 if sprinting else 6.0) * THIRST_SPRINT[tl] * delta, 0.0)
+		tire((14.0 if sprinting else 6.0) * THIRST_SPRINT[tl] * delta)
+	elif _regen_wait > 0.0 and not sleeping:
+		_regen_wait = maxf(_regen_wait - delta, 0.0)  # catching your breath (S2)
 	else:
-		var regen: float = 14.0 * HUNGER_REGEN[hl] * THIRST_REGEN[tl]
+		var regen: float = (REGEN_STILL if still else REGEN_WALK) * HUNGER_REGEN[hl] * THIRST_REGEN[tl]
 		if starch < LOW:
 			regen *= 0.6
 		if chill > 0.0 or fever():
@@ -408,6 +502,9 @@ func tick(delta: float, sprinting: bool, swimming: bool, wading := false, sleepi
 			regen = 100.0
 		stamina = minf(stamina + regen * delta, max_stamina())
 	stamina = minf(stamina, max_stamina())
+	if winded and (stamina >= minf(WINDED_UNTIL, max_stamina()) or no_needs):
+		winded = false
+		status.emit("You have your breath back.")
 
 	# Starving and very thirsty wear you down; empty, much faster. Above
 	# that, it eases off.
@@ -660,6 +757,14 @@ func poison(amount: float) -> void:
 	_check_death()
 
 
+func vomit() -> void:
+	## Overeating comes back up: some food and water lost, the stomach half empty.
+	energy = maxf(energy - VOMIT_LOSS.energy, 0.0)
+	water = maxf(water - VOMIT_LOSS.water, 0.0)
+	stomach = minf(stomach, STOMACH_CAP * 0.5)
+	status.emit("You've eaten too much. It all comes back up.")
+
+
 func give_condition(id: String) -> bool:
 	## Debug: gives you one of DEBUG_CONDITIONS at once, even with damage
 	## switched off (where it then can't kill you). False for an unknown id.
@@ -684,7 +789,7 @@ func give_condition(id: String) -> bool:
 		"venom":
 			venom = minf(venom + 40.0, 100.0)
 		"food_poisoning":
-			sick = maxf(sick, 90.0)
+			sick = maxf(sick, SICK_TIME)
 		"chilled":
 			chill = maxf(chill, 240.0)
 		"starving":
@@ -726,6 +831,8 @@ func cure_all() -> void:
 	greens = 100.0
 	starch = 100.0
 	stamina = max_stamina()
+	stomach = 0.0
+	winded = false
 
 
 # --- Treatment ----------------------------------------------------------------------
@@ -861,13 +968,22 @@ func consume(def: Dictionary, rng: RandomNumberGenerator) -> void:
 	## it, is a drink.
 	energy = minf(energy + def.get("energy", 0.0), MAX_ENERGY)
 	water = clampf(water + def.get("water", 0.0), 0.0, 100.0)
+	# The stomach (F2): food fills it; a bite while stuffed may come back up.
+	var food: float = maxf(def.get("energy", 0.0), 0.0)
+	if food > 0.0:
+		var was := stomach
+		stomach += food
+		if was > STOMACH_CAP and rng.randf() < clampf((was - VOMIT_FROM) / (VOMIT_AT - VOMIT_FROM), 0.0, 1.0):
+			vomit()
+		elif was < STOMACH_CAP and stomach >= STOMACH_CAP:
+			status.emit("You are full." if stomach <= STOMACH_CAP else "You are stuffed: you can't sprint and move slower until it settles.")
 	if def.get("alcohol", 0.0) > 0.0:
 		drink_alcohol(def.alcohol)
 	protein = minf(protein + def.get("protein", 0.0), 100.0)
 	greens = minf(greens + def.get("greens", 0.0), 100.0)
 	starch = minf(starch + def.get("starch", 0.0), 100.0)
 	if rng.randf() < def.get("sick", 0.0):
-		sick = maxf(sick, 90.0)
+		sick = maxf(sick, SICK_TIME)
 		status.emit("Your stomach turns. You are sick.")
 
 
@@ -954,6 +1070,14 @@ func problems() -> Array:
 	elif thirst > 0.0:
 		out.append({"words": "Weak from thirst", "color": _color(thirst), "rank": 10.0 * thirst,
 			"say": "You are still weak from thirst.", "advice": "Keep drinking; it passes."})
+	if stuffed():
+		out.append({"words": "Stuffed", "color": MILD, "rank": 1.4, "say": "You have eaten too much: you can't sprint and move slower until it settles.",
+			"advice": "Stop eating for a while. Another bite may bring it all back up."})
+	elif is_full():
+		out.append({"words": "Full", "color": GOOD, "rank": 0.2, "quiet": true, "say": "You are full.", "advice": "Let it settle before you eat much more."})
+	if winded:
+		out.append({"words": "Winded", "color": MILD, "rank": 1.3, "say": "You are out of breath: no sprinting, jumping, blocking or charged thrusts.",
+			"advice": "Catch your breath: standing still brings it back fastest."})
 	if drowning > 0.0:
 		out.append({"words": "Drowning", "color": BAD, "rank": 10.0 * drowning + 2.0, "say": "You are swallowing water.",
 			"advice": "Get out of the deep water and catch your breath."})
@@ -1011,9 +1135,9 @@ func status_words() -> Array:
 	var all := problems()
 	# Hunger, thirst and cravings have their own lines (craving_words), so a
 	# worse problem like venom can't hide them.
-	var p := all.filter(func(e): return not e.get("need", false) and not e.has("craving"))
+	var p := all.filter(func(e): return not e.get("need", false) and not e.has("craving") and not e.get("quiet", false))
 	if p.is_empty():
-		if all.size() > p.size():
+		if all.any(func(e): return e.get("need", false) or e.has("craving")):
 			return ["", GOOD]  # hungry or thirsty, shown on those lines: not "Healthy"
 		return ["Wounded, healing" if not wounds.is_empty() else "Healthy", GOOD]
 	var words: String = p[0].words
@@ -1047,11 +1171,15 @@ func to_dict() -> Dictionary:
 		"protein": protein, "greens": greens, "starch": starch,
 		"blood": blood, "venom": venom, "starving": starving, "thirst": thirst,
 		"sick": sick, "chill": chill, "alcohol": alcohol, "wounds": wounds.duplicate(true), "limbs": limbs.duplicate(),
+		"reserve_energy": reserve_energy, "reserve_water": reserve_water, "stomach": stomach,
 	}
 
 
 func from_dict(d: Dictionary) -> void:
-	for k in ["energy", "water", "stamina", "protein", "greens", "starch", "blood", "venom", "starving", "thirst", "sick", "chill", "alcohol"]:
+	reserve_energy = 0.0  # an old save has none
+	reserve_water = 0.0
+	for k in ["energy", "water", "stamina", "protein", "greens", "starch", "blood", "venom", "starving", "thirst", "sick", "chill", "alcohol",
+			"reserve_energy", "reserve_water", "stomach"]:
 		if d.has(k):
 			set(k, float(d[k]))
 	if d.has("energy"):

@@ -53,7 +53,7 @@ func _ready() -> void:
 		_open_load_world.call_deferred()
 
 	var ver := Label.new()
-	ver.text = "Prototype  |  Godot %s" % Engine.get_version_info().string
+	ver.text = "Godot %s" % Engine.get_version_info().string
 	ver.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 	ver.offset_left = 12
 	ver.offset_top = -28

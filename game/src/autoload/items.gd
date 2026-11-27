@@ -1823,6 +1823,51 @@ static func book_group(r: Dictionary) -> String:
 	return ""
 
 
+## How hard a job is, for the food and water each step costs (Survival.spend,
+## vitals-brainstorm.md): [energy, water] a step. Twisting has no steps: it costs
+## TWIST_COST once per item made.
+const EFFORT := {"light": [0.05, 0.01], "medium": [0.15, 0.04], "heavy": [0.5, 0.12], "hot": [0.1, 0.12]}
+const EFFORT_WORDS := {"light": "Light work", "medium": "Medium work", "heavy": "Heavy work", "hot": "Hot work"}
+const TWIST_COST := [0.5, 0.1]
+## A recipe's effort by its verb: the first prefix that matches (else light:
+## weaving, coiling, tying, hafting, pressing moulds, drawing, baiting).
+const EFFORT_BY_VERB := [
+	["Crush out wax", "light"],
+	["Crush", "heavy"], ["Smash", "heavy"], ["Hammer", "heavy"], ["Draw out", "heavy"], ["Refine", "heavy"],
+	["Raise", "heavy"], ["Forge", "heavy"], ["Chip", "heavy"], ["Split", "heavy"],
+	["Grind", "medium"], ["Carve", "medium"], ["Shape", "medium"], ["Build", "medium"], ["Nail", "medium"],
+	["Lay", "medium"], ["Gut and skin", "medium"], ["Make a chisel and saw", "medium"], ["Make a wall tool rack", "medium"],
+	["Case", "medium"],
+]
+
+
+static func effort(r: Dictionary) -> String:
+	## "light", "medium", "heavy" or "hot" (see EFFORT). A recipe may say its
+	## own (`effort`).
+	if r.has("effort"):
+		return r.effort
+	if r.has("melt"):
+		return "hot"   # every step is a breath down the blowpipe
+	if r.has("wood"):
+		return "medium" if r.wood == "strip" else "heavy"
+	if r.has("butcher"):
+		return "medium"
+	if r.has("house"):
+		return "heavy" if String(r.house).begins_with("stilt") else "medium"
+	if r.has("plot") or r.has("trap"):
+		return "light"
+	match r.get("act", ""):
+		"knap":
+			return "medium"
+		"peck":
+			return "heavy"
+	var verb: String = r.get("verb", "")
+	for pair in EFFORT_BY_VERB:
+		if verb.begins_with(pair[0]):
+			return pair[1]
+	return "light"
+
+
 func recipe_steps(r: Dictionary) -> int:
 	## How many hands-on steps a "steps" recipe takes.
 	if r.has("steps"):

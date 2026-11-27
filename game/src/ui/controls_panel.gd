@@ -17,6 +17,7 @@ var _wait_action := ""
 var _wait_slot := -1
 var _wait_left := 0.0
 var _rest := {}          # Vector2i(device, axis) -> its value when waiting began
+var _risky := -1         # web: a key that can break things there, pressed once (press it again to keep it)
 
 
 func _ready() -> void:
@@ -128,6 +129,7 @@ func _wait(action: String, slot: int) -> void:
 
 
 func _stop() -> void:
+	_risky = -1
 	_wait_action = ""
 	_wait_slot = -1
 	set_process(false)
@@ -160,7 +162,10 @@ func _input(ev: InputEvent) -> void:
 		if ev.physical_keycode in [KEY_DELETE, KEY_BACKSPACE]:
 			_bind({})
 		elif not pad and ev.physical_keycode != KEY_NONE:
-			_bind({"key": ev.physical_keycode})
+			var b := {"key": ev.physical_keycode}
+			if web_warns(b):
+				return
+			_bind(b)
 	elif ev is InputEventMouseButton:
 		if ev.pressed and not pad:
 			_bind({"mouse": ev.button_index})
@@ -171,6 +176,25 @@ func _input(ev: InputEvent) -> void:
 		var rest: float = _rest.get(Vector2i(ev.device, ev.axis), 0.0)
 		if absf(ev.axis_value) > AXIS_PRESS and absf(ev.axis_value - rest) > AXIS_PRESS:
 			_bind({"axis": ev.axis, "dir": 1 if ev.axis_value > 0.0 else -1})
+
+
+func web_warns(b: Dictionary, web := OS.has_feature("web")) -> bool:
+	## On the web, a key the browser can take from the game (Ctrl, Alt, Meta)
+	## isn't bound on the first press: it says why, and a second press of the
+	## same key binds it anyway. True while it is waiting for that.
+	if not web or not Settings.web_risky(b):
+		_risky = -1
+		return false
+	if _risky == int(b.key):
+		_risky = -1
+		return false
+	_risky = int(b.key)
+	_wait_left = WAIT_TIME
+	var name := Settings.binding_name(b)
+	_status.text = ("On the web, %s with W closes the browser tab, and the game can't stop it. " % name if int(b.key) == KEY_CTRL
+			else "On the web, the browser or system may take %s from the game. " % name) \
+			+ "Press %s again to use it anyway, or press another key." % name
+	return true
 
 
 func _bind(b: Dictionary) -> void:

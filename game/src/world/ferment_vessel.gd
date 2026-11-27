@@ -42,6 +42,7 @@ const HANG_R := 1.5                 # put down this close to a campfire, it sits
 const DRAW := 10                    # measures of alcohol a canteen draws for one serving of water
 const LIQUID_Y := [0.06, 0.52]      # liquid level in the body, empty to full
 const RAIN_EVERY := 60.0            # seconds of rain that put a serving of water in the open vessel
+const RAIN_DAY_CAP := 2             # servings of rain it can catch in a game day
 
 var item_id := "vessel_open"
 var water := 0                      # servings of water
@@ -63,6 +64,8 @@ var _liquid_mat: StandardMaterial3D
 var _steam: CPUParticles3D
 var _was_boiling := false
 var _rain_t := 0.0                  # seconds of rain toward the next serving
+var rain_day := -1                  # the game day rain_today counts
+var rain_today := 0                 # servings of rain caught that day (RAIN_DAY_CAP)
 
 
 func setup(id: String, w: Node) -> Node3D:
@@ -305,17 +308,56 @@ func catch_rain(dt: float) -> void:
 	if sealed() or not fired_pot() or rancid or hauled_by != null or water >= cap() or Game.sheltered(global_position):
 		_rain_t = 0.0
 		return
+	if Game.day() != rain_day:
+		rain_day = Game.day()
+		rain_today = 0
+	if rain_today >= RAIN_DAY_CAP:
+		_rain_t = 0.0
+		return  # it has caught its two servings today
 	_rain_t += dt
 	if _rain_t < RAIN_EVERY:
 		return
 	if water == 0:
 		dirty = false
-	while _rain_t >= RAIN_EVERY and water < cap():  # a long step (sleep) adds every serving it earned
+	while _rain_t >= RAIN_EVERY and water < cap() and rain_today < RAIN_DAY_CAP:  # a long step (sleep) adds every serving it earned
 		_rain_t -= RAIN_EVERY
 		water += 1
+		rain_today += 1
 	if water >= cap():
 		_rain_t = 0.0
 	_check()
+
+
+func spill() -> bool:
+	## Tipped over (the player tripped carrying it): an unsealed vessel loses
+	## its water, and its food tumbles out onto the ground. A sealed one keeps
+	## its lid on. True if anything spilled.
+	if sealed() or (water == 0 and items.is_empty()):
+		return false
+	for it in items:
+		if world and world.has_method("spawn_pickup"):
+			world.spawn_pickup(it.id, 1, global_position + Vector3(randf_range(-0.6, 0.6), 0.3, randf_range(-0.6, 0.6)), float(it.get("age", 0.0)))
+	items.clear()
+	water = 0
+	dirty = false
+	rancid = false
+	brew_t = 0.0
+	_refresh()
+	return true
+
+
+func water_drawable() -> bool:
+	## Clean water and nothing else in it: no food, salt or brew.
+	return fired_pot() and not rancid and water > 0 and not dirty and items.is_empty() and salt == 0 and brew_t <= 0.0
+
+
+func draw_water() -> String:
+	## An empty container takes a serving of the clean water. Returns why not, or "".
+	if not water_drawable():
+		return "There's no clean water to draw." if water == 0 or dirty else "Only plain clean water can be drawn off."
+	water -= 1
+	_refresh()
+	return ""
 
 
 func draw_alcohol() -> String:
@@ -571,6 +613,9 @@ const POURS := {"pot_clean": true, "canteen_clean_1": true, "canteen_clean_2": t
 	"pot_dirty": false, "canteen_dirty_1": false, "canteen_dirty_2": false,
 	"flask_clean_1": true, "flask_clean_2": true, "flask_clean_3": true, "flask_clean_4": true,
 	"flask_dirty_1": false, "flask_dirty_2": false, "flask_dirty_3": false, "flask_dirty_4": false}
+## What draws clean water (vitals-brainstorm.md, barrels): an empty pot,
+## canteen or flask takes one serving, from a vessel holding only clean water.
+const WATER_DRAWS := {"pot": "pot_clean", "canteen": "canteen_clean_1", "flask": "flask_clean_1"}
 ## What draws alcohol: each held container and what it holds alcohol as. A
 ## draw adds DRAW measures, up to what that holds (Items `measures`).
 const DRAWS := {"canteen": "canteen_alcohol", "canteen_alcohol": "canteen_alcohol",
@@ -654,6 +699,8 @@ func prompt(player: Node) -> String:
 	if held == "pot" and not preserved_indices().is_empty():
 		var why := fill_blocker()
 		return ("Fill the clay pot with preserves [E]" if why == "" else why) + more
+	if WATER_DRAWS.has(held) and water_drawable():
+		return "Draw a serving of clean water [E]" + more
 	if POURS.has(held):
 		return "Pour in a serving of %s [E]" % ("boiled water" if POURS[held] else "swamp water") + more
 	if DRAWS.has(held) and mode() == "alcohol" and not items.is_empty():
@@ -689,6 +736,12 @@ func interact(player: Node) -> void:
 		why = fill_blocker()
 		if why == "" and player.world and player.world.has_method("open_vessel"):
 			player.world.open_vessel(self, "fill_pot")
+	elif WATER_DRAWS.has(held) and water_drawable():
+		why = draw_water()
+		if why == "":
+			inv.replace(inv.selected, WATER_DRAWS[held])
+			Sfx.play("splash", -10.0, 0.2)
+			Game.notify("You draw off a serving of clean water.")
 	elif POURS.has(held):
 		why = pour(POURS[held])
 		if why == "":
@@ -751,13 +804,15 @@ func to_dict() -> Dictionary:
 	var p := global_position
 	return {"id": item_id, "pos": [p.x, p.y, p.z], "yaw": rotation.y, "water": water, "dirty": dirty, "salt": salt,
 		"items": items.duplicate(true), "rancid": rancid, "brew_t": brew_t, "heat": heat, "fired": fired,
-		"had_meat": _had_meat, "hung": hung()}
+		"had_meat": _had_meat, "hung": hung(), "rain_day": rain_day, "rain_today": rain_today}
 
 
 func from_dict(d: Dictionary) -> void:
 	item_id = String(d.get("id", item_id))
 	rotation.y = float(d.get("yaw", 0.0))
 	water = clampi(int(d.get("water", 0)), 0, cap())
+	rain_day = int(d.get("rain_day", -1))
+	rain_today = int(d.get("rain_today", 0))
 	dirty = bool(d.get("dirty", false))
 	salt = clampi(int(d.get("salt", 0)), 0, cap())
 	items.clear()

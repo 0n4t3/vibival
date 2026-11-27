@@ -33,6 +33,7 @@ func _ready() -> void:
 	_add("interact", "Act", Vector2(-210, -240))
 	_add("sprint", "Run", Vector2(-330, -70), BUTTON_RADIUS, true)
 	_add("drop", "Drop", Vector2(-330, -190))
+	_add("sneak", "Sneak", Vector2(-330, -310))  # the player toggles it on the press
 	_add("pause", "II", Vector2(-50, 90), 30.0, false, true)
 	_add("inventory", "Bag", Vector2(-130, 90), 30.0, false, true)
 	_add("craft", "Craft", Vector2(-210, 90), 30.0, false, true)
@@ -179,7 +180,8 @@ func _draw() -> void:
 		if menu and b.action != "pause":
 			continue
 		var c := _center(b)
-		var held: bool = _touch_button.values().has(b) or (b.toggle and _sprint_on)
+		var held: bool = _touch_button.values().has(b) or (b.toggle and _sprint_on) \
+				or (b.action == "sneak" and player != null and player.get("sneaking") == true)
 		draw_circle(c, b.r, Color(0.9, 0.85, 0.5, 0.35) if held else Color(0.05, 0.07, 0.05, 0.4))
 		draw_arc(c, b.r, 0.0, TAU, 40, Color(0.9, 0.85, 0.6, 0.55), 2.0)
 		var label: String = "Back" if menu and b.action == "pause" else b.label

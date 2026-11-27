@@ -18,6 +18,7 @@ const Fishing := preload("res://src/world/fishing.gd")
 const House := preload("res://src/world/house.gd")
 const Chunk := preload("res://src/world/chunk.gd")
 const Dock := preload("res://src/world/dock.gd")
+const Creature := preload("res://src/creatures/creature.gd")
 
 const WALK := 3.6
 const SPRINT := 6.2
@@ -50,6 +51,61 @@ const CLIMB := 1.6              # m/s up or down a rope ladder
 const FRACTURE_FROM := 15.0     # a hit at least this hard may break an arm or a leg
 const TRAUMA := 0.4             # blood lost at once per point of a hit
 const HOLE_WITHIN := 4.0  # how long (Game.time) broken ground waits for the next swing
+# Spear combat (combat.md). A spear thrusts: a tap is a quick thrust, held
+# CHARGE_HOLD or longer and let go a charged one, which also lunges you
+# forward. Use held with a spear blocks (from the front only): a blocked hit
+# is turned aside, halved or comes through (BLOCK_ROLL).
+const HIT_MULT := 1.25          # spears hit this much harder than their `damage` (other tools don't)
+const QUICK_RECOVERY := 0.7
+const QUICK_STAMINA := 5.0
+const CHARGE_HOLD := 0.5        # held this long, it is a charged thrust
+const CHARGE_MULT := 2.0
+const CHARGE_RECOVERY := 0.8
+const CHARGE_STAMINA := 12.0
+const CHARGE_REACH := 3.8
+const CHARGE_TREMBLE := 2.5     # held longer than this the arms tremble and stamina drains
+const LUNGE_DIST := 0.8         # metres a charged thrust carries you
+const LUNGE_TIME := 0.15
+const SURPRISE_MULT := 2.5      # on an animal that hasn't noticed you; the larger of this and the charge applies
+const QUICK_STAGGER := 1        # stagger values (creature.gd poise)
+const CHARGE_STAGGER := 3
+const DEFLECT_STAGGER := 2      # a fully turned-aside blow staggers the attacker
+const BLOCK_STAMINA := 8.0
+const BLOCK_SPEED := 0.5
+const BLOCK_ARC := 0.5          # a blow is blocked only from within 60 degrees of where you face
+const BLOCK_ROLL := [0.25, 0.55]  # under the first: no damage; under the second: half; otherwise all of it
+const GUARD_BREAK := 0.5        # a blow through the guard drops it this long
+const BACK_SPEED := 0.6         # walking backwards
+const SNEAK_SPEED := 0.5
+const SNEAK_EYE := 1.1
+const STAND_EYE := 1.62
+# Tripping: backing up into anything (or shoved into it by a hard hit) puts
+# you on your back. It costs nothing but the time.
+const TRIP_TIME := 1.5
+const GETUP_TIME := 0.6
+const TRIP_EYE := 0.45
+const TRIP_SLOPE := 0.866       # floor normal y under this (steeper than 30 degrees)
+const TRIP_DROP := 0.4          # stepping backwards off a drop this deep
+const TRIP_LOOK := 0.4          # the heel check: how far behind you
+const TRIP_FALL := 0.6          # falling backwards over something carries you this far past it
+const TRIP_PLANTS := ["seed_fern", "planted_seed_fern", "fern", "planted_fern"]  # harvestables you don't trip over
+const SPILLS := ["pot_dirty", "pot_clean", "pot_soup", "pot_soup_spoiled"]  # open pots in hand a trip empties (canteens and flasks are stoppered)
+const SHOVE_FROM := 15.0        # a hit this hard shoves you back...
+const SHOVE_WINDOW := 0.3       # ...and for this long, anything you are shoved into trips you
+# Food and water a second of what you do ([energy, water]); sprinting, swimming
+# and wading are in Survival.tick.
+const COST_OVERLOAD := [0.05, 0.015]
+const COST_CARRY := [0.06, 0.015]
+const COST_DRAG := [0.10, 0.02]
+const COST_LADDER := [0.06, 0.015]
+const COST_POLE := [0.04, 0.01]
+# ...and of one action.
+const COST_JUMP := [0.10, 0.02]
+const COST_SWING := [0.15, 0.03]   # a quick thrust, or any other tool's swing or stab
+const COST_CHARGE := [0.25, 0.05]
+const COST_BLOCK := [0.05, 0.01]
+const COST_THROW := [0.05, 0.01]
+const COST_HEAVY := [0.50, 0.12]   # a swing that digs or hacks (Items.EFFORT heavy)
 
 var _hole_at := Vector3.INF  # where the stone mattock broke the ground for a hole
 var _hole_t := -INF  # when (Game.time)
@@ -116,6 +172,22 @@ var _grab_t := 0.0
 var strike_tier := ""            # best strike landed while held ("", bare, stone, advanced)
 var escape_roll := -1.0          # the escape roll (0..1) once made this grab
 var next_roll := -1.0            # tests: force the next escape roll
+var blocking := false            # holding a spear up to block (Use held)
+var sneaking := false            # crouched and quiet (the sneak toggle)
+var sprinting := false           # this frame (creatures hear it: creature._sense)
+var next_block := -1.0           # tests: force the next block roll (0..1)
+var down := 0.0                  # seconds left on your back after tripping (getting up included)
+var _charge := -1.0              # seconds a spear thrust has been held back (-1: not charging)
+var _thrust := 1.0               # 0..1 through the thrust animation
+var _thrust_charged := false
+var _lunge_t := 0.0
+var _lunge_dir := Vector3.ZERO
+var _guard_broken := 0.0
+var _shove_t := 0.0
+var _was_floor := true
+var _trips := 0
+var _down_k := 0.0               # 0 standing .. 1 flat on your back (the trip's view)
+var _block_k := 0.0              # how far into the blocking pose the spear is
 
 
 func _ready() -> void:
@@ -194,7 +266,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		capture_mouse(true)
 		get_viewport().set_input_as_handled()
 		return
-	if grabbed_by:
+	if grabbed_by or down > 0.0:
+		return  # in its jaws, or on your back
+	if event.is_action_pressed("sneak"):
+		toggle_sneak()
 		return
 	if event.is_action_pressed("sleep"):
 		if focus and is_instance_valid(focus) and focus.has_method("sleep_on") and not hauling:
@@ -245,6 +320,7 @@ func water_depth() -> float:
 
 func _physics_process(delta: float) -> void:
 	poling = false
+	sprinting = false  # set again below when on your feet
 	if grabbed_by:
 		_physics_grabbed(delta)
 		return
@@ -260,20 +336,31 @@ func _physics_process(delta: float) -> void:
 	if active:
 		input = Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 		var pad_look := Input.get_vector("look_left", "look_right", "look_up", "look_down")
-		if pad_look != Vector2.ZERO:
+		if pad_look != Vector2.ZERO and down <= 0.0:
 			_look(pad_look * 2.6 * delta)
+	if down > 0.0:
+		input = Vector2.ZERO  # on your back
 	if vitals.pressing >= 0:
 		_hold_pressure(delta, input)
 		input = Vector2.ZERO
+	if sneaking and (swimming or hauling or flying or (active and Input.is_action_pressed("sprint") and input.y < 0.0)):
+		sneaking = false  # sprinting stands you up; you can't sneak swimming or carrying
 	# What your body allows: a broken arm halves what you carry (the sack's
 	# share aside), and a worsening condition takes more.
 	Game.inventory.arm_broken = vitals.arm_broken()
 	Game.inventory.strength = vitals.carry_mult()
 	var load: float = Game.inventory.load_ratio()
-	var sprinting := active and Input.is_action_pressed("sprint") and input.y < 0.0 \
-			and vitals.stamina > 1.0 and not wading and load <= 1.0 and hauling == null and vitals.can_sprint()
+	sprinting = active and Input.is_action_pressed("sprint") and input.y < 0.0 \
+			and vitals.stamina > 1.0 and not wading and load <= 1.0 and hauling == null and vitals.can_sprint() \
+			and not blocking and not sneaking and down <= 0.0
 	var speed := SPRINT if sprinting else WALK
 	speed *= vitals.speed_mult()
+	if input.y > 0.0:
+		speed *= lerpf(1.0, BACK_SPEED, clampf(input.y, 0.0, 1.0))  # backing away is slow
+	if blocking:
+		speed *= BLOCK_SPEED
+	if sneaking:
+		speed *= SNEAK_SPEED
 	if hauling and hauling.haul_mode() == "drag":
 		speed *= 0.5
 	elif hauling and hauling.has_method("haul_speed"):
@@ -284,7 +371,7 @@ func _physics_process(delta: float) -> void:
 		# Overloaded: slower, and walking costs stamina.
 		speed *= lerpf(1.0, 0.5, clampf((load - 1.0) / (Inventory.OVERLOAD - 1.0), 0.0, 1.0))
 		if input != Vector2.ZERO:
-			vitals.stamina = maxf(vitals.stamina - 3.0 * delta, 0.0)
+			vitals.tire(3.0 * delta)
 	if swimming:
 		speed *= 0.5
 	elif wading:
@@ -296,6 +383,13 @@ func _physics_process(delta: float) -> void:
 	var accel := 10.0 if is_on_floor() or swimming else 2.5
 	velocity.x = lerpf(velocity.x, dir.x * speed, minf(accel * delta, 1.0))
 	velocity.z = lerpf(velocity.z, dir.z * speed, minf(accel * delta, 1.0))
+	if _lunge_t > 0.0:
+		# A charged thrust carries you forward with it, into the water too.
+		_lunge_t -= delta
+		var lunge := LUNGE_DIST / LUNGE_TIME * (0.5 if vitals.leg_hurt() else 1.0) \
+				* (lerpf(0.75, 0.5, clampf((depth - 0.25) / 1.0, 0.0, 1.0)) if wading else 1.0)
+		velocity.x = _lunge_dir.x * lunge
+		velocity.z = _lunge_dir.z * lunge
 
 	if active and Game.debug and Input.is_action_just_pressed("jump"):
 		# Debug worlds: a double tap of jump takes off or lands.
@@ -307,6 +401,8 @@ func _physics_process(delta: float) -> void:
 		else:
 			_last_jump = now
 	climbing = _ladder(input if active else Vector2.ZERO) if not flying and not swimming and not _too_big_for_ladder() else null
+	if climbing:
+		sneaking = false
 	if climbing:
 		# On a rope ladder: up and down it, a little from side to side, held
 		# out from the edge of the porch until you are up level with it.
@@ -333,18 +429,34 @@ func _physics_process(delta: float) -> void:
 	else:
 		if not is_on_floor():
 			velocity.y -= GRAVITY * delta
-		elif active and Input.is_action_just_pressed("jump") and vitals.stamina > 8.0:
+		elif active and Input.is_action_just_pressed("jump") and vitals.stamina > 8.0 and not vitals.winded and down <= 0.0:
 			velocity.y = JUMP * (0.6 if wading else 1.0)
-			vitals.stamina -= 8.0
+			vitals.tire(8.0)
+			vitals.spend(COST_JUMP[0], COST_JUMP[1])
+			sneaking = false
 
 	move_and_slide()
 	if hauling:
 		_hold_haul()
 	_check_fall(swimming or wading)
+	_check_trip(input, swimming or wading, active)
+	_shove_t = maxf(_shove_t - delta, 0.0)
+	_was_floor = is_on_floor()
 
 	if vitals_enabled:
 		var still := is_on_floor() and input == Vector2.ZERO and hauling == null
 		vitals.tick(delta, sprinting, swimming, wading, false, still)
+		# What else you are doing costs food and water too.
+		var moving := input != Vector2.ZERO
+		var cost: Array = [0.0, 0.0]
+		if climbing:
+			cost = COST_LADDER
+		elif hauling and moving:
+			cost = COST_DRAG if hauling.haul_mode() in ["drag", "pull"] else COST_CARRY
+		elif load > 1.0 and moving:
+			cost = COST_OVERLOAD
+		if cost[0] > 0.0:
+			vitals.spend(cost[0] * delta, cost[1] * delta)
 		if swimming and vitals.stamina <= 0.0:
 			if vitals.drowning == 0.0:
 				Game.notify("You are exhausted and swallowing water!")
@@ -389,6 +501,8 @@ func _physics_riding(delta: float) -> void:
 	_air_top = -INF
 	if vitals_enabled:
 		vitals.tick(delta, false, false, false, false, not poling)
+		if poling:
+			vitals.spend(COST_POLE[0] * delta, COST_POLE[1] * delta)
 
 
 func shake(amount: float) -> void:
@@ -445,6 +559,9 @@ func _process(delta: float) -> void:
 	var s := sin(_swing * PI)
 	hand.rotation = Vector3(-s * 1.1, s * 0.4, 0)
 	hand.position = Vector3(0.32 - s * 0.15, -0.28 + bob * 0.5, -0.5 - s * 0.2)
+	_down_tick(delta)
+	if spear_held():
+		_spear_pose(delta, bob)
 	_pole_k = move_toward(_pole_k, 1.0 if poling and work_spot == null else 0.0, delta * 3.0)
 	if _pole_k > 0.0 or Items.def(_held_id).get("shape", "") == "rod":
 		_pole_pose()
@@ -459,7 +576,7 @@ func _process(delta: float) -> void:
 		_update_focus()
 		return
 	# Kneeling over work on the ground, looking down at it.
-	head.position.y = lerpf(head.position.y, work_spot.eye_height() if work_spot else 1.62, minf(delta * 3.0, 1.0))
+	head.position.y = lerpf(head.position.y, work_spot.eye_height() if work_spot else (SNEAK_EYE if sneaking else STAND_EYE), minf(delta * (3.0 if work_spot else 6.0), 1.0))
 	head.position.z = lerpf(head.position.z, work_spot.eye_back() + work_back if work_spot else 0.0, minf(delta * 3.0, 1.0))
 	camera.fov = lerpf(camera.fov, 50.0 + work_view.z if work_spot else Settings.fov, minf(delta * 5.0, 1.0))
 	camera.rotation.x = lerpf(camera.rotation.x, work_view.y if work_spot else 0.0, minf(delta * 5.0, 1.0))
@@ -474,6 +591,12 @@ func _process(delta: float) -> void:
 			# Building a house you turn to face each step.
 			rotation.y = lerp_angle(rotation.y, atan2(-to.x, -to.z), minf(delta * 4.0, 1.0))
 	camera.rotation.z = lerpf(camera.rotation.z, 0.0, minf(delta * 4.0, 1.0))
+	if _down_k > 0.0:
+		# Tripped: flat on your back, looking up, then getting up again.
+		var k := smoothstep(0.0, 1.0, _down_k)
+		head.position.y = lerpf(head.position.y, TRIP_EYE, k)
+		head.rotation.x = lerpf(_pitch, 0.9, k)
+		camera.rotation.z = 0.35 * k
 	if lie > 0.0:
 		# Lying on your back: eyes near the ground, looking up at the sky.
 		head.position.y = lerpf(1.62, 0.3, lie)
@@ -489,11 +612,374 @@ func _process(delta: float) -> void:
 	if not ui_open and not frozen and not vitals.dead:
 		var can_aim := Input.mouse_mode == Input.MOUSE_MODE_CAPTURED or Settings.touch \
 				or not Input.get_connected_joypads().is_empty()
-		if can_aim and _attack_cd <= 0.0 and Input.is_action_pressed("attack") and hauling == null:
+		if spear_held():
+			_spear_input(delta, can_aim)
+		elif can_aim and _attack_cd <= 0.0 and Input.is_action_pressed("attack") and hauling == null and down <= 0.0:
 			_attack()
+		if not spear_held():
+			blocking = false
+			_charge = -1.0
+	else:
+		blocking = false
+		_charge = -1.0
 	_update_focus()
 	_hold_take(delta)
 	_update_plan()
+
+
+# --- Spear combat ---------------------------------------------------------------
+
+static func spear_prompt(text: String) -> String:
+	## A prompt's right-click use, said as it is with a spear in hand: Use
+	## blocks, so "Pick it up [Right-click]" is "Put the spear away to pick it up".
+	var re := RegEx.new()
+	re.compile("([A-Z][A-Za-z ]*?) \\[Right-click\\]")
+	var out := text
+	for m in re.search_all(text):
+		var what := m.get_string(1)
+		out = out.replace(m.get_string(), "Put the spear away to " + what.left(1).to_lower() + what.substr(1) + ("" if what.contains(" ") else " it"))
+	return out.replace("right-click takes it down", "put the spear away to take it down")
+
+func spear_held() -> bool:
+	return Items.def(Game.inventory.held_id()).get("shape", "") == "spear"
+
+
+func _spear_input(delta: float, can_aim: bool) -> void:
+	## A spear in hand: hold attack to draw back a thrust, let go to strike
+	## (charged after CHARGE_HOLD); hold Use to block.
+	_guard_broken = maxf(_guard_broken - delta, 0.0)
+	if Game.hints_seen.get("spear", false) == false and world != null:
+		Game.hints_seen["spear"] = true
+		Game.notify(Settings.hint("Spear: tap [Left-click] to thrust, hold and let go to lunge. Hold [Right-click] to block."))
+	var can := can_aim and hauling == null and down <= 0.0 and work_spot == null
+	blocking = can and Input.is_action_pressed("use") and can_block()
+	match Game.dev.get("pose", ""):
+		# Dev --pose=block|charge|thrust holds the spear so, for screenshots.
+		"block":
+			blocking = true
+			return
+		"charge":
+			_charge = CHARGE_HOLD
+			return
+		"thrust":
+			_thrust = 0.25
+			_thrust_charged = true
+			return
+	if blocking or not can:
+		_charge = -1.0
+		return
+	if Input.is_action_pressed("attack"):
+		if _charge < 0.0:
+			if _attack_cd <= 0.0:
+				_charge = 0.0
+		else:
+			_charge += delta
+			if _charge > CHARGE_TREMBLE:
+				vitals.tire(6.0 * delta)  # held back too long: the arms tremble
+	elif _charge >= 0.0:
+		var charged := _charge >= CHARGE_HOLD and not vitals.winded
+		_charge = -1.0
+		thrust(charged)
+
+
+func can_block() -> bool:
+	## Blocking needs your feet under you, your breath and an unbroken guard.
+	return spear_held() and grabbed_by == null and climbing == null and hauling == null and down <= 0.0 \
+			and not vitals.winded and _guard_broken <= 0.0 and water_depth() <= 1.25 and not vitals.dead
+
+
+func thrust_damage(charged: bool) -> float:
+	## What a thrust of the held spear does before any bonus (HIT_MULT, and
+	## the charge if charged), halved if its edge is blunt or you are winded.
+	var def := Items.def(Game.inventory.held_id())
+	var dmg: float = def.get("damage", FIST_DAMAGE) * HIT_MULT
+	if Game.inventory.blunt(Game.inventory.selected):
+		dmg *= 0.5
+	if vitals.winded:
+		dmg *= 0.5
+	return dmg * (CHARGE_MULT if charged else 1.0)
+
+
+func thrust(charged: bool) -> void:
+	## A thrust straight out along the view: quick, or charged (harder, further,
+	## carrying you forward a step). A miss still costs the breath and the time.
+	if _attack_cd > 0.0 or not spear_held():
+		return
+	var def := Items.def(Game.inventory.held_id())
+	var reach: float = CHARGE_REACH if charged else float(def.get("reach", 3.4))
+	_attack_cd = CHARGE_RECOVERY if charged else QUICK_RECOVERY
+	vitals.tire(CHARGE_STAMINA if charged else QUICK_STAMINA)
+	var cost: Array = COST_CHARGE if charged else COST_SWING
+	vitals.spend(cost[0], cost[1])
+	_thrust = 0.0
+	_thrust_charged = charged
+	Sfx.play("swing", -6.0 if charged else -8.0, 0.1)
+	if charged:
+		shake(0.15)
+		if water_depth() <= 1.25 and riding == null and climbing == null and hauling == null and is_on_floor():
+			_lunge_dir = -global_transform.basis.z
+			_lunge_dir.y = 0.0
+			_lunge_dir = _lunge_dir.normalized()
+			_lunge_t = LUNGE_TIME
+	var o := camera.global_position
+	var d := -camera.global_transform.basis.z
+	if riding and is_instance_valid(riding) and riding.biter and is_instance_valid(riding.biter):
+		# Jaws on a corner of the raft: a thrust anywhere near its head counts.
+		var b: Node3D = riding.biter
+		var to_b: Vector3 = b.head_position() - o
+		if to_b.length() <= reach + 1.6 and to_b.normalized().dot(d) > 0.5:
+			b.take_damage(thrust_damage(charged), self, CHARGE_STAGGER if charged else QUICK_STAGGER)
+			Sfx.play_at("hit", b.head_position(), -2.0)
+			if is_instance_valid(riding):
+				riding.bite_hit(b)
+			used_tool(true)
+			return
+	var best := _creature_ahead(reach)
+	if best == null:
+		return
+	# The larger bonus applies, never both: a charge, or catching it unaware.
+	var surprise: bool = best.unaware()
+	var mult: float = maxf(CHARGE_MULT if charged else 1.0, SURPRISE_MULT if surprise else 1.0)
+	var stagger: int = Creature.ALWAYS if surprise else (CHARGE_STAGGER if charged else QUICK_STAGGER)
+	best.take_damage(thrust_damage(false) * mult, self, stagger)
+	Sfx.play_at("hit", best.hit_center(), -2.0 if not charged else 1.0)
+	used_tool(true)
+
+
+func _creature_ahead(reach: float) -> Node3D:
+	## The live animal the view's line meets first within reach (trees and
+	## walls in the way stop it), or null.
+	var o := camera.global_position
+	var d := -camera.global_transform.basis.z
+	var best: Node3D = null
+	var best_t := reach
+	for c in Game.creatures:
+		if not is_instance_valid(c) or c.dead or c.submerged:
+			continue
+		var to: Vector3 = c.hit_center() - o
+		var t := to.dot(d)
+		if t < 0.0 or t > best_t + c.hit_radius:
+			continue
+		var miss := (to - d * t).length()
+		if miss < c.hit_radius:
+			best = c
+			best_t = t
+	if best:
+		var hit := _ray(best_t, 1)
+		if hit and o.distance_to(hit.position) < best_t - 0.3:
+			return null  # a tree or wall is in the way
+	return best
+
+
+func fends(c: Node3D) -> bool:
+	## Blocking, face on to it: an Eogyrinus's charge meets the spear point
+	## instead of seizing you.
+	return blocking and in_front(c.global_position)
+
+
+func in_front(from: Vector3) -> bool:
+	## Whether a blow from `from` comes from within BLOCK_ARC of where you face.
+	var to := from - global_position
+	to.y = 0.0
+	if to.length() < 0.05:
+		return true
+	var fwd := -global_transform.basis.z
+	fwd.y = 0.0
+	return to.normalized().dot(fwd.normalized()) >= BLOCK_ARC
+
+
+func _block(amount: float, by: Node3D) -> Array:
+	## A blow on the guard: [what got through, "deflect" | "half" | "full"]. It
+	## costs breath, wears the spear, and a blow straight through drops the guard.
+	var roll := next_block if next_block >= 0.0 else _rng.randf()
+	next_block = -1.0
+	vitals.tire(BLOCK_STAMINA)
+	vitals.spend(COST_BLOCK[0], COST_BLOCK[1])
+	used_tool(true)
+	if roll < BLOCK_ROLL[0]:
+		Sfx.play("hit", -4.0, 0.3)
+		Game.notify("You turn the blow aside with the spear.")
+		if by != null and is_instance_valid(by) and by.has_method("try_stagger"):
+			by.try_stagger(DEFLECT_STAGGER, self)
+		return [0.0, "deflect"]
+	if roll < BLOCK_ROLL[1]:
+		Game.notify("The spear takes some of the blow.")
+		return [amount * 0.5, "half"]
+	_guard_broken = GUARD_BREAK
+	Game.notify("The blow breaks through your guard.")
+	return [amount, "full"]
+
+
+func toggle_sneak() -> void:
+	## Crouch and move quietly (halves how far animals notice you), or stand.
+	if sneaking:
+		sneaking = false
+		return
+	if hauling or climbing or flying or water_depth() > 1.25 or down > 0.0:
+		return
+	sneaking = true
+
+
+func _spear_pose(delta: float, bob: float) -> void:
+	## The spear in hand: drawn back while a thrust is held, driven straight
+	## out and drawn back in a thrust, or held across you to block.
+	_thrust = minf(_thrust + delta / (CHARGE_RECOVERY if _thrust_charged else QUICK_RECOVERY), 1.0)
+	_block_k = move_toward(_block_k, 1.0 if blocking else 0.0, delta * 8.0)
+	var pos := Vector3(0.32, -0.28 + bob * 0.5, -0.5)
+	var rot := Vector3.ZERO
+	if _charge >= 0.0:
+		var k := smoothstep(0.0, 1.0, clampf(_charge / CHARGE_HOLD, 0.0, 1.0))
+		pos += Vector3(0.0, -0.03 * k, 0.15 * k)
+		rot.x = -0.25 * k
+		if _charge > CHARGE_TREMBLE:
+			var tt := Time.get_ticks_msec() * 0.001
+			pos += Vector3(sin(tt * 41.0), cos(tt * 37.0), 0.0) * 0.006
+	if _thrust < 1.0:
+		# Out fast, back slower.
+		var ext := _thrust / 0.25 if _thrust < 0.25 else 1.0 - smoothstep(0.0, 1.0, (_thrust - 0.25) / 0.75)
+		var dist := 0.6 if _thrust_charged else 0.45
+		pos += Vector3(-0.1 * ext, 0.02 * ext, -dist * ext)
+		rot += Vector3(-0.4 * ext, 0.12 * ext, 0.0)
+		if _thrust_charged:
+			camera.position += Vector3(0, 0, -0.05 * ext)
+	if _block_k > 0.0:
+		var bk := smoothstep(0.0, 1.0, _block_k)
+		pos = pos.lerp(Vector3(0.16, -0.2 + bob * 0.5, -0.5), bk)
+		rot = rot.lerp(Vector3(-0.28, 1.3, 0.12), bk)
+	hand.position = pos
+	hand.rotation = rot
+
+
+# --- Tripping ---------------------------------------------------------------------
+
+func _check_trip(input: Vector2, wet: bool, active: bool) -> void:
+	## Backing up into anything (or shoved into it by a hard hit) puts you on
+	## your back: something solid, anything lying on the ground, a steep slope
+	## or a drop.
+	if down > 0.0 or wet or flying or climbing or riding or grabbed_by or vitals.dead or not vitals_enabled:
+		return  # (vitals_enabled: not in the lab tutorial)
+	if hauling and hauling.haul_mode() != "carry":
+		return  # dragging or pulling, you face the way you go
+	var flat := Vector3(velocity.x, 0.0, velocity.z)
+	var backing: bool = active and input.y > 0.5 and flat.length() > 1.0
+	var shoved := _shove_t > 0.0 and flat.length() > 0.5
+	if not backing and not shoved:
+		return
+	var fwd := -global_transform.basis.z
+	fwd.y = 0.0
+	fwd = fwd.normalized()
+	var toward: Vector3 = -fwd if backing else flat.normalized()   # the way you are going
+	var why := ""
+	for i in get_slide_collision_count():
+		var n := get_slide_collision(i).get_normal()
+		if n.y < 0.7 and n.dot(-toward) > 0.5:
+			why = "into something behind you"
+			break
+	var over := false
+	if why == "" and is_on_floor() and _loose_at(global_position + toward * TRIP_LOOK):
+		why = "over something on the ground"
+		over = true
+	if why == "" and backing and is_on_floor() and get_floor_normal().y < TRIP_SLOPE:
+		why = "on the steep ground"
+	if why == "" and backing and _was_floor and not is_on_floor() and velocity.y <= 0.0 and not _ground_within(TRIP_DROP):
+		why = "off the edge"
+	if why != "":
+		trip(why, toward if over else Vector3.ZERO)
+
+
+func _loose_at(p: Vector3) -> bool:
+	## Whether anything lies at your heels there: a stone, a stick, a pile,
+	## a log, a carcass, a stash... (layer 2, which you walk through).
+	var q := PhysicsShapeQueryParameters3D.new()
+	var sh := SphereShape3D.new()
+	sh.radius = 0.2
+	q.shape = sh
+	q.transform = Transform3D(Basis(), p + Vector3(0, 0.22, 0))
+	q.collision_mask = 2
+	q.collide_with_areas = true
+	q.collide_with_bodies = true
+	q.exclude = [get_rid()]
+	for hit in get_world_3d().direct_space_state.intersect_shape(q, 8):
+		var c: Object = hit.collider
+		if c == null:
+			continue
+		var n: Object = c if not c.get_parent() or c.has_method("interact") else c.get_parent()
+		if n.is_in_group("plots") or n == work_spot or n == hauling:
+			continue  # a planting hole is flat
+		if c.get_parent() and c.get_parent().get("_outline") == c:
+			continue  # a building site's outline of parts still to come isn't there yet
+		if str(n.get("kind")) in TRIP_PLANTS:
+			continue  # ferns are underfoot everywhere: you walk through them
+		return true
+	return false
+
+
+func _ground_within(dist: float) -> bool:
+	var from := global_position + Vector3(0, 0.1, 0)
+	var q := PhysicsRayQueryParameters3D.create(from, from - Vector3(0, dist + 0.1, 0), 1 | 2, [get_rid()])
+	return not get_world_3d().direct_space_state.intersect_ray(q).is_empty()
+
+
+func trip(why := "", over := Vector3.ZERO) -> void:
+	## Down on your back for TRIP_TIME, then up again. No harm done, but
+	## whatever you were backing away from gets its chance. Tripped over
+	## something on the ground (`over`: the way you were going), you fall
+	## back past it, where there is room, so getting up you aren't at once
+	## tripping on it again.
+	if down > 0.0 or vitals.dead:
+		return
+	if over != Vector3.ZERO and not test_move(global_transform, over * TRIP_FALL):
+		global_position += over * TRIP_FALL
+	down = TRIP_TIME + GETUP_TIME
+	_charge = -1.0
+	blocking = false
+	sneaking = false
+	_lunge_t = 0.0
+	_shove_t = 0.0
+	velocity = Vector3(velocity.x * 0.3, velocity.y, velocity.z * 0.3)
+	shake(0.4)
+	Sfx.play("hit", -6.0, 0.2)
+	_trips += 1
+	var spilt := _spill()
+	Game.notify(("You trip %s and fall on your back." % why if why != "" else "You trip and fall on your back.") \
+			+ (" %s." % spilt if spilt != "" else "") + (" Backing away while you fight is dangerous." if _trips == 1 else ""))
+
+
+func _spill() -> String:
+	## Falling with an open pot in your hand, an unsealed pot of preserves, or
+	## an open pot or unsealed vessel in your arms: what was in it is lost
+	## (food tumbles out onto the ground), and what you carried is dropped.
+	## Returns what spilled ("The pot of boiled water spills"), or "".
+	var what: Array = []
+	var inv = Game.inventory
+	var held: String = inv.held_id()
+	if held in SPILLS:
+		what.append(Items.item_name(held).to_lower())
+		inv.replace(inv.selected, "pot")
+	elif held == "pot_preserves":
+		what.append("pot of preserves")
+		var s = inv.held()
+		var food: Array = Preserves.contents(s.get("data", {}))
+		inv.replace(inv.selected, "pot")
+		for it in food:
+			if world and world.has_method("spawn_pickup"):
+				world.spawn_pickup(it.id, 1, drop_point(), it.age, true)
+	if hauling:
+		var h := hauling
+		if h.has_method("spill") and h.spill():
+			what.append(Items.item_name(h.item_id).to_lower())
+		put_down()
+	if what.is_empty():
+		return ""
+	Sfx.play("splash", -6.0, 0.2)
+	return "The " + " and the ".join(what) + (" spills" if what.size() == 1 else " spill")
+
+
+func _down_tick(delta: float) -> void:
+	if down > 0.0:
+		down = maxf(down - delta, 0.0)
+	var want := 1.0 if down > GETUP_TIME else 0.0
+	_down_k = move_toward(_down_k, want, delta * (5.0 if want > _down_k else 1.0 / GETUP_TIME))
 
 
 func _update_plan() -> void:
@@ -648,6 +1134,8 @@ func _update_focus() -> void:
 			focus = c
 			prompt = c.prompt(self) if c.has_method("prompt") else "Interact [E]"
 			tooltip = c.tooltip(self) if c.has_method("tooltip") else ""
+			if c.has_method("use_interact") and spear_held():
+				prompt = spear_prompt(prompt)
 			return
 	if _axe_prompt():
 		return
@@ -725,6 +1213,10 @@ func _interact() -> void:
 
 
 func _use_held() -> void:
+	# With a spear in hand Use is the block (held, see _spear_input), and
+	# nothing else: put the spear away to use a vessel, bedroll or crate.
+	if spear_held():
+		return
 	# Right-click on something with its own use (a fermentation vessel opens).
 	if focus and is_instance_valid(focus) and focus.has_method("use_interact"):
 		focus.use_interact(self)
@@ -814,13 +1306,15 @@ func dig_hole() -> void:
 				return
 			_hole_at = at
 			_hole_t = Game.time
-			vitals.stamina = maxf(vitals.stamina - 3.0, 0.0)
+			vitals.tire(3.0)
+			vitals.spend(COST_HEAVY[0], COST_HEAVY[1])
 			Sfx.play_at("chop", at, -6.0, 0.2)
 			Game.notify("You break the ground (1 / 2).")
 			return
 		_hole_at = Vector3.INF
 	if world.dig_hole(at):
-		vitals.stamina = maxf(vitals.stamina - 6.0, 0.0)
+		vitals.tire(6.0)
+		vitals.spend(COST_HEAVY[0], COST_HEAVY[1])
 		used_tool(false)
 
 
@@ -832,7 +1326,8 @@ func throw_held() -> void:
 	var item: Dictionary = inv.take(inv.selected, 1)
 	_attack_cd = THROW_COOLDOWN
 	_swing = 0.0
-	vitals.stamina = maxf(vitals.stamina - 3.0, 0.0)
+	vitals.tire(3.0)
+	vitals.spend(COST_THROW[0], COST_THROW[1])
 	var dir := -camera.global_transform.basis.z
 	var from := camera.global_position + dir * 0.4 + Vector3(0, -0.1, 0)
 	var v := dir * THROW_SPEED + Vector3(0, 1.5, 0) + velocity * 0.5
@@ -1212,7 +1707,8 @@ func _attack() -> void:
 	if vitals.stamina < 5.0:
 		_attack_cd += 0.5
 		dmg *= 0.5
-	vitals.stamina = maxf(vitals.stamina - 6.0, 0.0)
+	vitals.tire(6.0)
+	vitals.spend(COST_SWING[0], COST_SWING[1])
 	_swing = 0.0
 	Sfx.play("swing", -8.0)
 
@@ -1229,23 +1725,8 @@ func _attack() -> void:
 				riding.bite_hit(b)
 			used_tool(true)
 			return
-	var best: Node3D = null
-	var best_t := reach
-	for c in Game.creatures:
-		if not is_instance_valid(c) or c.dead or c.submerged:
-			continue
-		var to: Vector3 = c.hit_center() - o
-		var t := to.dot(d)
-		if t < 0.0 or t > best_t + c.hit_radius:
-			continue
-		var miss := (to - d * t).length()
-		if miss < c.hit_radius:
-			best = c
-			best_t = t
+	var best := _creature_ahead(reach)
 	if best:
-		var hit := _ray(best_t, 1)
-		if hit and o.distance_to(hit.position) < best_t - 0.3:
-			return  # a tree or wall is in the way
 		best.take_damage(dmg, self)
 		Sfx.play_at("hit", best.hit_center(), -2.0)
 		used_tool(true)
@@ -1273,16 +1754,24 @@ func _attack() -> void:
 					break
 				if n and not digs and n.has_method("axe_hit"):
 					n.axe_hit()
+					_heavy_work()
 					done = true
 					break
 				if n and n.has_method("dig") and n.has_method("dug_by"):
 					if Items.works_on(held, n.dug_by()):
 						n.dig(Items.slow_tool(held))
 						used_tool(false)
+						_heavy_work()
 					done = true
 					break
 			if not done and world and world.has_method("clear_fern"):
 				world.clear_fern(hit.position)
+
+
+func _heavy_work() -> void:
+	## A swing that did hard work (digging, hacking): Heavy work's food and
+	## water instead of a plain swing's.
+	vitals.spend(COST_HEAVY[0] - COST_SWING[0], COST_HEAVY[1] - COST_SWING[1])
 
 
 func used_tool(_hit := true) -> void:
@@ -1293,12 +1782,25 @@ func used_tool(_hit := true) -> void:
 		Game.inventory.use_tool(Game.inventory.selected)
 
 
-func hurt(amount: float, from: Vector3, dirt := 0.3, source := "", deep := 1.0) -> void:
+func hurt(amount: float, from: Vector3, dirt := 0.3, source := "", deep := 1.0, by: Node3D = null) -> String:
 	## A blow from a creature (from != ZERO): blood lost at once, a wound that
 	## bleeds by how deep it is, a dressed wound torn open, and from a hard
 	## enough hit perhaps a broken arm or leg. Otherwise just blood lost.
+	## Blocking with a spear, a blow from in front goes on the guard first
+	## (_block). Returns "deflect", "half" or "full" ("" when dead): what came
+	## through. `by` is the animal, which a deflected blow staggers.
 	if vitals.dead:
-		return
+		return ""
+	var got := "full"
+	if from != Vector3.ZERO:
+		_charge = -1.0  # a hit spoils a thrust you were drawing back
+		if blocking and in_front(from):
+			var b := _block(amount, by)
+			amount = b[0]
+			got = b[1]
+			if got == "deflect":
+				shake(0.1)
+				return got
 	if from != Vector3.ZERO and hauling and is_instance_valid(hauling) and hauling.haul_mode() == "pull":
 		put_down()
 		Game.notify("You let go of the handcart.")
@@ -1321,6 +1823,9 @@ func hurt(amount: float, from: Vector3, dirt := 0.3, source := "", deep := 1.0) 
 		var push := (global_position - from)
 		push.y = 0.0
 		velocity += push.normalized() * minf(amount * 0.4, 5.0) + Vector3(0, 1.5, 0)
+		if amount >= SHOVE_FROM:
+			_shove_t = SHOVE_WINDOW  # shoved into anything behind you, you go down
+	return got
 
 
 func _injury_roll() -> float:
@@ -1423,6 +1928,9 @@ func start_grab(creature: Node3D) -> void:
 	stop_pressure()
 	put_down()
 	grabbed_by = creature
+	blocking = false
+	_charge = -1.0
+	sneaking = false
 	grip_max = creature.def.get("grip", 100.0)
 	grip = grip_max
 	strike_tier = ""
@@ -1531,7 +2039,8 @@ func stab() -> void:
 		return
 	_attack_cd = STAB_COOLDOWN
 	_swing = 0.0
-	vitals.stamina = maxf(vitals.stamina - 4.0, 0.0)
+	vitals.tire(4.0)
+	vitals.spend(COST_SWING[0], COST_SWING[1])
 	var def := Items.def(Game.inventory.held_id())
 	c.take_damage(def.get("damage", FIST_DAMAGE), self)
 	Sfx.play("hit", -2.0, 0.2)

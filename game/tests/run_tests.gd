@@ -29,6 +29,7 @@ const Furnace := preload("res://src/world/furnace.gd")
 const Clamp := preload("res://src/world/clamp.gd")
 const HeavyStone := preload("res://src/world/heavy_stone.gd")
 const Breakroom := preload("res://src/world/breakroom.gd")
+const Preserves := preload("res://src/core/preserves.gd")
 
 var _failures := 0
 var _checks := 0
@@ -221,6 +222,12 @@ func _ready() -> void:
 	if only.is_empty() or "map" in only:
 		print("== the charted map")
 		await test_map()
+	if only.is_empty() or "combat" in only:
+		print("== combat")
+		await test_combat()
+	if only.is_empty() or "vitals" in only:
+		print("== vitals")
+		await test_vitals()
 	if only.is_empty() or "endgame" in only:
 		print("== endgame")
 		await test_endgame_items()
@@ -706,7 +713,7 @@ func test_survival() -> void:
 	var p0 := v.protein
 	v.tick(60.0, false, false)
 	check(v.energy < e0 and v.water < w0 and v.protein < p0, "energy, water and nutrients drain")
-	check(e0 - v.energy < 3.0, "energy drains slowly (%.2f a minute)" % (e0 - v.energy))
+	check(absf(e0 - v.energy - Survival.ENERGY_DRAIN * 60.0) < 0.01, "energy drains at its rate doing nothing (%.2f a minute)" % (e0 - v.energy))
 	var asleep := Survival.new()
 	asleep.tick(60.0, false, false, false, true)
 	check(e0 - asleep.energy < e0 - v.energy, "sleeping burns less energy")
@@ -4013,22 +4020,30 @@ func test_ferment() -> void:
 	rain_v.add_food("seed")
 	for i in 20:
 		rain_v.catch_rain(rain_v.RAIN_EVERY)
-	check(rain_v.water == rain_v.CAP and not rain_v.rancid and rain_v.items.size() == 1, "rain fills it to %d and no further (%d)" % [rain_v.CAP, rain_v.water])
+	check(rain_v.water == rain_v.RAIN_DAY_CAP and not rain_v.rancid and rain_v.items.size() == 1,
+			"rain gives it %d servings a day and no more (%d)" % [rain_v.RAIN_DAY_CAP, rain_v.water])
+	Game.time += Game.DAY_LENGTH
+	rain_v.water = rain_v.CAP - 1
+	for i in 20:
+		rain_v.catch_rain(rain_v.RAIN_EVERY)
+	check(rain_v.water == rain_v.CAP, "a new day catches more, up to %d and no further (%d)" % [rain_v.CAP, rain_v.water])
 	var rain_sealed: Node = w.add_vessel("vessel_sealed", spot + Vector3(-8, 0, 3))
 	rain_sealed.catch_rain(rain_v.RAIN_EVERY * 3.0)
 	check(rain_sealed.water == 0, "the sealed vessel's lid keeps rain out")
 	rain_v.water = 0
 	rain_v.items.clear()
+	rain_v.rain_today = 0
 	w.raining = true
 	w._update_weather(rain_v.RAIN_EVERY + 1.0)
 	check(rain_v.water == 1 and rain_sealed.water == 0, "the swamp's rain fills open vessels")
 	w.raining = false
 	# Sleep passes the weather in one step: only the rain that fell counts.
 	rain_v.water = 0
+	rain_v.rain_today = 0
 	w.raining = true
-	w._weather_t = 200.0
+	w._weather_t = 90.0
 	w._update_weather(480.0)
-	check(rain_v.water == 3, "rain that stops part-way through a sleep gives what fell before it stopped (%d)" % rain_v.water)
+	check(rain_v.water == 1, "rain that stops part-way through a sleep gives what fell before it stopped (%d)" % rain_v.water)
 	rain_v.water = 0
 	w.raining = false
 	w._weather_t = 1.0
@@ -4044,6 +4059,10 @@ func test_ferment() -> void:
 	var rain_pot: Node = w.add_soup_pot("soup_pot", spot + Vector3(-8, 0, -3))
 	rain_pot.catch_rain(rain_pot.RAIN_EVERY * 2.0)
 	check(is_equal_approx(rain_pot.water, 2.0) and not rain_pot.dirty, "a soup rain_pot catches two servings in two minutes")
+	rain_pot.catch_rain(rain_pot.RAIN_EVERY * 100.0)
+	check(is_equal_approx(rain_pot.water, rain_pot.RAIN_DAY_CAP), "but only two a day (%.1f)" % rain_pot.water)
+	Game.time += Game.DAY_LENGTH
+	rain_pot.water = rain_pot.capacity() - 1.0
 	rain_pot.catch_rain(rain_pot.RAIN_EVERY * 100.0)
 	check(is_equal_approx(rain_pot.water, rain_pot.capacity()), "and never more than it holds (%.1f)" % rain_pot.water)
 	rain_pot.queue_free()
@@ -5216,13 +5235,14 @@ func test_butcher() -> void:
 	check(sc.stage == "gutted" and get_tree().get_nodes_in_group("guts").size() == piles0 + 1, "gutting it leaves a guts pile beside it")
 	_work_through(w)
 	check(sc.stage == "skinned" and Game.inventory.count("chitin") == 1, "skinning a scorpion gives its chitin")
-	check(w.work.butcher_option().recipe.steps == 2, "two pieces of meat to cut")
+	check(w.work.butcher_option().recipe.steps == 3, "three pieces of meat to cut")
 	w.work.begin(w.work.butcher_option().recipe)
 	w.work.step()
-	check(Game.inventory.count("raw_meat") == 1 and sc.cuts_left == 1, "each cut gives a piece of raw meat")
+	check(Game.inventory.count("raw_meat") == 1 and sc.cuts_left == 2, "each cut gives a piece of raw meat")
+	w.work.step()
 	w.work.step()
 	await _frames(2)
-	check(Game.inventory.count("raw_meat") == 2 and not is_instance_valid(sc) and w.work == null,
+	check(Game.inventory.count("raw_meat") == 3 and not is_instance_valid(sc) and w.work == null,
 			"until nothing is left, and you stand up")
 
 	# An amphibian's skin goes on the guts pile.
@@ -9288,10 +9308,11 @@ func test_wildlife() -> void:
 	w.add_child(hap)
 	await _frames(1)
 	hap.set_process(false)
+	hap._face(p.global_position, 1.0)  # bites land only in front of it
 	hap.state = "attack"
 	hap._windup = 0.0
 	hap._think_hunter(p, 1.0, 0.01)
-	check(v.wounds.size() == 1 and is_equal_approx(v.wounds[0].sev, 8.0 / 40.0 * 2.5), "a Haptodus's bite cuts deep for its damage")
+	check(v.wounds.size() == 1 and is_equal_approx(v.wounds[0].sev, 8.7 / 40.0 * 2.5), "a Haptodus's bite cuts deep for its damage")
 	check(hap.state == "retreat" and hap._state_t > 0.0, "then it backs off")
 	check(w._hunted(), "and you are still being hunted, so you can't save and quit")
 	var away_d: float = hap._target.distance_to(p.global_position)
@@ -9305,7 +9326,7 @@ func test_wildlife() -> void:
 	v.blood = 100.0
 	var before_wake: int = Game.creatures.size()
 	w._wake_attack("haptodus")
-	check(v.wounds.size() == 1 and is_equal_approx(v.wounds[0].sev, 8.0 / 40.0 * 2.5), "its bite cuts just as deep when it wakes you")
+	check(v.wounds.size() == 1 and is_equal_approx(v.wounds[0].sev, 8.7 / 40.0 * 2.5), "its bite cuts just as deep when it wakes you")
 	for c in Game.creatures.slice(before_wake):
 		c.queue_free()
 	await _frames(1)
@@ -9975,8 +9996,9 @@ func test_endgame_items() -> void:
 	check(v.cap() == 10, "a clay vessel still holds 10")
 	var open: Node = w.add_vessel("vessel_open_barrel", at + Vector3(8, 0, 0))
 	await _frames(1)
+	open.water = 10
 	open.catch_rain(open.RAIN_EVERY * 12.0)
-	check(open.water == 12 and not open.dirty, "rain fills an unsealed barrel past a clay vessel's 10")
+	check(open.water == 12 and not open.dirty, "rain fills an unsealed barrel past a clay vessel's 10 (two servings a day)")
 	for n in [fire, b, b2, v, open]:
 		n.queue_free()
 	await _frames(1)
@@ -10470,5 +10492,590 @@ func test_endgame_houses() -> void:
 		check(dh.berth().distance_to(dh.to_global(Vector3(4.2, 0, 3.3))) < 3.5, "with a berth for a raft")
 		var ds: Dictionary = dh.to_dict()
 		check(ds.type == "dock_house" and is_equal_approx(float(ds.walk), float(dk.walk)), "it saves its walkway")
+	w.queue_free()
+	await _frames(2)
+
+
+func _face_at(p: Node, c: Node) -> void:
+	## Turns the player to look straight at c's hit centre.
+	p.look_at(Vector3(c.hit_center().x, p.global_position.y, c.hit_center().z), Vector3.UP)
+	var to: Vector3 = c.hit_center() - p.camera.global_position
+	p._pitch = atan2(to.y, Vector2(to.x, to.z).length())
+	p.head.rotation.x = p._pitch
+
+
+func _beast(w: Node, sp: String, at: Vector3) -> Node:
+	## A live animal that stands still (not processing) at `at`.
+	var c: Node = Creature.new().setup(sp, at, w)
+	w.add_child(c)
+	c.set_process(false)
+	return c
+
+
+func test_combat() -> void:
+	## Spear combat (combat.md): thrusts, stagger and poise, blocking, the
+	## Eogyrinus fend-off, tripping, sneaking, and scavengers drawn to kills.
+	var w: Node = await _new_swamp()
+	var p: Node = w.player
+	var inv = Game.inventory
+	var sp: Dictionary = Creature.SPECIES
+	var flat := _find_spot(w, p.global_position, func(q): return q.y > 0.4 and absf(w.ground_height(q.x + 4.0, q.z) - q.y) < 0.4 \
+			and absf(w.ground_height(q.x, q.z + 4.0) - q.y) < 0.4 and absf(w.ground_height(q.x - 4.0, q.z) - q.y) < 0.4)
+	check(flat.is_finite(), "found flat dry ground")
+	p.global_position = flat + Vector3(0, 0.1, 0)
+	p.rotation.y = 0.0
+	await _frames(3)
+
+	# The numbers: medium animals hit harder, give more meat; the spear's poise table.
+	check(sp.scorpion.damage == 11.0 and sp.haptodus.damage == 8.7 and sp.hibbertopterus.damage == 15.0 and sp.edaphosaurus.damage == 18.0
+			and sp.arthropleura.damage == 21.0 and sp.diadectes.damage == 25.0, "medium animals hit harder")
+	check(sp.arthropleura.damage / 40.0 < Survival.bleed_for(0.55) * 0.0 + 0.55 and sp.diadectes.damage / 40.0 >= 0.55,
+			"Arthropleura stays under a major bleed; Diadectes' hits are major bleeds")
+	check(sp.haptodus.damage * sp.haptodus.wound / 40.0 < 0.55, "Haptodus' deep bites stay moderate bleeds")
+	check([sp.scorpion, sp.haptodus, sp.hibbertopterus, sp.arthropleura, sp.edaphosaurus, sp.diadectes, sp.eogyrinus, sp.uranocentrodon]
+			.map(func(d): return d.drops.raw_meat) == [3, 5, 5, 8, 9, 11, 12, 21], "medium and large animals give about half as much meat again")
+	check(sp.uranocentrodon.hp == 810.0, "Uranocentrodon stays as hard to kill (810 hp)")
+	check(sp.scorpion.poise == 1 and sp.haptodus.poise == 2 and sp.edaphosaurus.poise == 2 and sp.arthropleura.poise == 2
+			and sp.diadectes.poise == 3 and sp.hibbertopterus.poise == 3 and sp.eogyrinus.poise == 3 and sp.uranocentrodon.poise == -1,
+			"poise by animal (Uranocentrodon never staggers)")
+
+	# Thrusts.
+	inv.clear()
+	_hold("spear")
+	check(p.spear_held(), "a spear in hand")
+	var di: Node = _beast(w, "diadectes", _ahead(p, 2.6))
+	await _frames(1)
+	di.hp = 1e6
+	di._anger = 25.0
+	di.state = "chase"
+	_face_at(p, di)
+	var spear_dmg: float = Items.def("spear").damage
+	var hp0: float = di.hp
+	p._attack_cd = 0.0
+	p.vitals.stamina = 100.0
+	p.thrust(false)
+	check(is_equal_approx(hp0 - di.hp, spear_dmg * Player.HIT_MULT), "a quick thrust: the spear's damage x%.2f (%.1f)" % [Player.HIT_MULT, hp0 - di.hp])
+	check(is_equal_approx(p._attack_cd, Player.QUICK_RECOVERY) and is_equal_approx(p.vitals.stamina, 100.0 - Player.QUICK_STAMINA),
+			"0.7 s to recover, 5 stamina")
+	check(di.state == "chase", "a quick thrust doesn't stagger a Diadectes (poise 3)")
+	hp0 = di.hp
+	p._attack_cd = 0.0
+	p.thrust(true)
+	check(is_equal_approx(hp0 - di.hp, spear_dmg * Player.HIT_MULT * Player.CHARGE_MULT), "a charged thrust: twice as hard")
+	check(di.state == "stagger" and di.stagger_guard, "and staggers it")
+	check(p._lunge_t > 0.0 and is_equal_approx(p._attack_cd, Player.CHARGE_RECOVERY), "a charged thrust lunges you forward")
+	p._lunge_t = 0.0
+	hp0 = di.hp
+	p._attack_cd = 0.0
+	p.thrust(true)
+	check(di.stagger_guard and not di.try_stagger(Player.CHARGE_STAGGER, p), "staggered, it can't be staggered again before its next attack")
+	var miss_hp: float = di.hp
+	p.rotation.y += PI
+	p._attack_cd = 0.0
+	var st0: float = p.vitals.stamina
+	p.thrust(false)
+	check(di.hp == miss_hp and p.vitals.stamina < st0 and p._attack_cd > 0.0, "a miss still costs the breath and the time")
+	_face_at(p, di)
+	# The stagger wears off: half its cooldown, then it can come again.
+	for i in 12:
+		di._think_hunter(p, 2.6, 0.1)
+		if di.state != "stagger":
+			break
+	check(di.state == "chase" and di._cd >= sp.diadectes.cooldown * 0.5 - 0.01, "after the stagger it waits half its cooldown (%.2f)" % di._cd)
+	# A blow it shrugs off doesn't touch its windup or its cooldown (no more 0.4 s cap).
+	di.state = "attack"
+	di._windup = 0.5
+	di.take_damage(1.0, p, 1)
+	check(di.state == "attack" and is_equal_approx(di._windup, 0.5), "a quick thrust doesn't stop a Diadectes winding up")
+	di.state = "chase"
+	di._cd = 2.0
+	di.take_damage(1.0, p, 1)
+	check(is_equal_approx(di._cd, 2.0), "and hitting it doesn't make it attack sooner")
+	# Its attack ends the guard; and it only lands on a player in front of it.
+	p.vitals.wounds.clear()
+	di.global_position = p.global_position + (-p.global_basis.z) * 1.5
+	di._face(p.global_position, 1.0)
+	di.heading += PI
+	di.rotation.y = di.heading + PI
+	di.state = "attack"
+	di._windup = 0.0
+	di._think_hunter(p, 1.5, 0.01)
+	check(p.vitals.wounds.is_empty() and not di.stagger_guard, "turned away, its blow misses; its attack is over, so it can be staggered again")
+	di._face(p.global_position, 1.0)
+	di.state = "attack"
+	di._windup = 0.0
+	var blood0: float = p.vitals.blood
+	di._think_hunter(p, 1.5, 0.01)
+	check(p.vitals.blood < blood0, "face on, it lands")
+	p.vitals.blood = 100.0
+	p.vitals.wounds.clear()
+	p.vitals.limbs.clear()
+	# Surprise: the larger bonus, never both.
+	Game.time = Game.DAY_LENGTH * 2.0 + Game.solar_to_clock(0.5) - Game.ARRIVAL_CLOCK  # midday: animals notice you from their usual range
+	check(not Game.is_night(), "midday for the sneak check")
+	var unaware: Node = _beast(w, "edaphosaurus", _ahead(p, 4.0))
+	await _frames(1)
+	unaware.hp = 1e6
+	unaware.state = "idle"
+	_face_at(p, unaware)
+	check(not unaware.unaware(), "a grazing animal notices you standing in plain view that close")
+	p.sneaking = true
+	check(unaware.unaware(), "but not sneaking up on it")
+	hp0 = unaware.hp
+	p._attack_cd = 0.0
+	p.thrust(true)
+	check(is_equal_approx(hp0 - unaware.hp, spear_dmg * Player.HIT_MULT * Player.SURPRISE_MULT),
+			"a surprise thrust does x2.5, charged or not: bonuses don't stack (%.1f)" % (hp0 - unaware.hp))
+	check(unaware.state == "stagger", "and it reels")
+	check(not unaware.unaware(), "it knows you're there now")
+	p._lunge_t = 0.0
+	p.sneaking = false
+	unaware.hp = 0.5
+	unaware.state = "stagger"
+	unaware._body.rotation.x = -0.2
+	unaware.take_damage(1.0, p)
+	check(unaware.dead and unaware._body.rotation.x == 0.0, "killed mid-stagger, its carcass lies flat")
+	unaware.queue_free()
+	# Winded: no charge, half damage.
+	p.vitals.winded = true
+	check(is_equal_approx(p.thrust_damage(false), spear_dmg * Player.HIT_MULT * 0.5) and not p.can_block(), "winded: half damage and no guard")
+	p.vitals.winded = false
+	p.vitals.stamina = 100.0
+	# Other tools keep their swing and damage.
+	check(not Items.def("flint_blade").get("shape", "") == "spear", "a blade isn't a spear")
+	# Scorpion (poise 1): a quick thrust staggers it. Uranocentrodon never staggers.
+	var sco: Node = _beast(w, "scorpion", p.global_position + Vector3(0, 0, 8))
+	await _frames(1)
+	sco.hp = 1e6
+	sco.state = "attack"
+	sco.take_damage(1.0, p, Player.QUICK_STAGGER)
+	check(sco.state == "stagger", "a quick thrust staggers a Pulmonoscorpius")
+	sco.queue_free()
+	var ura: Node = _beast(w, "uranocentrodon", p.global_position + Vector3(0, 0, -12))
+	await _frames(1)
+	check(not ura.try_stagger(Creature.ALWAYS, p), "nothing staggers a Uranocentrodon")
+	ura.queue_free()
+
+	# Blocking.
+	di.state = "chase"
+	di.stagger_guard = false
+	di.global_position = p.global_position + (-p.global_basis.z) * 1.5
+	_face_at(p, di)
+	var front: Vector3 = di.global_position
+	p.blocking = true
+	var slot_used := func(): return int(inv.held().get("data", {}).get("used", 0))
+	var used0: int = slot_used.call()
+	p.vitals.stamina = 100.0
+	p.next_block = 0.1
+	blood0 = p.vitals.blood
+	check(p.hurt(20.0, front, 0.3, "", 1.0, di) == "deflect" and p.vitals.blood == blood0 and p.vitals.wounds.is_empty(), "a blow turned aside does nothing")
+	check(is_equal_approx(p.vitals.stamina, 100.0 - Player.BLOCK_STAMINA) and slot_used.call() == used0 + 1, "it costs breath and wears the spear")
+	check(di.state != "stagger", "a deflect (stagger 2) doesn't stagger a Diadectes (poise 3)")
+	var ar: Node = _beast(w, "arthropleura", front + Vector3(0.5, 0, 0))
+	await _frames(1)
+	p.blocking = true  # (each frame's input check lets go of it in a headless run)
+	ar.state = "attack"
+	p.next_block = 0.1
+	p.hurt(20.0, front, 0.3, "", 1.0, ar)
+	check(ar.state == "stagger", "but it staggers an Arthropleura (poise 2): an opening")
+	ar.queue_free()
+	di.state = "chase"
+	di.stagger_guard = false
+	p.next_block = 0.4
+	check(p.hurt(20.0, front, 0.3, "", 1.0, di) == "half" and is_equal_approx(blood0 - p.vitals.blood, 20.0 * 0.5 * Player.TRAUMA), "a blow half taken by the spear")
+	p.next_block = 0.9
+	check(p.hurt(20.0, front, 0.3, "", 1.0, di) == "full" and p._guard_broken > 0.0 and not p.can_block(), "a blow straight through breaks the guard")
+	p._guard_broken = 0.0
+	p.next_block = 0.1
+	check(p.hurt(5.0, p.global_position + p.global_basis.z * 2.0, 0.3, "", 1.0, di) == "full" and is_equal_approx(p.next_block, 0.1),
+			"from behind, the guard does nothing")
+	p.next_block = -1.0
+	p.blocking = false
+	p._charge = 0.3
+	p.hurt(1.0, front)
+	check(p._charge < 0.0, "a hit spoils a thrust being drawn back")
+	p.vitals.blood = 100.0
+	p.vitals.wounds.clear()
+	p.vitals.limbs.clear()
+	di.queue_free()
+	# Use with a spear blocks and nothing else.
+	check(Player.spear_prompt("Bedroll: sleep [Z]   Save the game [E]   Pick it up [Right-click]").ends_with("Put the spear away to pick it up"),
+			"a right-click use says to put the spear away (%s)" % Player.spear_prompt("Pick it up [Right-click]"))
+	check(Player.spear_prompt("Open the vessel [E]   Open [Right-click]   Carry [C]").contains("Put the spear away to open it"), "open it")
+
+	# Eogyrinus: blocking face on, its charge meets the spear.
+	var eg: Node = w.spawn_amphibian("eogyrinus", "land", p.global_position + (-p.global_basis.z) * 1.4, p.global_position, "")
+	await _frames(1)
+	eg.set_process(false)
+	eg.hp = 1e6
+	_face_at(p, eg)
+	eg.state = "charge"
+	p.blocking = true
+	p.next_block = 0.9
+	hp0 = eg.hp
+	eg._think_lurker(p, eg.global_position.distance_to(p.global_position), 0.01)
+	check(p.grabbed_by == null and eg.state == "recoil", "blocking face on, an Eogyrinus can't seize you: it recoils")
+	check(is_equal_approx(hp0 - eg.hp, spear_dmg * Player.HIT_MULT), "it runs onto the point")
+	check(p.vitals.blood < 100.0, "its bite still lands on the guard")
+	eg._state_t = 0.0
+	eg._think_lurker(p, 1.8, 0.01)
+	check(eg._calm > 0.0, "and it holds off a moment before coming again")
+	p.blocking = false
+	p.vitals.blood = 100.0
+	p.vitals.wounds.clear()
+	p.vitals.limbs.clear()
+	eg._calm = 0.0
+	eg.state = "charge"
+	eg.stagger_guard = true
+	eg.global_position = p.global_position + (-p.global_basis.z) * 1.4
+	eg._think_lurker(p, eg.global_position.distance_to(p.global_position), 0.01)
+	check(p.grabbed_by == eg, "not blocking, it seizes you as before")
+	check(not eg.stagger_guard, "its attack landed, so it can be staggered again")
+	eg.release(true)
+	p.release_grab()
+	eg.queue_free()
+	p.vitals.blood = 100.0
+	p.vitals.wounds.clear()
+	p.vitals.limbs.clear()
+	await _frames(2)
+
+	# Tripping.
+	p.global_position = flat + Vector3(0, 0.02, 0)
+	p.rotation.y = 0.0
+	p.velocity = Vector3.ZERO
+	await _frames(12)
+	var behind: Vector3 = p.global_position + p.global_basis.z * Player.TRIP_LOOK
+	check(not p._loose_at(behind), "nothing at your heels")
+	w.spawn_pickup("stone", 1, Vector3(behind.x, w.ground_height(behind.x, behind.z) + 0.05, behind.z))
+	await _frames(2)
+	var stone: Node = null
+	for d in get_tree().get_nodes_in_group("drops"):
+		if stone == null or d.global_position.distance_to(behind) < stone.global_position.distance_to(behind):
+			stone = d
+	check(p._loose_at(behind), "a stone at your heels")
+	p.velocity = p.global_basis.z * 2.0
+	var st_before: float = p.vitals.stamina
+	blood0 = p.vitals.blood
+	p._check_trip(Vector2(0, 1), false, true)
+	check(p.down > 0.0, "backing over it, you trip")
+	check(p.vitals.blood == blood0 and p.vitals.stamina == st_before and p.vitals.limbs.is_empty(), "no harm done")
+	check(not p.can_block(), "no guard while you're down")
+	check(p.global_position.distance_to(flat) > Player.TRIP_FALL * 0.8 and not p._loose_at(p.global_position + p.global_basis.z * Player.TRIP_LOOK),
+			"falling back past it, so you aren't tripping on it again when you get up")
+	for i in 30:
+		p._down_tick(0.1)
+	check(p.down == 0.0, "and you get up again")
+	p.global_position = flat + Vector3(0, 0.02, 0)
+	p.velocity = Vector3.ZERO
+	await _frames(6)
+	p.velocity = -p.global_basis.z * 2.0
+	p._check_trip(Vector2(0, -1), false, true)
+	check(p.down == 0.0, "walking forward over it is fine")
+	p.velocity = p.global_basis.z * 2.0
+	p.vitals_enabled = false
+	p._check_trip(Vector2(0, 1), false, true)
+	check(p.down == 0.0, "no tripping in the lab tutorial (vitals off)")
+	p.vitals_enabled = true
+	p.velocity = p.global_basis.z * 2.0
+	p._shove_t = Player.SHOVE_WINDOW
+	p._check_trip(Vector2.ZERO, false, true)
+	check(p.down > 0.0, "shoved back into it by a hard hit, you go down")
+	p.down = 0.0
+	p._down_k = 0.0
+	p._shove_t = 0.0
+	# Spills: an open pot in your hand, a pot of preserves, a pot or unsealed vessel in your arms.
+	p.down = 0.0
+	p._down_k = 0.0
+	inv.clear()
+	_hold("pot_clean")
+	p.trip()
+	check(inv.held_id() == "pot", "falling with a pot of boiled water spills it")
+	p.down = 0.0
+	inv.clear()
+	inv.add("pot_soup", 1, 0.0, true)
+	_hold("stone")
+	p.trip()
+	check(inv.count("pot_soup") == 1, "only what's in your hand spills, not a pot in the bag or hotbar")
+	p.down = 0.0
+	inv.clear()
+	_hold("canteen_clean_2")
+	p.trip()
+	check(inv.held_id() == "canteen_clean_2", "a stoppered canteen doesn't")
+	p.down = 0.0
+	inv.clear()
+	inv.add("pot_preserves", 1, 0.0, true, Preserves.filled_data([{"id": "pickled:fiddlehead", "age": 0.0}], "brine"))
+	inv.select(inv.find("pot_preserves"))
+	var drops0: int = get_tree().get_nodes_in_group("drops").size()
+	p.trip()
+	await _frames(1)
+	check(inv.held_id() == "pot" and get_tree().get_nodes_in_group("drops").size() > drops0, "an unsealed pot of preserves spills its food on the ground")
+	p.down = 0.0
+	inv.clear()
+	var carried: Node = w.add_vessel("vessel_open", p.global_position - p.global_basis.z * 1.0)
+	await _frames(1)
+	carried.water = 4
+	carried.dirty = false
+	p.start_haul(carried)
+	check(p.hauling == carried, "carrying an unsealed vessel")
+	p.trip()
+	check(p.hauling == null and carried.water == 0, "falling, you drop it and it spills")
+	p.down = 0.0
+	var sealed_v: Node = w.add_vessel("vessel_sealed", p.global_position - p.global_basis.z * 1.0)
+	await _frames(1)
+	sealed_v.water = 4
+	sealed_v.dirty = false
+	p.start_haul(sealed_v)
+	p.trip()
+	check(p.hauling == null and sealed_v.water == 4, "a sealed vessel keeps its lid on")
+	p.down = 0.0
+	p._down_k = 0.0
+	carried.queue_free()
+	sealed_v.queue_free()
+	stone.queue_free()
+	await _frames(1)
+	var fern: Node = Harvestable.new().setup("fern", "test_fern")
+	w.add_child(fern)
+	fern.global_position = Vector3(behind.x, w.ground_height(behind.x, behind.z), behind.z)
+	await _frames(2)
+	check(not p._loose_at(behind), "ferns underfoot don't trip you")
+	fern.queue_free()
+	p.hurt(Player.SHOVE_FROM, p.global_position - p.global_basis.z)
+	check(p._shove_t > 0.0, "a hit of 15 or more shoves you")
+	p._shove_t = 0.0
+	p.vitals.blood = 100.0
+	p.vitals.wounds.clear()
+	p.vitals.limbs.clear()
+	check(Player.BACK_SPEED == 0.6, "walking backwards is slower")
+
+	# Sneaking.
+	var hb: Node = _beast(w, "haptodus", p.global_position + Vector3(0, 0, 12))
+	await _frames(1)
+	var base_sense: float = hb._sense(10.0)
+	p.toggle_sneak()
+	check(p.sneaking and is_equal_approx(hb._sense(10.0), base_sense * 0.5), "sneaking, animals notice you from half as far")
+	p.toggle_sneak()
+	p.sprinting = true
+	check(not p.sneaking and is_equal_approx(hb._sense(10.0), base_sense * 2.0), "sprinting, from twice as far")
+	p.sprinting = false
+	hb.queue_free()
+	check(InputMap.has_action("sneak") and Settings.default_bindings().sneak[0].get("key", 0) == KEY_CTRL
+			and Settings.default_bindings().sneak[2].get("button", -1) == JOY_BUTTON_RIGHT_STICK, "Sneak: Ctrl, and the right stick click")
+	check(Settings.web_risky({"key": KEY_CTRL}) and Settings.web_risky({"key": KEY_ALT}) and not Settings.web_risky({"key": KEY_X}),
+			"Ctrl and Alt are risky on the web; X isn't")
+	var cp: Node = load("res://src/ui/controls_panel.gd").new()
+	add_child(cp)
+	await _frames(1)
+	check(cp.web_warns({"key": KEY_CTRL}, true) and not cp.web_warns({"key": KEY_CTRL}, true), "on the web, binding Ctrl warns first, then a second press keeps it")
+	check(not cp.web_warns({"key": KEY_CTRL}, false), "elsewhere it binds straight away")
+	cp.queue_free()
+
+	# Scavengers: by day too, and to a carcass left lying; medium ones gnaw a large carcass.
+	var kill_at := _find_spot(w, p.global_position + Vector3(0, 0, 25), func(q): return q.y > 0.3)
+	var carc: Node = _kill(w, "eogyrinus", kill_at)
+	await _frames(1)
+	var scav: Node = _beast(w, "arthropleura", kill_at + Vector3(2, 0, 0))
+	await _frames(1)
+	check(scav._food_ok(carc), "a medium scavenger will eat at a large carcass")
+	var cuts0: int = carc.cuts_left
+	scav._start_feeding(carc)
+	scav._state_t = 0.0
+	scav._forage(0.01)
+	check(is_instance_valid(carc) and carc.cuts_left == cuts0 - cuts0 / 2 and carc.eaten_by == null, "it tears off half the meat and leaves the rest (%d of %d)" % [carc.cuts_left, cuts0])
+	scav.queue_free()
+	Game.time = fposmod(Game.time, Game.DAY_LENGTH) + Game.DAY_LENGTH * 3 + (Game.DAY_LENGTH * 0.5 - fposmod(Game.time, Game.DAY_LENGTH))
+	check(not Game.is_night(), "midday")
+	w._calm_until = -1.0
+	var drawn: Dictionary = {}
+	for i in 40:
+		var c: Node = w.draw_to_guts(carc, "medium")
+		if c:
+			drawn[c.species] = true
+			check(c.bait == carc and c.drawn, "drawn to the carcass")
+			c.queue_free()
+	check(drawn.keys().any(func(k): return k in ["scorpion", "haptodus"]), "by day a predator comes to a kill too (%s)" % [drawn.keys()])
+	var had: Array = Game.creatures.duplicate()
+	for i in 40:
+		carc.smell_t = 0.0
+		carc._smell(0.01)
+	var came := Game.creatures.filter(func(c): return is_instance_valid(c) and not c.dead and not c in had)
+	check(not came.is_empty() and came.all(func(c): return c.drawn and c.bait == carc), "a carcass left lying draws scavengers (%d)" % came.size())
+	for c in came:
+		c.queue_free()
+	await _frames(1)
+	var before: int = Game.creatures.size()
+	carc.set_hauled(p)
+	for i in 40:
+		carc.smell_t = 0.0
+		carc._smell(0.01)
+	check(Game.creatures.size() == before, "not while you carry it off")
+	carc.set_hauled(null)
+	carc.queue_free()
+	await _frames(1)
+	w.queue_free()
+	await _frames(2)
+
+
+func test_vitals() -> void:
+	## The vitals rework (vitals-brainstorm.md): drain and action costs, the
+	## hidden reserve, catching your breath, winded, food poisoning, the full
+	## stomach, work effort, and drawing water from a vessel.
+	var v := Survival.new()
+	var e0 := v.energy
+	var w0 := v.water
+	v.tick(60.0, false, false, false, false, true)
+	check(is_equal_approx(e0 - v.energy, Survival.ENERGY_DRAIN * 60.0) and is_equal_approx(w0 - v.water, Survival.WATER_DRAIN * 60.0),
+			"food and water drain on the timer (%.2f, %.2f a minute)" % [e0 - v.energy, w0 - v.water])
+	var run := Survival.new()
+	e0 = run.energy
+	run.tick(1.0, true, false)
+	check(is_equal_approx(e0 - run.energy, Survival.ENERGY_DRAIN + Survival.SPRINT_COST[0]), "sprinting costs food on top")
+	var sw := Survival.new()
+	e0 = sw.energy
+	sw.tick(1.0, false, true)
+	check(is_equal_approx(e0 - sw.energy, Survival.ENERGY_DRAIN + Survival.SWIM_COST[0]), "so does swimming")
+	var nap := Survival.new()
+	e0 = nap.energy
+	nap.tick(10.0, true, false, false, true)
+	check(is_equal_approx(e0 - nap.energy, Survival.ENERGY_DRAIN * Survival.SLEEP_DRAIN * 10.0), "asleep, only the slower drain")
+	# The hidden reserve.
+	var r := Survival.new()
+	r.start_reserve()
+	e0 = r.energy
+	w0 = r.water
+	r.tick(60.0, false, false)
+	r.spend(1.0, 0.5)
+	check(r.energy == e0 and r.water == w0 and r.reserve_energy < Survival.START_RESERVE[0], "a new run's drain comes out of the hidden reserve first")
+	r.reserve_energy = 0.5
+	r.spend(2.0)
+	check(r.reserve_energy == 0.0 and is_equal_approx(e0 - r.energy, 1.5), "then out of what you've eaten")
+	var r2 := Survival.new()
+	r2.from_dict(JSON.parse_string(JSON.stringify(r.to_dict())))
+	check(is_equal_approx(r2.reserve_water, r.reserve_water) and r2.stomach == r.stomach, "the reserve and stomach are saved")
+	var old := Survival.new()
+	old.from_dict({"energy": 150.0})
+	check(old.reserve_energy == 0.0 and old.reserve_water == 0.0, "an old save has no reserve")
+	# Catching your breath (S2) and winded (S1).
+	var b := Survival.new()
+	b.stamina = 50.0
+	b.tire(5.0)
+	b.tick(0.3, false, false, false, false, true)
+	check(b.stamina == 45.0, "spent stamina doesn't come back straight away")
+	b.tick(0.3, false, false, false, false, true)
+	b.tick(1.0, false, false, false, false, true)
+	check(b.stamina > 45.0 + Survival.REGEN_STILL * 0.9, "then it comes back, fastest standing still (%.1f)" % b.stamina)
+	var wk := Survival.new()
+	wk.stamina = 50.0
+	wk.tick(1.0, false, false, false, false, false)
+	check(is_equal_approx(wk.stamina, 50.0 + Survival.REGEN_WALK), "walking, slower")
+	var wd := Survival.new()
+	wd.tire(200.0)
+	check(wd.winded and not wd.can_sprint(), "run down to nothing you are winded: no sprinting")
+	for i in 20:
+		wd.tick(0.2, false, false, false, false, true)
+	check(not wd.winded and wd.stamina >= Survival.WINDED_UNTIL, "until you have your breath back")
+	# Food poisoning lasts longer and dries you out faster (W1).
+	var sick := Survival.new()
+	sick.consume({"energy": 1.0, "sick": 1.0}, RandomNumberGenerator.new())
+	check(sick.sick == Survival.SICK_TIME, "food poisoning lasts 180 s")
+	var ok := Survival.new()
+	w0 = ok.water
+	ok.tick(10.0, false, false)
+	var dry := w0 - ok.water
+	w0 = sick.water
+	sick.tick(10.0, false, false)
+	check(is_equal_approx(w0 - sick.water, dry * Survival.SICK_THIRST), "and dries you out 2.5x as fast")
+	# The full stomach (F2).
+	var st := Survival.new()
+	st.energy = 20.0
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	st.consume(Items.def("cooked_meat"), rng)
+	st.consume(Items.def("cooked_meat"), rng)
+	check(not st.is_full() and st.energy == 20.0 + 2.0 * Items.def("cooked_meat").energy, "food's energy arrives at once")
+	st.consume(Items.def("cooked_meat"), rng)
+	check(st.stuffed() and not st.can_sprint() and is_equal_approx(st.speed_mult(), Survival.STUFFED_SLOW), "past 60 you are stuffed: no sprinting, slower")
+	check(st.problems().map(func(q): return q.words).has("Stuffed"), "the Health tab says so")
+	st.tick(10.0, false, false)
+	check(st.stomach < 3.0 * Items.def("cooked_meat").energy - 4.9, "the stomach empties over time")
+	st.stomach = Survival.VOMIT_AT + 5.0
+	var en: float = st.energy
+	st.consume(Items.def("cooked_meat"), rng)
+	check(st.stomach <= Survival.STOMACH_CAP * 0.5 and st.energy < en + Items.def("cooked_meat").energy, "a bite too many comes back up")
+	var full := Survival.new()
+	full.stomach = Survival.STOMACH_CAP
+	check(full.is_full() and not full.stuffed() and full.can_sprint() and full.status_words()[0] == "Healthy", "just full is fine")
+	# Work effort.
+	var by_verb := func(verb: String) -> String:
+		for rc in Items.RECIPES:
+			if rc.verb == verb:
+				return Items.effort(rc)
+		return "?"
+	check(by_verb.call("Haft the spear") == "light" and by_verb.call("Weave a sack") == "light" and by_verb.call("Crush out wax") == "light",
+			"hafting, weaving and pounding wax are light work")
+	check(by_verb.call("Grind the axe head") == "medium" and by_verb.call("Carve a canteen") == "medium" and by_verb.call("Build a table") == "medium",
+			"grinding, carving and building furniture are medium work")
+	check(by_verb.call("Hammer out a knife blade") == "heavy" and by_verb.call("Crush copper ore") == "heavy" and by_verb.call("Chip off a lump of iron") == "heavy",
+			"hammering, crushing ore and chipping meteorite are heavy work")
+	check(Items.effort({"melt": [1, 2], "verb": "Smelt copper"}) == "hot" and Items.effort({"wood": "fell"}) == "heavy" and Items.effort({"wood": "strip"}) == "medium"
+			and Items.effort({"butcher": "cut"}) == "medium" and Items.effort({"house": "stilt_0"}) == "heavy" and Items.effort({"house": "floor"}) == "medium",
+			"the furnace is hot work; felling and stilts heavy; stripping, butchering and house parts medium")
+	var knap: Dictionary = Items.RECIPES.filter(func(rc): return rc.get("act", "") == "knap")[0]
+	check(Items.effort(knap) == "medium", "knapping strikes are medium work")
+
+	var w: Node = await _new_swamp()
+	var p: Node = w.player
+	var inv = Game.inventory
+	check(p.vitals.reserve_energy == 0.0, "a dev start without the arrival has no reserve")
+	# What you do costs food and water.
+	inv.clear()
+	_hold("spear")
+	p._attack_cd = 0.0
+	var pv = p.vitals
+	pv.energy = 150.0
+	pv.water = 80.0
+	p.rotation.y = 0.0
+	p.thrust(false)
+	check(is_equal_approx(150.0 - pv.energy, Player.COST_SWING[0]) and is_equal_approx(80.0 - pv.water, Player.COST_SWING[1]), "a thrust costs a little food and water")
+	pv.energy = 150.0
+	p._attack_cd = 0.0
+	p.thrust(true)
+	p._lunge_t = 0.0
+	check(is_equal_approx(150.0 - pv.energy, Player.COST_CHARGE[0]), "a charged one more")
+	# A step of work costs by its effort.
+	inv.clear()
+	inv.add("plant_fiber", 3)
+	w.start_work()
+	await _frames(1)
+	var cord: Dictionary = Items.RECIPES.filter(func(rc): return rc.out == "cordage")[0]
+	w.work.lay(inv.find("plant_fiber"), 3)
+	check(w.work.begin(cord), "twisting cordage")
+	pv.energy = 150.0
+	w.work.twist(2.0)
+	check(is_equal_approx(150.0 - pv.energy, Items.TWIST_COST[0]), "twisting costs once per item")
+	w.close_work()
+	# Drawing clean water from a barrel.
+	var at: Vector3 = _ahead(p, 1.5)
+	var barrel: Node = w.add_vessel("vessel_open_barrel", at)
+	await _frames(1)
+	barrel.water = 3
+	barrel.dirty = false
+	inv.clear()
+	_hold("pot")
+	check(barrel.prompt(p).begins_with("Draw a serving of clean water"), "an empty pot can draw from a barrel of clean water (%s)" % barrel.prompt(p))
+	barrel.interact(p)
+	check(inv.held_id() == "pot_clean" and barrel.water == 2, "a serving of clean water drawn off")
+	inv.clear()
+	_hold("canteen")
+	barrel.interact(p)
+	check(inv.held_id() == "canteen_clean_1" and barrel.water == 1, "into a canteen too")
+	barrel.dirty = true
+	inv.clear()
+	_hold("pot")
+	check(not barrel.water_drawable(), "not swamp water")
+	barrel.dirty = false
+	barrel.add_food("fiddlehead")
+	check(not barrel.water_drawable(), "nor with food in it")
+	barrel.queue_free()
+	await _frames(1)
 	w.queue_free()
 	await _frames(2)

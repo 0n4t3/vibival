@@ -4,6 +4,8 @@ extends Node3D
 ## Creatures are not physics bodies: they follow the terrain heightfield,
 ## which keeps dozens of them very cheap.
 
+const Guts := preload("res://src/world/guts.gd")
+
 const LURE_RADIUS := 12.0  # how far a splash draws an amphibian
 const STALK_RANGE := 30.0  # a basking Uranocentrodon creeps toward a player this close
 const SNATCH_RANGE := 12.0 # a Meganeura spots small prey this far away
@@ -22,6 +24,20 @@ const PATH_MARGIN_WIDE := 64.0  # and then, failing that, for a long way round
 const STALL_TIME := 5.0       # seconds a water predator heading home gets nowhere before it gives up
 const SUFFOCATE := 90.0    # seconds a fish lives out of the water
 const AIR_MULT := 5.0      # a lungfish, which breathes air, lasts this many times as long
+# Stagger (combat.md, C3). Every blow has a stagger value (player.gd: a quick
+# spear thrust 1, a charged one 3, a surprise thrust or an Eogyrinus running
+# onto a block always); a blow at least the animal's `poise` (default 0, -1
+# never) staggers it: its windup is cancelled, it flinches back and can't
+# attack for STAGGER_TIME, then waits half its cooldown. After a stagger its
+# next attack can't be staggered (it must land, or be blocked, first), so
+# timed charged thrusts never lock an animal in place.
+const STAGGER_TIME := 0.6
+const STAGGER_SLIDE := 0.5    # metres it is knocked back
+const ALWAYS := 99            # a stagger value that beats any poise but "never"
+const ATTACK_ARC := 0.34      # cos(70 deg): a blow lands only on a player this far round in front
+const FEND_CALM := 3.5        # seconds an Eogyrinus that ran onto a spear holds off before charging again
+const FEND_BACK := 3.0        # metres it backs off
+const LARGE_GNAW := 0.5       # a medium scavenger feeding on a large carcass takes this share of its cuts
 
 ## Kills leave carcasses by size: "small" ones go into the bag as the species'
 ## `carcass` item; "medium" ones are carried and "large" ones dragged, and
@@ -99,15 +115,15 @@ const SPECIES := {
 	"scorpion": {
 		"name": "Pulmonoscorpius", "behavior": "hunter", "habitat": "land",
 		"hp": 40.0, "speed": 1.4, "run": 5.0, "radius": 0.6, "hit_r": 0.75, "hit_h": 0.3,
-		"sense": 13.0, "damage": 9.0, "venom": 14.0, "venom_chance": 0.45, "reach": 1.7, "windup": 0.45,
-		"cooldown": 1.4, "sound": "hiss", "drops": {"raw_meat": 2, "chitin": 1}, "category": "hostile_medium",
+		"sense": 13.0, "damage": 11.0, "venom": 14.0, "venom_chance": 0.45, "reach": 1.7, "windup": 0.45,
+		"cooldown": 1.4, "sound": "hiss", "drops": {"raw_meat": 3, "chitin": 1}, "category": "hostile_medium", "poise": 1,
 		"scavenger": true, "size": "medium", "guts": 1,
 	},
 	"arthropleura": {
 		"name": "Arthropleura", "behavior": "defensive", "habitat": "land",
 		"hp": 160.0, "speed": 0.9, "run": 2.6, "radius": 0.9, "hit_r": 1.0, "hit_h": 0.3,
-		"sense": 6.0, "damage": 18.0, "reach": 2.3, "windup": 0.7, "cooldown": 2.0, "sound": "chitter",
-		"drops": {"raw_meat": 5, "chitin": 4}, "category": "neutral_medium",
+		"sense": 6.0, "damage": 21.0, "reach": 2.3, "windup": 0.7, "cooldown": 2.0, "sound": "chitter",
+		"drops": {"raw_meat": 8, "chitin": 4}, "category": "neutral_medium", "poise": 2,
 		"scavenger": true, "size": "medium", "guts": 2,
 	},
 	# A sail-backed plant-eater of the open ground. Leaves you alone; hit, it
@@ -115,8 +131,8 @@ const SPECIES := {
 	"edaphosaurus": {
 		"name": "Edaphosaurus", "behavior": "defensive", "habitat": "land",
 		"hp": 130.0, "speed": 1.0, "run": 4.2, "radius": 0.8, "hit_r": 0.9, "hit_h": 0.35,
-		"sense": 7.0, "damage": 14.0, "reach": 1.9, "windup": 0.6, "cooldown": 1.8, "sound": "hiss",
-		"drops": {"raw_meat": 6}, "category": "neutral_medium", "size": "medium", "guts": 2,
+		"sense": 7.0, "damage": 18.0, "reach": 1.9, "windup": 0.6, "cooldown": 1.8, "sound": "hiss",
+		"drops": {"raw_meat": 9}, "category": "neutral_medium", "size": "medium", "guts": 2, "poise": 2,
 		"flees_at": 0.35, "grazes": true, "side_y": 0.36,
 	},
 	# A broad, stubborn plant-eater of the fern thickets. It never runs, and
@@ -124,8 +140,8 @@ const SPECIES := {
 	"diadectes": {
 		"name": "Diadectes", "behavior": "defensive", "habitat": "land",
 		"hp": 190.0, "speed": 0.8, "run": 3.2, "radius": 0.85, "hit_r": 0.95, "hit_h": 0.3,
-		"sense": 5.0, "damage": 20.0, "reach": 1.8, "windup": 0.8, "cooldown": 2.4, "sound": "hiss",
-		"drops": {"raw_meat": 7}, "category": "neutral_medium", "size": "medium", "guts": 2,
+		"sense": 5.0, "damage": 25.0, "reach": 1.8, "windup": 0.8, "cooldown": 2.4, "sound": "hiss",
+		"drops": {"raw_meat": 11}, "category": "neutral_medium", "size": "medium", "guts": 2, "poise": 3,
 		"spawn": "ferns", "grazes": true, "flat_y": 0.8,
 	},
 	# A giant armoured sea scorpion hauling itself along the banks, raking the
@@ -133,8 +149,8 @@ const SPECIES := {
 	"hibbertopterus": {
 		"name": "Hibbertopterus", "behavior": "defensive", "habitat": "land",
 		"hp": 220.0, "speed": 0.6, "run": 1.8, "radius": 0.9, "hit_r": 1.0, "hit_h": 0.2,
-		"sense": 5.0, "damage": 12.0, "reach": 2.2, "windup": 0.9, "cooldown": 2.4, "sound": "chitter",
-		"drops": {"raw_meat": 3, "chitin": 6}, "category": "neutral_medium", "size": "medium", "guts": 1,
+		"sense": 5.0, "damage": 15.0, "reach": 2.2, "windup": 0.9, "cooldown": 2.4, "sound": "chitter",
+		"drops": {"raw_meat": 5, "chitin": 6}, "category": "neutral_medium", "size": "medium", "guts": 1, "poise": 3,
 		"spawn": "shore", "keeps_shore": true, "flat_y": 0.42,
 	},
 	# A lean night hunter: sprints in, bites (`wound`: deeper than the blow
@@ -142,8 +158,8 @@ const SPECIES := {
 	"haptodus": {
 		"name": "Haptodus", "behavior": "hunter", "habitat": "land",
 		"hp": 55.0, "speed": 1.8, "run": 6.0, "radius": 0.55, "hit_r": 0.7, "hit_h": 0.3,
-		"sense": 16.0, "damage": 8.0, "reach": 1.6, "windup": 0.3, "cooldown": 1.6, "sound": "hiss",
-		"drops": {"raw_meat": 3}, "category": "hostile_medium", "scavenger": true, "size": "medium", "guts": 1,
+		"sense": 16.0, "damage": 8.7, "reach": 1.6, "windup": 0.3, "cooldown": 1.6, "sound": "hiss",
+		"drops": {"raw_meat": 5}, "category": "hostile_medium", "scavenger": true, "size": "medium", "guts": 1, "poise": 2,
 		"skirmish": true, "wound": 2.5, "flat_y": 0.62,
 	},
 	# Large carnivorous amphibian, a rare wanderer on land. Spawned by the swamp
@@ -152,7 +168,7 @@ const SPECIES := {
 		"name": "Eogyrinus", "behavior": "lurker", "habitat": "amphibious",
 		"hp": 320.0, "speed": 0.7, "run": 6.6, "radius": 1.0, "hit_r": 1.0, "hit_h": 0.25,
 		"sense": 7.0, "leash": 16.0, "sound": "roar", "bite": 25.0, "grab_dps": 13.0, "grip": 100.0,
-		"drops": {"raw_meat": 8}, "cap_day": 0, "cap_night": 0, "size": "large", "guts": 3,
+		"drops": {"raw_meat": 12}, "cap_day": 0, "cap_night": 0, "size": "large", "guts": 3, "poise": 3,
 	},
 	# A huge, flat-headed amphibian (about 7 m). Basks on the bank by day, and
 	# otherwise lies buried in the mud under shallow water, given away only by
@@ -161,10 +177,10 @@ const SPECIES := {
 	# a player near enough the edge to reach the water.
 	"uranocentrodon": {
 		"name": "Uranocentrodon", "behavior": "ambusher", "habitat": "amphibious",
-		"hp": 650.0, "speed": 0.5, "run": 10.5, "radius": 1.5, "hit_r": 1.6, "hit_h": 0.35,
+		"hp": 810.0, "speed": 0.5, "run": 10.5, "radius": 1.5, "hit_r": 1.6, "hit_h": 0.35,
 		"strike": 6.0, "ambush": 16.0, "grab_dist": 3.0, "leash": 14.0, "sound": "roar", "anchor": 1.25,
 		"bite": 40.0, "grab_dps": 22.0, "grip": 170.0, "kill": 500.0, "drag": 7.0, "escape": true,
-		"drops": {"raw_meat": 14}, "cap_day": 0, "cap_night": 0, "size": "large", "guts": 4,
+		"drops": {"raw_meat": 21}, "cap_day": 0, "cap_night": 0, "size": "large", "guts": 4, "poise": -1,
 	},
 	"meganeura": {
 		"name": "Meganeura", "behavior": "flyer", "habitat": "air",
@@ -392,6 +408,10 @@ var out_of_water := 0.0          # a fish: seconds it has been on land
 var _raft: Node3D = null         # big amphibians: the raft whose corner it has in its jaws (raft.gd)
 var _raft_corner := 0
 var snared: Node3D = null        # caught in a snare (trap.gd): it can't get away
+var staggered := 0.0             # seconds left reeling from a blow (see STAGGER_TIME)
+var stagger_guard := false       # staggered since its last attack: the next can't be staggered
+var _stagger_from := Vector3.ZERO  # which way it is knocked
+var smell_t := 300.0             # a carcass: seconds to its next scavenger roll (_smell)
 
 static var _part_cache := {}
 static var _ripple_mesh: Mesh
@@ -1225,10 +1245,37 @@ func _build_pale_uranocentrodon() -> void:
 const WATER_PREDATORS := ["lurker", "ambusher"]   # kept off a finished dock (dock.gd keeps_out)
 
 func _process(delta: float) -> void:
+	if dead:
+		_smell(delta)
+		return
 	var was := global_position
 	_behave(delta)
 	if not dead and def.behavior in WATER_PREDATORS:
 		_keep_off_docks(was, delta)
+
+
+func _smell(delta: float) -> void:
+	## A medium or large carcass left lying draws scavengers like a guts pile
+	## (guts.gd): every ROLL_EVERY seconds while the player is within
+	## ROLL_RANGE, a ROLL_CHANCE each for an Eogyrinus and a medium animal. Not
+	## while something eats it, it is carried or dragged, or you butcher it.
+	if def.size == "small" or cuts_left <= 0 or in_jaws():
+		return
+	smell_t -= delta
+	if smell_t > 0.0:
+		return
+	smell_t = Guts.ROLL_EVERY
+	var p: Node3D = Game.player if is_instance_valid(Game.player) else null
+	if p == null or world == null or not world.has_method("draw_to_guts") or hauled_by != null or _eater() != null \
+			or p.global_position.distance_to(global_position) > Guts.ROLL_RANGE:
+		return
+	var ws = p.get("work_spot")
+	if ws != null and is_instance_valid(ws) and ws.get("carcass") == self:
+		return
+	if _rng.randf() < Guts.ROLL_CHANCE:
+		world.draw_to_guts(self, "eogyrinus")
+	if _rng.randf() < Guts.ROLL_CHANCE:
+		world.draw_to_guts(self, "medium")
 
 
 func _keep_off_docks(was: Vector3, delta: float) -> void:
@@ -1364,7 +1411,16 @@ func _pick_wander() -> void:
 
 
 func _sense(dist: float) -> float:
-	return def.sense * (1.3 if Game.is_night() else 1.0)
+	## How far it notices the player: further at night, half as far from a
+	## player sneaking, twice as far from one sprinting.
+	var p: Node3D = Game.player if is_instance_valid(Game.player) else null
+	var k := 1.0
+	if p != null:
+		if p.get("sneaking") == true:
+			k = 0.5
+		elif p.get("sprinting") == true:
+			k = 2.0
+	return def.sense * (1.3 if Game.is_night() else 1.0) * k
 
 
 func _think_prey(player: Node3D, dist: float) -> void:
@@ -1376,6 +1432,9 @@ func _think_prey(player: Node3D, dist: float) -> void:
 
 
 func _think_hunter(player: Node3D, dist: float, delta: float) -> void:
+	if state == "stagger":
+		_reel(delta)
+		return
 	var fire: Node3D = Game.nearest_fire(global_position, 9.0)
 	if fire and def.behavior == "hunter":
 		state = "flee"
@@ -1419,9 +1478,12 @@ func _think_hunter(player: Node3D, dist: float, delta: float) -> void:
 		_windup -= delta
 		_face(player.global_position, delta)
 		if _windup <= 0.0:
-			if dist < def.reach + 0.6:
-				player.hurt(def.damage, global_position, 0.3, "", float(def.get("wound", 1.0)))
-				if def.has("venom") and _rng.randf() < def.venom_chance:
+			stagger_guard = false  # its attack is done: it can be staggered again
+			# Only a player still in reach and round in front of it is hit: a
+			# step aside or back in time gets clear.
+			if dist < def.reach + 0.6 and facing(player.global_position):
+				var got: String = player.hurt(def.damage, global_position, 0.3, "", float(def.get("wound", 1.0)), self)
+				if def.has("venom") and got != "deflect" and _rng.randf() < def.venom_chance:
 					player.vitals.poison(def.venom)
 			_cd = def.cooldown
 			state = "chase"
@@ -1494,12 +1556,23 @@ func _forage(delta: float) -> bool:
 				_pick_wander()
 				return false
 			_face(_prey.global_position, delta)
-			# The body shrinks away as it is eaten.
-			if _prey._body:
+			var big: bool = "species" in _prey and _prey.def.size == "large"
+			# The body shrinks away as it is eaten (a large one is only gnawed at).
+			if _prey._body and not big:
 				var built = _prey.get("_base_scale")  # a guts pile has none
 				_prey._body.scale = Vector3.ONE * (float(built) if built != null else 1.0) * clampf(_state_t / _feed_time(_prey), 0.15, 1.0)
 			if _state_t <= 0.0:
-				_prey.queue_free()
+				if big:
+					# Too much to finish: it tears off half the meat left (at
+					# least a cut) and leaves the rest for the next one.
+					_prey.cuts_left -= maxi(1, int(_prey.cuts_left * LARGE_GNAW))
+					_prey.eaten_by = null
+					if _prey.cuts_left <= 0:
+						_prey.queue_free()
+					else:
+						_prey._show_stage()
+				else:
+					_prey.queue_free()
 				_prey = null
 				_cd = 40.0
 				_pick_wander()
@@ -1549,14 +1622,16 @@ func _food_ok(f: Node3D) -> bool:
 		return false
 	if not "species" in f:
 		return true
-	return f.dead and f.hauled_by == null and not f.in_jaws() \
-			and (f.def.size == "small" or (f.def.size == "medium" and def.size != "small"))
+	# A medium animal gnaws at a large carcass too (LARGE_GNAW), without
+	# finishing it.
+	return f.dead and f.hauled_by == null and not f.in_jaws() and f.cuts_left > 0 \
+			and (f.def.size == "small" or (f.def.size in ["medium", "large"] and def.size != "small"))
 
 
 static func _feed_time(f: Node3D) -> float:
 	if not "species" in f:
 		return FEED_TIME * 1.6
-	return FEED_TIME * (4.0 if f.def.size == "medium" else 1.0)
+	return FEED_TIME * (4.0 if f.def.size in ["medium", "large"] else 1.0)
 
 
 func _start_feeding(f: Node3D) -> void:
@@ -1713,6 +1788,7 @@ func attack_now(player: Node3D) -> void:
 
 
 func _grab(player: Node3D) -> void:
+	stagger_guard = false  # its attack has landed: it can be staggered again
 	state = "grab"
 	_victim = player
 	submerged = false
@@ -1820,7 +1896,25 @@ func _think_lurker(player: Node3D, dist: float, delta: float) -> void:
 				goal = p_pos
 				spd = def.run
 				if dist < 2.2:
-					_grab(player)
+					# Blocking, face on, the spear keeps its jaws off you.
+					if player.has_method("fends") and player.fends(self):
+						fended(player, player.thrust_damage(false))
+					else:
+						_grab(player)
+		"recoil":
+			# Ran onto a spear (or staggered by one): backing off, then holding
+			# off for FEND_CALM before it may come again.
+			if _state_t > 0.0:
+				# Straight back, still facing the spear (not turned by _steer).
+				var away := _stagger_from if _stagger_from.length() > 0.01 else -Vector3(sin(heading), 0, cos(heading))
+				var next := global_position + away * maxf(def.speed * 4.0, 2.5) * delta
+				if mode == "land" or _ok(def.habitat, _ground(next.x, next.z)):
+					position.x = next.x
+					position.z = next.z
+				if player:
+					_face(p_pos, delta)
+			else:
+				state = "wander" if mode == "land" else "lurk"
 		"approach":
 			# Drawn by blood in the water: up at the surface, slowly closing in on
 			# you, and charging as usual once you are near enough.
@@ -1848,7 +1942,18 @@ func _think_lurker(player: Node3D, dist: float, delta: float) -> void:
 				_face(_prey.global_position, delta)
 				_gape = 0.45 + 0.35 * sin(Time.get_ticks_msec() * 0.008)
 				if _state_t <= 0.0:
-					_prey.queue_free()
+					if "species" in _prey and _prey.def.size != "small":
+						# A carcass: it tears off half the meat left and
+						# leaves the rest (LARGE_GNAW).
+						_prey.cuts_left -= maxi(1, int(_prey.cuts_left * LARGE_GNAW))
+						_prey.eaten_by = null
+						_prey.gnawed = true
+						if _prey.cuts_left <= 0:
+							_prey.queue_free()
+						else:
+							_prey._show_stage()
+					else:
+						_prey.queue_free()
 					_prey = null
 					state = "wander"
 		"frenzy":
@@ -1885,7 +1990,7 @@ func _think_lurker(player: Node3D, dist: float, delta: float) -> void:
 	if state == "frenzy":
 		_steer(goal, spd, delta)
 		_thrash(delta)
-	elif state != "grab":
+	elif state != "grab" and state != "recoil":
 		_body.rotation.z = lerpf(_body.rotation.z, 0.0, minf(delta * 4.0, 1.0))
 		_steer(goal, spd, delta)
 		if state == "charge" or state == "lunge":
@@ -1913,14 +2018,17 @@ func _think_lurker(player: Node3D, dist: float, delta: float) -> void:
 
 
 func _think_drawn(player: Node3D, dist: float, delta: float) -> bool:
-	## An animal drawn by the smell of a guts pile (swamp.draw_to_guts). It
+	## An animal drawn by the smell of a guts pile or a carcass left lying
+	## (swamp.draw_to_guts). It
 	## turns on a player near it or near the guts; otherwise it eats them and
 	## then hangs about there for LINGER seconds. True when it has moved this
 	## frame itself (the usual behaviour is skipped).
 	var near: bool = player != null and not player.vitals.dead and player.grabbed_by == null \
 			and (dist < DRAWN_NOTICE or player.global_position.distance_to(_bait_pos) < DRAWN_NOTICE)
-	if bait != null and not is_instance_valid(bait):
+	if bait != null and (not is_instance_valid(bait) or bait.is_queued_for_deletion()):
 		bait = null
+	if bait != null and "species" in bait and (bait.hauled_by != null or bait.cuts_left <= 0):
+		bait = null  # a carcass carried off or cut up: gone as far as it knows
 	if bait == null and _linger <= 0.0 and not state in ["feed", "scavenge"]:
 		# Eaten (or taken away): it stays around where they were.
 		_linger = LINGER
@@ -1931,7 +2039,7 @@ func _think_drawn(player: Node3D, dist: float, delta: float) -> bool:
 		_linger -= delta
 		if _linger <= 0.0:
 			drawn = false
-	if near:
+	if near and state != "stagger" and state != "recoil":
 		if def.behavior == "lurker":
 			if not state in ["charge", "grab", "retreat"] and _leash_ok(player.global_position):
 				_stop_feeding_guts()
@@ -2726,6 +2834,15 @@ func _ok(habitat: String, h: float) -> bool:
 	return true
 
 
+func facing(p: Vector3) -> bool:
+	## Whether p is within ATTACK_ARC of straight ahead of it.
+	var to := p - global_position
+	to.y = 0.0
+	if to.length() < 0.3:
+		return true
+	return to.normalized().dot(Vector3(sin(heading), 0, cos(heading))) >= ATTACK_ARC
+
+
 func _face(p: Vector3, delta: float) -> void:
 	var d := p - global_position
 	heading = lerp_angle(heading, atan2(d.x, d.z), minf(delta * 8.0, 1.0))
@@ -2818,7 +2935,10 @@ func _animate(spd: float, delta: float) -> void:
 
 # --- Damage & carcass -----------------------------------------------------------
 
-func take_damage(amount: float, attacker: Node3D) -> void:
+func take_damage(amount: float, attacker: Node3D, stagger := 1) -> void:
+	## A blow of `amount` with a `stagger` value (see STAGGER_TIME): a quick
+	## spear thrust or any other blow 1, a charged thrust 3, ALWAYS for a
+	## surprise thrust.
 	if dead:
 		return
 	hp -= amount
@@ -2837,10 +2957,14 @@ func take_damage(amount: float, attacker: Node3D) -> void:
 			state = "flee"
 		"hunter", "defensive":
 			_stop_feeding()
-			state = "chase"
-			_cd = minf(_cd, 0.4)
+			# Staggered, its windup is cancelled. A blow it shrugs off doesn't
+			# touch its windup or its cooldown: it turns on you, that's all.
+			if not try_stagger(stagger, attacker) and state != "attack" and state != "stagger":
+				state = "chase"
 		"lurker":
-			if state != "grab" and state != "retreat":
+			if try_stagger(stagger, attacker):
+				pass
+			elif state != "grab" and state != "retreat" and state != "recoil":
 				state = "charge"
 		"ambusher":
 			if state in ["bask", "stalk", "hide", "return", "lunge", "pursue", "frenzy"] and attacker != null and attacker == Game.player:
@@ -2854,9 +2978,97 @@ func take_damage(amount: float, attacker: Node3D) -> void:
 		Sfx.play_at(def.get("sound", "hiss"), global_position, 0.0, 0.2)
 
 
+func poise() -> int:
+	## How hard a blow must be to stagger it (-1: never).
+	return int(def.get("poise", 0))
+
+
+func unaware() -> bool:
+	## Hasn't noticed the player: wandering, grazing, feeding, basking or a
+	## hunter not yet after you, and not angry (a surprise thrust, C7).
+	if dead or _anger > 0.0 or state in ["chase", "attack", "flee", "retreat", "stagger", "charge",
+			"grab", "recoil", "strike", "pursue", "lunge", "stalk", "approach"]:
+		return false
+	# Close enough to notice you (half as far if you sneak), it has.
+	var p: Node3D = Game.player if is_instance_valid(Game.player) else null
+	if p == null:
+		return true
+	var d := global_position.distance_to(p.global_position)
+	return d >= _sense(d)
+
+
+func try_stagger(value: int, attacker: Node3D) -> bool:
+	## A blow (or a deflected bite) with this stagger value: staggers it if the
+	## value reaches its poise and it hasn't been staggered since its last
+	## attack. True if it reels.
+	if dead or poise() < 0 or value < poise() or stagger_guard:
+		return false
+	if not def.behavior in ["hunter", "defensive", "lurker"]:
+		return false
+	stagger_guard = true
+	_windup = 0.0
+	var away := global_position - (attacker.global_position if attacker != null and is_instance_valid(attacker) else global_position - Vector3(sin(heading), 0, cos(heading)))
+	away.y = 0.0
+	_stagger_from = away.normalized() if away.length() > 0.01 else -Vector3(sin(heading), 0, cos(heading))
+	if def.behavior == "lurker":
+		_recoil(0.6)
+	else:
+		_stop_feeding()
+		state = "stagger"
+		staggered = STAGGER_TIME
+	Sfx.play_at(def.get("sound", "hiss"), global_position, 3.0, 0.3)
+	return true
+
+
+func _reel(delta: float) -> void:
+	## Staggered: knocked back a little, rearing away from the blow, then (half
+	## its cooldown later) it can come again.
+	staggered -= delta
+	var k := clampf(1.0 - staggered / STAGGER_TIME, 0.0, 1.0)
+	var step := _stagger_from * STAGGER_SLIDE / STAGGER_TIME * delta
+	var next := global_position + step
+	if def.habitat == "land" and _ok(def.habitat, _ground(next.x, next.z)):
+		next.y = _ground(next.x, next.z)
+		global_position = next
+	if _body:
+		_body.rotation.x = -sin(k * PI) * 0.22
+	if staggered <= 0.0:
+		if _body:
+			_body.rotation.x = 0.0
+		state = "chase"
+		_cd = maxf(_cd, float(def.get("cooldown", 1.0)) * 0.5)
+
+
+func _recoil(secs: float) -> void:
+	## A lurker reeling back from a spear: it backs off and holds off for a
+	## moment before it comes again.
+	if _victim and is_instance_valid(_victim):
+		return
+	state = "recoil"
+	_state_t = secs
+	_calm = maxf(_calm, FEND_CALM)
+
+
+func fended(player: Node3D, dmg: float) -> void:
+	## An Eogyrinus charged onto a blocking spear (player.fends): no grab. Its
+	## bite is a hit on the guard, it runs onto the point, and it recoils.
+	stagger_guard = false
+	player.hurt(def.get("bite", 25.0), global_position, 0.85, "amphibian", 1.0)
+	_stagger_from = (global_position - player.global_position)
+	_stagger_from.y = 0.0
+	_stagger_from = _stagger_from.normalized() if _stagger_from.length() > 0.01 else -Vector3(sin(heading), 0, cos(heading))
+	take_damage(dmg, player, 0)
+	if not dead:
+		_recoil(FEND_BACK / maxf(def.speed * 4.0, 1.0))
+		Sfx.play_at("croak", global_position, 4.0)
+
+
 func _die(killer: Node3D = null) -> void:
 	dead = true
 	state = "dead"
+	staggered = 0.0
+	if _body:
+		_body.rotation.x = 0.0  # killed mid-stagger: no rearing carcass
 	died_at = Game.time
 	cuts_left = def.drops.get(def.get("meat", "raw_meat"), 1)
 	drawn = false
@@ -2923,7 +3135,7 @@ func expired() -> bool:
 func carcass_dict() -> Dictionary:
 	var p := global_position
 	return {"species": species, "variant": variant, "pos": [p.x, p.y, p.z], "heading": rotation.y, "stage": stage,
-			"cuts": cuts_left, "gnawed": gnawed, "died": died_at}
+			"cuts": cuts_left, "gnawed": gnawed, "died": died_at, "smell_t": smell_t}
 
 
 func restore_carcass(d: Dictionary) -> void:
@@ -2935,6 +3147,7 @@ func restore_carcass(d: Dictionary) -> void:
 	cuts_left = int(d.get("cuts", cuts_left))
 	gnawed = bool(d.get("gnawed", false))
 	died_at = float(d.get("died", Game.time))
+	smell_t = float(d.get("smell_t", Guts.ROLL_EVERY))
 	set_hauled(null)
 	_show_stage()
 
@@ -3059,7 +3272,7 @@ func interact(player: Node) -> void:
 		Game.notify("Took Gnawed Meat x%d." % n)
 		queue_free()
 		return
-	if eater and def.size == "medium":
+	if eater and def.size in ["medium", "large"]:
 		# What it had eaten of the meat is gone.
 		cuts_left = maxi(1, cuts_left / 2)
 		_show_stage()
