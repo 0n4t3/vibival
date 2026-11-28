@@ -82,7 +82,8 @@ Every world has a name, its own map, and its own camp and quit saves.
 - **Continue**: resumes the world you played last that has a save.
 - **Load world**: lists every world with its day and when you last played
   it. **Load** continues it. A world with nothing saved yet shows **Start**,
-  which begins it again from the beginning. **Delete** asks you to press it a
+  which begins it again from the beginning. **Rename** lets you type a new
+  name; press Enter or **Save** to keep it. **Delete** asks you to press it a
   second time to confirm.
 
 A save from before named worlds existed shows up as a world called

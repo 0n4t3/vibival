@@ -50,6 +50,7 @@ var worlds_dir := "user://worlds"    # one folder per world; tests point this el
 const EXPORT_KIND := "vibival-world" # marks an exported world (export_world)
 var world_id := ""                   # folder of the world being played
 var world_name := ""
+const WORLD_NAME_MAX := 40           # longest a world's name can be
 var save_path := ""                  # that world's camp save
 
 ## A day is 24 real minutes: 3 min of night, a 2 min sunrise, 14 min of
@@ -338,6 +339,21 @@ func latest_world() -> Dictionary:
 		if w.saved:
 			return w
 	return {}
+
+
+func rename_world(id: String, name_in: String) -> String:
+	## Gives world `id` a new name (its folder keeps its id). Returns the name
+	## it now goes by, or "" if there's no such world or the name is blank.
+	var display := name_in.strip_edges().substr(0, WORLD_NAME_MAX)
+	var path := world_dir(id).path_join("world.json")
+	var meta := _read_json(path)
+	if display == "" or meta.is_empty():
+		return ""
+	meta["name"] = display
+	_write_json(path, meta)
+	if id == world_id:
+		world_name = display
+	return display
 
 
 func delete_world(id: String) -> void:

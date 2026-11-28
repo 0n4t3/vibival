@@ -128,7 +128,7 @@ func _open_new_world() -> void:
 	vb.add_child(l)
 	var name_edit := LineEdit.new()
 	name_edit.text = "World %d" % (Game.list_worlds().size() + 1)
-	name_edit.max_length = 40
+	name_edit.max_length = Game.WORLD_NAME_MAX
 	name_edit.select_all_on_focus = true
 	vb.add_child(name_edit)
 	var debug := CheckBox.new()
@@ -180,6 +180,11 @@ func _open_load_world() -> void:
 		del.text = "Delete"
 		del.custom_minimum_size = Vector2(80, 40)
 		del.pressed.connect(_delete_world.bind(w, del))
+		var ren := Button.new()
+		ren.text = "Rename"
+		ren.custom_minimum_size = Vector2(80, 40)
+		ren.pressed.connect(_rename_world.bind(w, info, ren))
+		row.add_child(ren)
 		var exp := Button.new()
 		exp.text = "Export"
 		exp.custom_minimum_size = Vector2(80, 40)
@@ -300,6 +305,39 @@ func _play_world(w: Dictionary) -> void:
 	else:
 		Game.use_world(w.id)
 		Game.start_new_game(false)
+
+
+func _rename_world(w: Dictionary, info: Label, btn: Button) -> void:
+	## Renaming: the first press swaps the world's label for a box holding its
+	## name, and the button becomes Save. Enter or Save keeps the new name.
+	var row := info.get_parent()
+	var edit: LineEdit = row.get_node_or_null("NameEdit")
+	if edit != null:
+		_finish_rename(w, edit)
+		return
+	edit = LineEdit.new()
+	edit.name = "NameEdit"
+	edit.text = w.name
+	edit.max_length = Game.WORLD_NAME_MAX
+	edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	edit.select_all_on_focus = true
+	edit.text_submitted.connect(func(_t): _finish_rename(w, edit))
+	info.visible = false
+	row.add_child(edit)
+	row.move_child(edit, 0)
+	btn.text = "Save"
+	edit.grab_focus.call_deferred()
+
+
+func _finish_rename(w: Dictionary, edit: LineEdit) -> void:
+	var got := Game.rename_world(w.id, edit.text)
+	# Rebuild the menu too: Continue names the world it would load.
+	_panel.queue_free()
+	_panel = null
+	_build_menu()
+	_open_load_world()
+	if got == "":
+		_say("A world needs a name.")
 
 
 func _delete_world(w: Dictionary, btn: Button) -> void:

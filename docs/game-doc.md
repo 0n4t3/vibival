@@ -459,13 +459,15 @@ skips a taken uid, after the chunk's rolls so nothing else moves.
 "seed_fern" (see Farming); `fern_spores` (not food, don't spoil) have
 `plant` "fern", growing for the same `GROW_DAYS` into a `planted_fern`,
 which grows back like a planted seed fern (5 days, 2.5 fed).
-The decorative ferns (`DECOR` "fern", ground cover with no collision) can
-be torn out with a mattock for nothing: a swing whose ray meets the ground
-(within 0.6 m of `ground_height`) and no dig or break target calls
-`swamp.clear_fern(point)`. That checks the point's chunk then its neighbours
-(`chunk.clear_fern(p, FERN_REACH)`, 0.8 m): the nearest fern in
-`chunk.decor_ferns` is scaled to nothing and `Game.taken[Chunk.fern_key(x,
-z)]` ("d" + its position in decimetres) is set. A rebuilt chunk skips a
+The decorative ferns and horsetails (`DECOR` "fern" and "horsetail", ground
+cover with no collision) can be torn out with a mattock for nothing: a swing
+whose ray meets the ground (within 0.6 m of `ground_height`) and no dig or
+break target calls `swamp.clear_fern(point)`. That checks the point's chunk
+then its neighbours (`chunk.clear_fern(p, FERN_REACH)`, 0.8 m): the nearest
+plant in `chunk.decor_ferns` or `chunk.decor_horsetails` is scaled to nothing
+and `Game.taken[Chunk.fern_key(x, z)]` ("d" + its position in decimetres;
+`horsetail_key`, "dh", for a horsetail) is set. Only `decor_ferns` are
+spawn places for Diadectes (`fern_spot`). A rebuilt chunk skips a
 taken fern only after rolling it, so no other plant moves, and the key goes
 by position, so it stays gone at any graphics quality. A planted kind's uid is its planting's: `dig()`
 erases `Game.plantings[uid]` instead of setting `Game.taken`.
@@ -1249,6 +1251,28 @@ large budgets are still separate constants in `swamp.gd`.
 | tuditanus | prey | prey | The commonest prey by night (`prey` [0.5, 2.5]). |
 | morganucodon | prey | prey | A tiny furry early mammal (out of its time, like Uranocentrodon): `radius` 0.18, hp 4, the smallest meal. A thin tail (`tail_r`) and ears and snout from `_marks_morganucodon`. More at night (`prey` [1, 1.5]). |
 
+**Finding the way round trees** (`_steer`): a land animal looks
+`LOOK_AHEAD` (1.2 m, more when running) past its own radius for a trunk or
+boulder (`swamp.trunks_around`: every chunk within reach, so trees over a
+chunk's edge count) and turns to the nearest heading that clears it
+(`_around_trunks`). It keeps to the side it chose for `DETOUR_HOLD` (1 s) so
+it doesn't dither. Trunks of radius 0 (felled or dug out) are ignored.
+Getting nowhere for `STUCK_TIME` (1.5 s, `_check_stuck`), a wanderer picks
+somewhere else to go; anything else tries the other way round.
+
+**Legs** (`_walk_legs`): a diagonal gait. Leg `i` (pairs front to back,
+right then left) is half a cycle out from its neighbours, so front right
+moves with back left. Each foot swings forward (`rotation.x`) lifted by up
+to `LEG_LIFT`, and pushes back planted. Left legs are the right leg's mesh
+mirrored, so their lift (`rotation.z`) is negated. The cycle (`_gait`, apart
+from `_phase`, which drives tails, sails and bodies) runs at a rate that
+matches the stride to the speed, from the hip height, up to `LEG_RATE_MAX`.
+
+**Hit from a raft** (`_flee_rider`): a hunter or defensive animal that is
+angry (`_anger`) while the player rides a raft, so it can't reach them, runs
+off (state "flee") until it is `HURT_CLEAR` (30 m) away or calms down.
+Snared animals don't.
+
 A basking Uranocentrodon stalks the player from `STALK_RANGE` (30 m) while
 the player is on low ground, but only moves while it stays within
 `leash * 1.5` of its water. A buried one strikes from `def.ambush` (16 m)
@@ -1506,7 +1530,11 @@ nothing caught, E hauls a fish trap or puts a snare (and its bait) in the bag.
 A snared medium animal: while you are within `SPAWN_RANGE` (120 m),
 `_process` keeps a live `Creature` of that species beside the snare with
 `snared` set; `creature._hold_in_snare` keeps it within `LEASH` (0.9 m), so
-it strains and fights from there. Freed (sleep frees every live creature, the
+it strains and fights from there. Snared, `_think_hunter` never backs off
+(`skirmish` retreat), flees fire or runs when badly hurt (`flees_at`), and
+doesn't forage. It goes for a player within `def.reach + SNARE_LASH` (1.5 m)
+even if it is neutral and unprovoked, and bites from `SNARE_LUNGE` (0.6 m)
+further than its usual reach. Freed (sleep frees every live creature, the
 spawner those far off), it is made again when you come back. Killed, its
 carcass stays and the snare is empty; past `KEEP` it is freed and the entry
 becomes `ROTTEN_MEDIUM` (3) rotten food.
@@ -2095,8 +2123,11 @@ copper hammer and its head use the `hammer` / `hammer_head` shapes
   "vibival-world", `version`, the world.json as `world`, and its camp and
   suspend saves under `saves`); `Game.import_world(text)` checks the kind and
   version and makes a new world from it, renamed "Name (2)" and so on if the
-  name is taken, played now so it's listed first. On the title's Load world,
-  `_pick_file` uses `DisplayServer.file_dialog_show` where there is a native
+  name is taken, played now so it's listed first. `Game.rename_world(id,
+  name)` changes only the name in world.json (blank refused, cut to
+  `WORLD_NAME_MAX`, 40); the folder keeps its id. On the title's Load world,
+  Rename swaps the row's label for a LineEdit (Enter or Save keeps it), and
+  Export and Import world go through `_pick_file`, which uses `DisplayServer.file_dialog_show` where there is a native
   picker (Linux: the xdg-desktop-portal FileChooser, which hands a flatpak
   only the chosen file through the document portal, so no filesystem
   permission is needed; Android: the Storage Access Framework, whose URIs
@@ -2300,7 +2331,9 @@ groups (the first word of each printed group name). Boats, the islands and metal
 combat, stagger, blocking, tripping, sneaking and scavengers drawn to kills are
 `test_combat`; the vitals rework (drain and action costs, the reserve, stamina,
 winded, food poisoning, the stomach, work effort, drawing water) is
-`test_vitals` (`--only=combat,vitals`).
+`test_vitals` (`--only=combat,vitals`). Animals going round trees, their
+leg gait, fighting from a snare and running from a rider are
+`test_creature_movement` (`--only=movement`).
 
 Web and Android builds: `tools/export.sh web|android` exports with the
 official editor in `.tools/godot/`, using `game/export_presets.cfg`, from a

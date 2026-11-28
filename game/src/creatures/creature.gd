@@ -38,6 +38,13 @@ const ATTACK_ARC := 0.34      # cos(70 deg): a blow lands only on a player this 
 const FEND_CALM := 3.5        # seconds an Eogyrinus that ran onto a spear holds off before charging again
 const FEND_BACK := 3.0        # metres it backs off
 const LARGE_GNAW := 0.5       # a medium scavenger feeding on a large carcass takes this share of its cuts
+const SNARE_LASH := 1.5       # a snared animal, even a neutral one, goes for a player this far past its reach
+const SNARE_LUNGE := 0.6      # and strains this much further than its usual reach to bite
+const LOOK_AHEAD := 1.2       # metres past its own radius a walking animal looks for a trunk in its way
+const DETOUR_HOLD := 1.0      # seconds it keeps to the side it chose to go round a trunk on
+const LEG_LIFT := 0.3         # radians a foot is raised as it swings forward
+const LEG_RATE_MAX := 36.0    # fastest the walking cycle runs (radians a second)
+const STUCK_TIME := 1.5       # seconds of getting nowhere before it tries another way
 
 ## Kills leave carcasses by size: "small" ones go into the bag as the species'
 ## `carcass` item; "medium" ones are carried and "large" ones dragged, and
@@ -412,6 +419,11 @@ var staggered := 0.0             # seconds left reeling from a blow (see STAGGER
 var stagger_guard := false       # staggered since its last attack: the next can't be staggered
 var _stagger_from := Vector3.ZERO  # which way it is knocked
 var smell_t := 300.0             # a carcass: seconds to its next scavenger roll (_smell)
+var _detour := 0.0               # going round a trunk: +1 or -1, the side it keeps to (_around_trunks)
+var _detour_t := 0.0             # seconds left keeping to it
+var _stuck_t := 0.0              # how long it has been getting nowhere (_check_stuck)
+var _gait := 0.0                 # the legs' walking cycle (_animate)
+var _hip := 0.0                  # how high its hips are, for the length of its stride
 
 static var _part_cache := {}
 static var _ripple_mesh: Mesh
@@ -1435,12 +1447,15 @@ func _think_hunter(player: Node3D, dist: float, delta: float) -> void:
 	if state == "stagger":
 		_reel(delta)
 		return
+	var trapped := snared != null
+	if player == null and not trapped and _flee_rider():
+		return
 	var fire: Node3D = Game.nearest_fire(global_position, 9.0)
-	if fire and def.behavior == "hunter":
+	if fire and def.behavior == "hunter" and not trapped:
 		state = "flee"
 		_target = global_position + (global_position - fire.global_position).normalized() * 8.0
 		return
-	if def.has("flees_at") and player and not player.vitals.dead and hp <= def.hp * float(def.flees_at):
+	if def.has("flees_at") and player and not player.vitals.dead and hp <= def.hp * float(def.flees_at) and not trapped:
 		# Badly hurt: it gives up the fight and runs until it is well clear,
 		# then settles there. Only someone coming close sets it off again.
 		if state in ["flee", "chase", "attack"] and dist > HURT_CLEAR:
@@ -1455,12 +1470,13 @@ func _think_hunter(player: Node3D, dist: float, delta: float) -> void:
 		return
 	if state == "retreat":
 		# A skirmisher backing off after a bite, before it comes round again.
-		if _state_t > 0.0 and player != null and not player.vitals.dead:
+		# Caught in a snare it can't back off: it turns straight back.
+		if _state_t > 0.0 and player != null and not player.vitals.dead and not trapped:
 			return
 		state = "chase"
 	# Land scavengers (def.scavenger) hunt small prey while left alone. A hunter
 	# drops its meal to fight a player who walks right up to it.
-	if def.get("scavenger", false) and _anger <= 0.0:
+	if def.get("scavenger", false) and _anger <= 0.0 and not trapped:
 		var busy: bool = state in ["hunt", "maul", "scavenge", "feed"]
 		var close: bool = player != null and not player.vitals.dead and dist < def.reach + 0.8
 		var noticed: bool = player != null and not player.vitals.dead and dist < _sense(dist)
@@ -1472,8 +1488,11 @@ func _think_hunter(player: Node3D, dist: float, delta: float) -> void:
 		if state in ["chase", "attack", "flee"]:
 			_pick_wander()
 		return
-	var aggressive: bool = def.behavior == "hunter" or _anger > 0.0
+	# Caught in a snare, even a neutral animal lashes out at anyone who comes close.
+	var aggressive: bool = def.behavior == "hunter" or _anger > 0.0 or (trapped and dist < def.reach + SNARE_LASH)
 	var player_in_water: bool = player.water_depth() > 0.6
+	# Straining at the noose, it throws itself a little further.
+	var reach: float = def.reach + (SNARE_LUNGE if trapped else 0.0)
 	if state == "attack":
 		_windup -= delta
 		_face(player.global_position, delta)
@@ -1481,30 +1500,51 @@ func _think_hunter(player: Node3D, dist: float, delta: float) -> void:
 			stagger_guard = false  # its attack is done: it can be staggered again
 			# Only a player still in reach and round in front of it is hit: a
 			# step aside or back in time gets clear.
-			if dist < def.reach + 0.6 and facing(player.global_position):
+			if dist < reach + 0.6 and facing(player.global_position):
 				var got: String = player.hurt(def.damage, global_position, 0.3, "", float(def.get("wound", 1.0)), self)
 				if def.has("venom") and got != "deflect" and _rng.randf() < def.venom_chance:
 					player.vitals.poison(def.venom)
 			_cd = def.cooldown
 			state = "chase"
-			if def.get("skirmish", false):
+			if def.get("skirmish", false) and not trapped:
 				state = "retreat"
 				_state_t = _rng.randf_range(0.9, 1.5)
 				var away := (global_position - player.global_position).normalized()
 				_target = global_position + away.rotated(Vector3.UP, 0.9 if _rng.randf() < 0.5 else -0.9) * 7.0
 		return
 	if aggressive and dist < _sense(dist) * (2.2 if state == "chase" else 1.0) and not player_in_water \
-			and Game.nearest_fire(player.global_position, 7.0) == null:
+			and (trapped or Game.nearest_fire(player.global_position, 7.0) == null):
 		if state != "chase":
 			Sfx.play_at(def.get("sound", "hiss"), global_position, -2.0)
 		state = "chase"
 		_target = player.global_position
-		if dist < def.reach and _cd <= 0.0:
+		if dist < reach and _cd <= 0.0:
 			state = "attack"
 			_windup = def.windup
 			Sfx.play_at(def.get("sound", "hiss"), global_position, 0.0, 0.2)
 	elif state in ["chase", "flee"]:
 		_pick_wander()
+
+
+func _flee_rider() -> bool:
+	## Hit by a player out on a raft, where it can't get at them: rather than
+	## stand there taking it, it runs off until it is well clear (or calms
+	## down). True while it is doing so.
+	var p: Node3D = Game.player if is_instance_valid(Game.player) else null
+	if p == null or p.get("riding") == null or _anger <= 0.0 or p.vitals.dead:
+		return false
+	var away := global_position - p.global_position
+	away.y = 0.0
+	if away.length() > HURT_CLEAR:
+		if state == "flee":
+			_pick_wander()
+		return false
+	if state != "flee" or global_position.distance_to(_target) < 1.0:
+		_stop_feeding()
+		state = "flee"
+		var dir := away.normalized() if away.length() > 0.1 else Vector3(sin(heading), 0, cos(heading))
+		_target = global_position + dir * 12.0
+	return true
 
 
 func _forage(delta: float) -> bool:
@@ -2856,7 +2896,16 @@ func _steer(goal: Vector3, spd: float, delta: float) -> void:
 	d.y = 0.0
 	if d.length() < 0.2:
 		return
-	heading = lerp_angle(heading, atan2(d.x, d.z), minf(delta * 4.0, 1.0))
+	var want := atan2(d.x, d.z)
+	var trunks := _trunks()
+	var turn_rate := 4.0
+	if mode == "land" or def.habitat == "land":
+		# Look ahead for trunks and boulders in the way and head round them.
+		var around := _around_trunks(want, trunks, maxf(LOOK_AHEAD, spd * 0.6), d.length(), delta)
+		if absf(angle_difference(around, want)) > 0.01:
+			turn_rate = 7.0
+		want = around
+	heading = lerp_angle(heading, want, minf(delta * turn_rate, 1.0))
 	var fwd := Vector3(sin(heading), 0, cos(heading))
 	var next := global_position + fwd * spd * delta
 	var h := _ground(next.x, next.z)
@@ -2880,27 +2929,109 @@ func _steer(goal: Vector3, spd: float, delta: float) -> void:
 		if state != "chase" and state != "charge" and state != "strike":
 			_target = global_position + Vector3(sin(heading), 0, cos(heading)) * 8.0
 		return
-	if world:
-		for t in world.trunks_near(next):
-			var off := Vector2(next.x - t.x, next.z - t.y)
-			var min_d: float = t.z + def.radius
-			if off.length() < min_d and off.length() > 0.001:
-				off = off.normalized() * min_d
-				next.x = t.x + off.x
-				next.z = t.y + off.y
+	for t in trunks:
+		if t.z <= 0.0:
+			continue  # felled or dug out: nothing there now
+		var off := Vector2(next.x - t.x, next.z - t.y)
+		var min_d: float = t.z + def.radius
+		if off.length() < min_d and off.length() > 0.001:
+			off = off.normalized() * min_d
+			next.x = t.x + off.x
+			next.z = t.y + off.y
 	if def.habitat == "land":
 		next.y = _ground(next.x, next.z)
 	else:
 		next.y = position.y
+	var moved := Vector2(next.x - position.x, next.z - position.z).length()
 	position = next
 	rotation.y = heading + PI
+	_check_stuck(moved, spd * delta, delta)
+
+
+func _trunks() -> PackedVector3Array:
+	## Trunks and boulders (x, z, radius) it might bump into, from the chunks
+	## round it (not only its own, so one by a chunk's edge is seen too).
+	if world == null:
+		return PackedVector3Array()
+	if world.has_method("trunks_around"):
+		return world.trunks_around(global_position, def.radius + LOOK_AHEAD + 4.0)
+	if world.has_method("trunks_near"):
+		return world.trunks_near(global_position)
+	return PackedVector3Array()
+
+
+func _blocked(dir: float, trunks: PackedVector3Array, look: float, goal_dist: float) -> int:
+	## The index of the nearest trunk its body would run into going `dir`
+	## within `look` metres (and no further than its goal), or -1.
+	var f := Vector2(sin(dir), cos(dir))
+	var p := Vector2(global_position.x, global_position.z)
+	var best := -1
+	var best_along := INF
+	for i in trunks.size():
+		var t := trunks[i]
+		if t.z <= 0.0:
+			continue
+		var c := Vector2(t.x, t.y) - p
+		var r: float = t.z + def.radius
+		var along := c.dot(f)
+		if along <= 0.0 or along - r > minf(look, goal_dist):
+			continue
+		if c.length_squared() - along * along < r * r * 0.96 and along < best_along:
+			best = i
+			best_along = along
+	return best
+
+
+func _around_trunks(want: float, trunks: PackedVector3Array, look: float, goal_dist: float, delta: float) -> float:
+	## The heading nearest `want` that clears every trunk in the way. Once it
+	## has picked a side to go round on it keeps to it for a moment, so it
+	## doesn't dither left and right in front of a tree.
+	_detour_t = maxf(_detour_t - delta, 0.0)
+	if _detour_t <= 0.0:
+		_detour = 0.0
+	look += def.radius
+	var hit := _blocked(want, trunks, look, goal_dist)
+	if hit < 0:
+		return want
+	if _detour == 0.0:
+		# Go round on the side away from the trunk's middle.
+		var c := Vector2(trunks[hit].x - global_position.x, trunks[hit].y - global_position.z)
+		var l := Vector2(sin(want + 0.3), cos(want + 0.3))
+		var r := Vector2(sin(want - 0.3), cos(want - 0.3))
+		_detour = 1.0 if absf(c.cross(l)) > absf(c.cross(r)) else -1.0
+	_detour_t = DETOUR_HOLD
+	for k in range(1, 11):
+		for s in [_detour, -_detour]:
+			var a: float = want + s * k * 0.3
+			if _blocked(a, trunks, look, goal_dist) < 0:
+				_detour = s
+				return a
+	return want + PI  # hemmed in: back out the way it came
+
+
+func _check_stuck(moved: float, meant: float, delta: float) -> void:
+	## Wedged between trunks (or anything else) and getting nowhere for
+	## STUCK_TIME: a wanderer picks somewhere else to go, anything else tries
+	## the other way round.
+	if snared or meant <= 0.0001:
+		return
+	if moved < meant * 0.3:
+		_stuck_t += delta
+	else:
+		_stuck_t = maxf(_stuck_t - delta, 0.0)
+	if _stuck_t < STUCK_TIME:
+		return
+	_stuck_t = 0.0
+	if state in ["wander", "idle"]:
+		_pick_wander()
+	else:
+		_detour = -_detour if _detour != 0.0 else (1.0 if _rng.randf() < 0.5 else -1.0)
+		_detour_t = DETOUR_HOLD * 2.0
 
 
 func _animate(spd: float, delta: float) -> void:
 	_phase += delta * (4.0 + spd * 5.0) * (1.0 if spd > 0.0 else 0.15)
-	for i in _legs.size():
-		_legs[i].rotation.z = sin(_phase + i * 1.3) * 0.35 * minf(spd, 1.0)
-		_legs[i].rotation.x = cos(_phase + i * 1.3) * 0.2 * minf(spd, 1.0)
+	_walk_legs(spd, delta)
 	if def.get("grazes", false) and _head:
 		# Head down to feed while it stands, up as soon as it moves.
 		_head.rotation.x = lerpf(_head.rotation.x, -0.55 if state == "idle" else 0.0, minf(delta * 2.5, 1.0))
@@ -2931,6 +3062,29 @@ func _animate(spd: float, delta: float) -> void:
 				_tail[i].rotation.y = sin(_phase * 0.55 + i * PI) * 0.34
 			for i in _segs.size():
 				_segs[i].rotation.y = sin(_phase * 0.4 - i * 0.7) * 0.025
+
+
+func _walk_legs(spd: float, delta: float) -> void:
+	## A walking gait: diagonal legs move together (front right with back
+	## left, and so on down the body for six or eight legs). Each foot swings
+	## forward lifted clear of the ground and pushes back planted on it, at a
+	## pace that matches its stride to how fast it goes. Left legs are the
+	## right leg's mesh mirrored, so their lift is turned the other way.
+	if _legs.is_empty():
+		return
+	if _hip <= 0.0:
+		_hip = clampf(_legs[0].global_position.y - global_position.y, 0.08, 1.2)
+	var k := minf(spd, 1.0)
+	var swing := clampf(0.2 + 0.05 * spd, 0.25, 0.45)
+	if spd > 0.0:
+		# A planted foot covers about 2 * hip * swing a step: as fast as the body goes.
+		_gait += delta * clampf(PI * spd / (2.0 * _hip * swing), 4.0, LEG_RATE_MAX)
+	for i in _legs.size():
+		var side := 1.0 if _legs[i].position.x >= 0.0 else -1.0
+		var ph := _gait + PI * float(((i >> 1) + (i & 1)) % 2)
+		# rotation.x > 0 carries the foot forward, rotation.z > 0 lifts a right foot.
+		_legs[i].rotation.x = cos(ph) * swing * k
+		_legs[i].rotation.z = side * maxf(-sin(ph), 0.0) * LEG_LIFT * k
 
 
 # --- Damage & carcass -----------------------------------------------------------

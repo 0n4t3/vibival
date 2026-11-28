@@ -156,7 +156,7 @@ func _ready() -> void:
 		await test_debug_world()
 	if only.is_empty() or "worlds" in only:
 		print("== worlds")
-		test_worlds()
+		await test_worlds()
 	if only.is_empty() or "stash" in only:
 		print("== stash")
 		await test_stash()
@@ -228,6 +228,9 @@ func _ready() -> void:
 	if only.is_empty() or "vitals" in only:
 		print("== vitals")
 		await test_vitals()
+	if only.is_empty() or "movement" in only:
+		print("== movement (trees, legs, snares, rafts)")
+		await test_creature_movement()
 	if only.is_empty() or "endgame" in only:
 		print("== endgame")
 		await test_endgame_items()
@@ -5143,6 +5146,23 @@ func test_fern_dig() -> void:
 		check(w.clear_fern(at), "a mattock struck into the ground at a decorative fern tears it out")
 		check(chunk.decor_ferns.size() == n0 - 1 and Game.taken.has(e.key) and Chunk.fern_key(e.x, e.z) == e.key, "gone for good (kept by where it stood)")
 		check(Game.inventory.count("mattock") == 1 and Game.inventory.slots.filter(func(x): return x != null).size() == 1, "and nothing gained")
+	# A decorative horsetail, the same way.
+	var hchunk: Node = null
+	for c in w.chunks.values():
+		if is_instance_valid(c) and not c.decor_horsetails.is_empty():
+			hchunk = c
+			break
+	check(hchunk != null, "a chunk with decorative horsetails")
+	if hchunk:
+		var e: Dictionary = hchunk.decor_horsetails[0]
+		var n0: int = hchunk.decor_horsetails.size()
+		var nf: int = hchunk.decor_ferns.size()
+		var at := Vector3(e.x, w.ground_height(e.x, e.z), e.z)
+		check(w.clear_fern(at), "a mattock struck into the ground at a decorative horsetail tears it out")
+		check(hchunk.decor_horsetails.size() == n0 - 1 and Game.taken.has(e.key) and Chunk.horsetail_key(e.x, e.z) == e.key,
+				"gone for good (kept by where it stood)")
+		check(hchunk.decor_ferns.size() <= nf, "the ferns' list is only ever smaller for it")
+		check(Game.inventory.slots.filter(func(x): return x != null).size() == 1, "and nothing gained")
 
 	# A harvestable fern: dug up, gone for good, its spores in the bag.
 	var hf := Harvestable.new().setup("fern", "htest:fern")
@@ -5734,6 +5754,13 @@ func test_worlds() -> void:
 	check(list.size() == 2 and list[0].id == a and list[0].saved and list[0].day == 3 and not list[1].saved,
 			"the load screen lists both, last played first, with the day")
 	check(Game.latest_world().get("id", "") == a, "Continue picks the last world played with a save")
+	check(Game.rename_world(a, "  Horsetail Bend ") == "Horsetail Bend" and Game.world_name == "Horsetail Bend"
+			and Game.list_worlds()[0].name == "Horsetail Bend" and Game.list_worlds()[0].id == a and Game.list_worlds()[0].day == 3,
+			"a world can be renamed, keeping its folder and its save")
+	check(Game.rename_world(a, "   ") == "" and Game.rename_world("no_such_world", "X") == "" and Game.list_worlds()[0].name == "Horsetail Bend",
+			"not to a blank name, nor a world that isn't there")
+	check(Game.rename_world(a, "x".repeat(60)).length() == Game.WORLD_NAME_MAX, "a name is cut to %d letters" % Game.WORLD_NAME_MAX)
+	Game.rename_world(a, "Fern Hollow")
 	Game.use_world(b)
 	check(not Game.has_save() and Game.take_save().is_empty(), "the other world has nothing to load yet")
 
@@ -5770,6 +5797,21 @@ func test_worlds() -> void:
 	check(texts.count("Export") == Game.list_worlds().size() and "Import world" in texts, "the load screen has Export and Import world")
 	title._imported(text)
 	check(title._status.visible and "Fern Hollow (3)" in title._status.text, "importing there says so")
+	await _frames(1)  # the panel from before the import goes
+	var buttons: Array = title.find_children("*", "Button", true, false).filter(func(bt): return not bt.is_queued_for_deletion())
+	check(buttons.filter(func(bt): return bt.text == "Rename").size() == Game.list_worlds().size(), "and Rename on every world")
+	var ren: Button = buttons.filter(func(bt): return bt.text == "Rename")[0]
+	ren.pressed.emit()
+	var edit: LineEdit = ren.get_parent().get_node_or_null("NameEdit")
+	var renamed_id: String = Game.list_worlds()[0].id
+	check(edit != null and ren.text == "Save", "Rename puts the name in a box to edit, and the button saves it")
+	if edit:
+		edit.text = "Spore Flats"
+		edit.text_submitted.emit(edit.text)
+		await _frames(1)
+		check(Game.list_worlds().filter(func(wd): return wd.id == renamed_id)[0].name == "Spore Flats", "Enter keeps the new name")
+		var labels: Array = title.find_children("*", "Label", true, false).map(func(lb): return lb.text)
+		check(labels.any(func(t): return t.begins_with("Spore Flats")), "and the list shows it")
 	title.queue_free()
 	await _frames(1)
 
@@ -10510,6 +10552,208 @@ func _beast(w: Node, sp: String, at: Vector3) -> Node:
 	w.add_child(c)
 	c.set_process(false)
 	return c
+
+
+func test_creature_movement() -> void:
+	## Playtest fixes: animals find their way round trees, walk with a proper
+	## gait, fight from a snare, and run from a player who hits them from a raft.
+	var w: Node = await _new_swamp()
+	var p: Node = w.player
+
+	# Going round a tree: one straight in its way is walked round, not stuck at.
+	var pick := Vector3.INF
+	var pick_r := 0.0
+	for c in w.chunks.values():
+		if not is_instance_valid(c) or pick.is_finite():
+			continue
+		for t in c.trunks:
+			if t.z < 0.3 or t.z > 1.2:
+				continue
+			var ok := true
+			for k in 9:
+				var x: float = t.x - 5.0 + k * 1.25
+				if w.ground_height(x, t.y) < 0.3 or absf(w.ground_height(x, t.y) - w.ground_height(t.x, t.y)) > 1.0:
+					ok = false
+			# Only this one tree near the line it walks.
+			for u in w.trunks_around(Vector3(t.x, 0, t.y), 8.0):
+				if u != t and u.z > 0.0 and absf(u.y - t.y) < u.z + 2.5 and absf(u.x - t.x) < 6.0 + u.z:
+					ok = false
+			if ok:
+				pick = Vector3(t.x, w.ground_height(t.x, t.y), t.y)
+				pick_r = t.z
+				break
+	check(pick.is_finite(), "a lone tree on dry ground")
+	if pick.is_finite():
+		for sp in ["edaphosaurus", "diadectes", "haptodus"]:
+			var c: Node = _beast(w, sp, pick + Vector3(-5.0, 0, 0.0))
+			c.state = "wander"
+			c.heading = PI * 0.5  # already headed straight at it
+			var goal: Vector3 = pick + Vector3(5.0, 0, 0)
+			var nearest := INF
+			var steps := 0
+			# Not much slower than walking straight there (10 m).
+			for i in int(10.0 / c.def.speed * 1.5 / 0.05):
+				c._steer(goal, c.def.speed, 0.05)
+				nearest = minf(nearest, Vector2(c.global_position.x - pick.x, c.global_position.z - pick.z).length())
+				steps = i
+				if Vector2(c.global_position.x - goal.x, c.global_position.z - goal.z).length() < 0.6:
+					break
+			var left: float = Vector2(c.global_position.x - goal.x, c.global_position.z - goal.z).length()
+			check(left < 0.6, "the %s walks round a tree in its way (%.1f m short after %.0f s)" % [sp, left, steps * 0.05])
+			check(nearest >= pick_r + c.def.radius - 0.05, "without walking into it (%.2f m from its middle)" % nearest)
+			c.queue_free()
+		await _frames(1)
+
+	# Trees just over a chunk's edge are seen too.
+	var edge_t := Vector3.INF
+	for c in w.chunks.values():
+		if not is_instance_valid(c) or edge_t.is_finite():
+			continue
+		for t in c.trunks:
+			var lx: float = t.x - c.cx * Chunk.SIZE
+			if t.z > 0.0 and lx < 0.8 and w.chunks.has(Vector2i(c.cx - 1, c.cz)):
+				edge_t = t
+				break
+	if edge_t.is_finite():
+		var over := Vector3(edge_t.x - 1.0, 0, edge_t.y)
+		check(not Array(w.trunks_near(over)).has(edge_t) and Array(w.trunks_around(over, 3.0)).has(edge_t),
+				"an animal by a chunk's edge sees the trees over it")
+
+	# Legs: diagonal pairs together, and no foot ever pushed into the ground.
+	for sp in ["edaphosaurus", "diadectes", "haptodus", "hylonomus"]:
+		var c: Node = _beast(w, sp, p.global_position + Vector3(6.0, 0, 0))
+		await _frames(1)
+		var feet := []
+		for leg in c._legs:
+			var mi: Node3D = leg.get_child(0)
+			var foot: Vector3 = mi.mesh.get_aabb().get_center()
+			foot.y = mi.mesh.get_aabb().position.y
+			feet.append(foot)
+		var rest := []
+		for i in c._legs.size():
+			var mi: Node3D = c._legs[i].get_child(0)
+			rest.append((c._legs[i].global_transform * mi.transform * feet[i]).y)
+		var sink := 0.0
+		var lift := [0.0, 0.0]  # right, left
+		var paired := true
+		for f in 120:
+			c._animate(c.def.speed, 1.0 / 60.0)
+			for i in c._legs.size():
+				var mi: Node3D = c._legs[i].get_child(0)
+				var y: float = (c._legs[i].global_transform * mi.transform * feet[i]).y - rest[i]
+				sink = minf(sink, y)
+				var side := 0 if c._legs[i].position.x >= 0.0 else 1
+				lift[side] = maxf(lift[side], y)
+			if absf(c._legs[0].rotation.x - c._legs[3].rotation.x) > 0.001 or absf(c._legs[1].rotation.x - c._legs[2].rotation.x) > 0.001 \
+					or absf(c._legs[0].rotation.x + c._legs[1].rotation.x) > 0.001:
+				paired = false
+		check(sink > -0.01, "a walking %s never pushes a foot into the ground (%.3f m)" % [sp, sink])
+		check(lift[0] > 0.0 and absf(lift[0] - lift[1]) < 0.01 * maxf(lift[0], 0.1) + 0.002,
+				"its left and right feet lift alike (%.3f, %.3f m)" % [lift[0], lift[1]])
+		check(paired, "diagonal legs swing together, opposite the other pair")
+		c.queue_free()
+	await _frames(1)
+
+	# A snared animal fights from the noose instead of trying to run.
+	var flat := _find_spot(w, p.global_position, func(q): return q.y > 0.4 and absf(w.ground_height(q.x + 4.0, q.z) - q.y) < 0.4 \
+			and absf(w.ground_height(q.x - 4.0, q.z) - q.y) < 0.4 and Game.nearest_fire(q, 12.0) == null)
+	var before := get_tree().get_nodes_in_group("traps")
+	check(flat.is_finite() and w.place("snare", flat), "a snare set on dry ground")
+	var traps := _new_traps(before)
+	if traps.size() == 1:
+		var s: Node = traps[0]
+		s.caught = [{"species": "haptodus", "at": Game.time}]
+		s._process(1.0)
+		var hap: Node = s._beast
+		check(hap != null and hap.snared == s, "a Haptodus in the snare")
+		hap.set_process(false)
+		p.velocity = Vector3.ZERO
+		p.global_position = s.global_position + Vector3(hap.def.reach + 0.3, 0.1, 0)
+		await _frames(1)
+		p.global_position = s.global_position + Vector3(hap.def.reach + 0.3, 0.1, 0)
+		hap.global_position = s.global_position
+		hap.state = "retreat"
+		hap._state_t = 1.2
+		hap._cd = 1.0
+		hap._behave(0.05)
+		check(hap.state == "chase", "one in the noose doesn't back off after a bite: it turns straight back (%s)" % hap.state)
+		# It throws itself further than its usual reach.
+		var d: float = hap.global_position.distance_to(p.global_position)
+		check(d > hap.def.reach, "the player stands past its usual reach (%.2f m)" % d)
+		hap._cd = 0.0
+		hap._behave(0.05)
+		check(hap.state == "attack", "straining at the noose, it goes for you there (%.2f m)" % hap.global_position.distance_to(p.global_position))
+		hap.heading = atan2(p.global_position.x - hap.global_position.x, p.global_position.z - hap.global_position.z)
+		p.vitals.blood = 100.0
+		var hurt0: int = p.vitals.wounds.size()
+		hap._windup = 0.01
+		hap._behave(0.05)
+		check(hap.state == "chase" and (p.vitals.wounds.size() > hurt0 or p.vitals.blood < 100.0),
+				"its bite lands, and it stays at you rather than backing off (%s)" % hap.state)
+		# A fire beside it doesn't send it straining away.
+		var lit := GDScript.new()
+		lit.source_code = "extends Node3D\nvar lit := true\n"
+		lit.reload()
+		var fire := Node3D.new()
+		fire.set_script(lit)
+		w.add_child(fire)
+		fire.global_position = s.global_position + Vector3(-3.0, 0, 0)
+		Game.fires.append(fire)
+		hap._cd = 1.0
+		hap._behave(0.05)
+		check(Game.nearest_fire(hap.global_position, 9.0) == fire and hap.state != "flee",
+				"a fire near the snare doesn't set it straining to run (%s)" % hap.state)
+		Game.fires.erase(fire)
+		fire.queue_free()
+		hap.queue_free()
+		# Even a neutral animal in a snare lashes out at someone close.
+		s.caught = [{"species": "arthropleura", "at": Game.time}]
+		await _frames(1)
+		s._process(1.0)
+		var art: Node = s._beast
+		check(art != null and art.species == "arthropleura" and art._anger <= 0.0, "an Arthropleura in the snare, not yet angry")
+		if art:
+			art.set_process(false)
+			art.global_position = s.global_position
+			p.global_position = s.global_position + Vector3(art.def.reach + 1.0, 0.1, 0)
+			art._behave(0.05)
+			check(art.state == "chase", "it goes for a player who comes close (%s)" % art.state)
+			p.global_position = s.global_position + Vector3(12.0, 0.1, 0)
+			art.state = "wander"
+			art._behave(0.05)
+			check(art.state != "chase", "but leaves one alone further off (%s)" % art.state)
+			art.queue_free()
+		s.caught.clear()
+		s.queue_free()
+		await _frames(1)
+
+	# Hit from a raft, an animal that can't get at you runs instead of standing there.
+	if flat.is_finite():
+		var raft := Node3D.new()
+		w.add_child(raft)
+		p.global_position = flat + Vector3(0, 0.1, 0)
+		var eda: Node = _beast(w, "edaphosaurus", flat + Vector3(3.0, 0, 0))
+		eda.state = "idle"
+		p.riding = raft
+		eda.take_damage(5.0, p)
+		var start: Vector3 = eda.global_position
+		for i in 40:
+			eda._behave(0.05)
+		var away: float = eda.global_position.distance_to(p.global_position) - start.distance_to(p.global_position)
+		check(eda.state == "flee" and away > 2.0, "hit from a raft, it runs off (%s, %.1f m further)" % [eda.state, away])
+		eda._anger = 0.0
+		eda._behave(0.05)
+		check(eda.state != "flee", "and settles once it has calmed down (%s)" % eda.state)
+		var calm: Node = _beast(w, "edaphosaurus", flat + Vector3(-3.0, 0, 0))
+		calm.state = "idle"
+		calm._behave(0.05)
+		check(calm.state != "flee", "one that wasn't hit takes no notice of a passing raft")
+		p.riding = null
+		raft.queue_free()
+		eda.queue_free()
+		calm.queue_free()
+	w.queue_free()
+	await _frames(2)
 
 
 func test_combat() -> void:

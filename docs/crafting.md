@@ -375,12 +375,13 @@ on dry ground with Use. Each time you sleep, a baited snare:
 |---|---|---|
 | 70% | A small prey animal of any kind | Eaten |
 | 20% | Nothing | Still there |
-| 10% | A Scorpion or an Arthropleura, alive in the noose | Eaten |
+| 10% | A Scorpion, a Haptodus or an Arthropleura, alive in the noose | Eaten |
 
 A snare holds one animal at a time. A small one stays in the noose for you.
-A Scorpion or Arthropleura is still there, alive, whenever you come back. It
-can't get away, but it fights back: a Scorpion lunges at you if you get
-close. Kill it, and butcher the carcass where it lies. Left two days, it
+A Scorpion, Haptodus or Arthropleura is still there, alive, whenever you
+come back. It can't get away, but it fights back: it goes for you if you
+get close (even an Arthropleura), and the noose lets it lunge a little
+further than it could otherwise. Kill it, and butcher the carcass where it lies. Left two days, it
 dies in the noose and is rotten food (3).
 
 **Emptying a trap.** Look at it and press E: what it caught goes into your

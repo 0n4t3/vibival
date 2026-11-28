@@ -44,6 +44,9 @@ var trees: Array = []
 ## at any graphics quality.
 var decor_ferns: Array = []
 var _fern_mm: MultiMesh
+## Decorative horsetails (DECOR "horsetail"), the same way: cleared like ferns.
+var decor_horsetails: Array = []
+var _horsetail_mm: MultiMesh
 var _trunk_body: StaticBody3D
 
 static var _rock_hull := PackedVector3Array()
@@ -199,16 +202,22 @@ func build(chunk_x: int, chunk_z: int, terrain: RefCounted, world: Node) -> void
 			var s := r.randf_range(def.scale[0], def.scale[1])
 			var t := Transform3D(Basis(Vector3.UP, r.randf() * TAU).scaled(Vector3.ONE * s), Vector3(lx, h - 0.05, lz))
 			if look.randf() < keep:
-				if kind == "fern":
+				if kind == "fern" or kind == "horsetail":
 					# Checked after every roll, so a cleared one leaves the rest as they were.
-					var key := fern_key(ox + lx, oz + lz)
+					var key := fern_key(ox + lx, oz + lz) if kind == "fern" else horsetail_key(ox + lx, oz + lz)
 					if Game.taken.has(key):
 						continue
-					decor_ferns.append({"key": key, "i": xforms.size(), "x": ox + lx, "z": oz + lz})
+					var e := {"key": key, "i": xforms.size(), "x": ox + lx, "z": oz + lz}
+					if kind == "fern":
+						decor_ferns.append(e)
+					else:
+						decor_horsetails.append(e)
 				xforms.append(t)
 		var dmm := _add_multimesh(kind, xforms, 40.0 if Settings.quality == 0 else 60.0, false)
 		if kind == "fern":
 			_fern_mm = dmm
+		elif kind == "horsetail":
+			_horsetail_mm = dmm
 
 	# Rocky knolls get boulders.
 	var rocks := []
@@ -331,24 +340,37 @@ static func fern_key(x: float, z: float) -> String:
 	return "d%d:%d" % [roundi(x * 10.0), roundi(z * 10.0)]
 
 
+static func horsetail_key(x: float, z: float) -> String:
+	## Game.taken's key for a decorative horsetail standing at world x, z.
+	return "dh%d:%d" % [roundi(x * 10.0), roundi(z * 10.0)]
+
+
 func clear_fern(p: Vector3, r: float) -> bool:
-	## An axe or shovel takes out the decorative fern nearest p (within r, on the
-	## ground's plane), for good. Nothing comes of it. False if none is there.
+	## An axe or shovel takes out the decorative fern or horsetail nearest p
+	## (within r, on the ground's plane), for good. Nothing comes of it. False
+	## if none is there.
 	var best := -1
 	var best_d := r
-	for k in decor_ferns.size():
-		var e: Dictionary = decor_ferns[k]
-		var d := Vector2(e.x - p.x, e.z - p.z).length()
-		if d < best_d:
-			best = k
-			best_d = d
-	if best < 0 or _fern_mm == null:
+	var list: Array = []
+	var mm: MultiMesh = null
+	for pair in [[decor_ferns, _fern_mm], [decor_horsetails, _horsetail_mm]]:
+		if pair[1] == null:
+			continue
+		for k in pair[0].size():
+			var e: Dictionary = pair[0][k]
+			var d := Vector2(e.x - p.x, e.z - p.z).length()
+			if d < best_d:
+				best = k
+				best_d = d
+				list = pair[0]
+				mm = pair[1]
+	if best < 0:
 		return false
-	var e: Dictionary = decor_ferns[best]
-	var o: Vector3 = _fern_mm.get_instance_transform(e.i).origin
-	_fern_mm.set_instance_transform(e.i, Transform3D(Basis().scaled(Vector3.ZERO), o))
+	var e: Dictionary = list[best]
+	var o: Vector3 = mm.get_instance_transform(e.i).origin
+	mm.set_instance_transform(e.i, Transform3D(Basis().scaled(Vector3.ZERO), o))
 	Game.taken[e.key] = true
-	decor_ferns.remove_at(best)
+	list.remove_at(best)
 	return true
 
 

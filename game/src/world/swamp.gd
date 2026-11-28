@@ -583,6 +583,24 @@ func trunks_near(pos: Vector3) -> PackedVector3Array:
 	return c.trunks if c else PackedVector3Array()
 
 
+func trunks_around(pos: Vector3, r: float) -> PackedVector3Array:
+	## Trunks and boulders from every chunk within r of pos (up to four), so
+	## an animal by a chunk's edge sees the trees just over it.
+	var x0 := floori((pos.x - r) / Chunk.SIZE)
+	var x1 := floori((pos.x + r) / Chunk.SIZE)
+	var z0 := floori((pos.z - r) / Chunk.SIZE)
+	var z1 := floori((pos.z + r) / Chunk.SIZE)
+	if x0 == x1 and z0 == z1:
+		return trunks_near(pos)
+	var out := PackedVector3Array()
+	for cx in range(x0, x1 + 1):
+		for cz in range(z0, z1 + 1):
+			var c: Node = chunks.get(Vector2i(cx, cz))
+			if c:
+				out.append_array(c.trunks)
+	return out
+
+
 func dig_hole(pos: Vector3, check_only := false) -> bool:
 	## A shovel's right-click: a hole in the open ground at pos, for planting
 	## (plot.gd). It fills itself in again a game day later. `check_only`:

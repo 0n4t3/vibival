@@ -8,7 +8,8 @@ Everything you kill leaves a carcass you can butcher for meat (see
 [Butchering](#butchering)).
 
 The animals fall into groups. Animals in the same group act much the same way.
-How to fight them with a spear is under [Fighting](#fighting).
+How to fight them with a spear is under [Fighting](#fighting). An animal you
+hit from a raft, which can't get at you there, runs off.
 
 | Group | Animals | What to expect |
 |---|---|---|

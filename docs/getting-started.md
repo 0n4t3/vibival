@@ -32,8 +32,8 @@ time, fly, and use the F1 debug panel. See
 [Sleeping and saving](sleeping-and-saving.md#debug-worlds).
 
 Each world has its own map and its own saves. **Continue** resumes the world
-you played last. **Load world** lists every world so you can load or delete
-it. See [Sleeping and saving](sleeping-and-saving.md).
+you played last. **Load world** lists every world so you can load, rename
+or delete it. See [Sleeping and saving](sleeping-and-saving.md).
 
 ## Your first hour
 
